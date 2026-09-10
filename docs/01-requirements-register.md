@@ -218,6 +218,10 @@ blocker E-2** — see §9 of that document.
 | **AT-2** | Editor organised into categories so the panel stays easy to use | §8c — grouped editor, progressive disclosure, search, "affects" hints, live preview |
 | **BR-1** | **Official Aziv AI branding asset used as initial branding**, not a placeholder | [`../brand/README.md`](../brand/README.md) |
 | **BR-2** | Branding remains fully changeable later from the Admin Panel | Blueprint §4 + Phase 2 |
+| **BR-3** | **Both light- and dark-background variants built and retained** | [`../brand/README.md`](../brand/README.md) — built and committed |
+| **BR-4** | **Master artwork never permanently altered or replaced** | Master preserved; every variant derives from it, never from a derivative |
+| **BR-5** | Theme system selects the appropriate variant for the active theme | Phase 2 — theme-aware logo resolution |
+| **BR-6** | Simplified favicon/app-icon version retained for small sizes | Built. **16px flagged as needing a hand-drawn mark** |
 
 ## Implementation rules (§31) — how each is enforced
 

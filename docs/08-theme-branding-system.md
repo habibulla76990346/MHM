@@ -169,8 +169,8 @@ costs nothing and prevents a real problem.
 | Asset | Purpose | Handling |
 |---|---|---|
 | Primary logo | Main header | Original + generated sizes |
-| Dark-mode logo | Header on dark backgrounds | Separate upload |
-| Light-mode logo | Header on light backgrounds | Separate upload |
+| Dark-mode logo | Header on dark backgrounds | **Built: `logo-dark-bg.png`** (master artwork) |
+| Light-mode logo | Header on light backgrounds | **Built: `logo-light-bg.png`** (tonal inversion, neutralised) |
 | Compact logo | Collapsed sidebar, mobile | Separate upload |
 | Login logo | Auth screens | Separate upload |
 | Email logo | Transactional email headers | Absolute URL, email-safe format |
@@ -178,6 +178,12 @@ costs nothing and prevents a real problem.
 | App icons | Mobile home screen / PWA | Generated at 180/192/512px |
 | Default avatar | Users without a photo | Single upload |
 | Placeholders | Empty states | Single upload |
+
+**Theme-aware logo resolution (D-09).** The active theme's mode decides which variant renders: dark
+themes and dark mode use `logo-dark-bg`, light themes use `logo-light-bg`, and the compact mark
+follows the same rule. The **master artwork is never modified** — variants are separate media records
+derived from it, and replacing one replaces only that variant. Full set and derivation notes in
+[`../brand/README.md`](../brand/README.md).
 
 All flow through `media_assets` — the media library required by §4, with upload, replace,
 preview and **safe deletion** (an asset currently referenced by a theme, page or setting cannot

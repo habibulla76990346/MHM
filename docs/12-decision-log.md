@@ -181,38 +181,57 @@ false green. The nine controls carry the security either way.
 
 ---
 
-### D-09 · Initial branding — ✅ **CHANGED BY OWNER: use the real asset**
+### D-09 · Branding — ✅ **RESOLVED: both variants built, master preserved**
 
-**Found it.** The owner said the branding asset was already provided. No logo file was uploaded to
-this session — but the **cover page of the Master Blueprint carries embedded artwork**, and that is
-the asset. Extracted and committed to [`brand/`](../brand/README.md).
+**Owner's decision:** build and retain **both** presentation variants; keep the simplified
+small-size mark; **never permanently alter or replace the official artwork**; let the theme system
+select the appropriate variant; keep everything replaceable from the Admin Panel.
 
-| Property | Value |
+**Done — the assets exist now**, in [`brand/`](../brand/README.md), derived and verified rather than
+merely specified.
+
+| Asset | Status |
 |---|---|
-| Format / size | JPEG, 1536 × 1536 |
-| Background | Solid black `#000000`, **no transparency** |
-| Subject | Stylised head in profile formed from flowing black-and-white ribbon shapes |
+| `aziv-ai-logo-master.jpg` | **Master, preserved untouched.** Every variant derives from it |
+| `logo-dark-bg.png` | Master artwork, trimmed — native to dark surfaces |
+| `logo-light-bg.png` | Tonal inversion, desaturated to neutral — reads clearly on white |
+| `logo-lockup-dark.png` | Artwork preserved exactly on a rounded dark panel, for email and tiles |
+| `mark-compact-dark/light.png` | Head profile only, for collapsed sidebar and mobile |
+| `favicon-16/32/48/64.png` | Browser tab |
+| `app-icon-180/192/512 + maskable` | Home screen and PWA |
 
-**No placeholder will be used.** It remains fully changeable later from the Admin Panel.
+#### Correction: the black could not simply be keyed out
 
-**Four practical constraints, and what Phase 2 does about each:**
+I previously wrote that the background was uniform `#000000` and removal would be "clean and
+mechanical." **That was wrong, and the correction matters.** Measurement shows the artwork is
+**72% near-black**, and a single horizontal scan crosses **25 alternating light/dark runs** — the
+black ribbons are structural elements of the design, not a removable surround. Keying black to
+transparency deletes half the artwork.
 
-| Constraint | Phase 2 action |
+Three approaches were built and compared on a real white background. **Tonal inversion, desaturated
+to neutral, was chosen**: form, depth and profile all survive. (Inverting the cool silver produced a
+warm sepia cast, hence the 85% desaturation.) The dark lockup is retained for email headers and
+tiles, where a contained block is appropriate.
+
+#### Known limitation — the 16px favicon needs a designer
+
+**Flagged rather than quietly shipped.** The artwork is fine alternating ribbons; at 16–32px they
+merge into grey however the reduction is done. Three approaches were tested at actual size — direct
+downscale, solid silhouette, bold-ribbon reduction — and none reads clearly at 16px.
+
+| Size | Status |
 |---|---|
-| No transparency — black is baked in | Generate a transparent variant; the background is uniform `#000000`, so removal is clean |
-| Light-on-dark artwork | Needs a light-mode treatment — a dark lockup container or tonal inversion. **A design decision I need from you** |
-| Raster only, no vector | Fine at every size the app needs; a vector redraw is worth commissioning eventually, not required to ship |
-| Highly detailed | Derive a **simplified compact mark** — head silhouette only — for favicon and collapsed sidebar, where the ribbons would merge into grey |
+| ≥ 64px | ✅ Real artwork works well |
+| 32–48px | 🟡 Simplified reduction acceptable |
+| **16px** | 🔴 **Weak** — a dark shape, not a recognisable mark |
 
-All eight assets blueprint §4 requires are derived from it in Phase 2.
-
-**One neutral note, stated once:** if this artwork came from a third party or stock source, confirm
-the licence covers commercial use **and** use as a brand identity — those are often licensed
-separately. A business check, not a technical one; it does not affect the build.
+Interim assets ship so nothing is missing. **The proper fix is a hand-drawn simplified mark** — the
+face profile alone, or a three-ribbon abstraction, as a vector. A one-to-two-hour design job, and it
+drops in through the Admin Panel later without touching anything else.
 
 ---
 
-## 🔴 Blocking Phase 0/1
+## ✅ Formerly blocking — all resolved
 
 ### E-1 … E-8 · Environment facts — ✅ **ALL RESOLVED**
 
@@ -328,4 +347,5 @@ The owner confirmed these stay as proposed **for now**. Silence is still not app
 | Owner decision | **D-07 CHANGED** — Admin Panel fully themeable, not partially |
 | Owner decision | **D-08 MODIFIED** — upload security moved to Phase 1; scanning becomes an extensible layer |
 | Owner decision | **D-09 CHANGED** — official Aziv AI artwork used as initial branding; no placeholder |
+| Owner decision | **D-09 RESOLVED** — both variants built and committed; master preserved; 16px favicon flagged as needing a designed mark |
 | Owner Addendum G | System health & diagnostics — two deployment modes, self-detecting environment, 11-field findings, secret-free reporting. **Resolved E-2 … E-8; no blockers remain** |
