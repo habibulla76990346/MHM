@@ -20,9 +20,9 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 |---|---|
 | **Goal** | A working Laravel skeleton that boots, connects to a database and runs its test suite |
 | **Build** | Install MariaDB/MySQL locally · `composer create-project laravel/laravel` (Laravel 13) · configure `.env` · install Livewire 4, Filament 5, Spatie Permission 8, Sanctum · set up Tailwind build with the **6-breakpoint scale** · correct viewport meta incl. `viewport-fit=cover` · hashed/versioned build assets (PWA prerequisite) · **Playwright + Chromium responsive test harness** · Git structure, `.gitignore`, `.env.example` · CI that runs tests on push |
-| **Test gate** | App boots · database connects · `php artisan test` passes · assets compile · **responsive harness runs and reports at all 6 viewports** |
-| **You provide** | Nothing |
-| **You will see** | The default Laravel welcome page. Nothing that looks like Aziv AI yet — that is expected |
+| **Test gate** | App boots · database connects · `php artisan test` passes · assets compile · **responsive harness runs and reports at all 6 viewports** · **cPanel deployment verification: requesting `/.env`, `/composer.json`, `/vendor/autoload.php` and `/storage/logs/laravel.log` over HTTP must all fail — any one reachable fails the phase** · cron-driven queue processes a test job |
+| **You provide** | The **E-1 … E-8** cPanel facts (see `12-decision-log.md`). E-1 (PHP ≥ 8.2) and E-2 (outbound HTTPS allowed) are hard blockers |
+| **You will see** | The default Laravel welcome page, running on your own cPanel hosting. Nothing that looks like Aziv AI yet — that is expected |
 | **Size** | 1 session |
 
 ---
@@ -102,10 +102,10 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | | |
 |---|---|
 | **Goal** | The platform earns money |
-| **Build** | Plan management (FREE/PRO/PREMIUM, all 11 configurable dimensions) · plan → model/provider access matrix · `EntitlementService` · **credit ledger (append-only) + balances + holds** · pre-authorisation and settlement · promotional credits, expiry, optional rollover · manual adjustments with mandatory reason · payment gateway interface + first implementation · purchase, upgrade, downgrade, renewal, cancellation · **idempotent webhooks** · invoices, coupons, tax display · billing history · notification system + templates + announcements · **mobile checkout flow, plan comparison stacked on narrow screens, payment forms with correct `autocomplete` tokens** |
+| **Build** | Plan management (FREE/PRO/PREMIUM, all 11 configurable dimensions) · plan → model/provider access matrix · `EntitlementService` · **credit ledger (append-only) + balances + holds** · pre-authorisation and settlement · promotional credits, expiry, optional rollover · manual adjustments with mandatory reason · payment gateway interface + **Razorpay implementation (D-01)** · **GST-compliant invoicing: GSTIN, place of supply, CGST/SGST/IGST split, SAC code, sequential numbering, export flag (D-12)** · **dated USD→INR exchange rates for margin reporting** · purchase, upgrade, downgrade, renewal, cancellation · **idempotent webhooks** · invoices, coupons, tax display · billing history · notification system + templates + announcements · **mobile checkout flow, plan comparison stacked on narrow screens, payment forms with correct `autocomplete` tokens** |
 | **Blueprint** | §19, §20, §22, §8 (billing parts), §13 (pricing) |
 | **Test gate** | **A webhook replayed 5× grants credits once** · **parallel requests cannot drive a balance negative** · failed AI call releases its hold and charges nothing · upgrade/downgrade prorates correctly · plan limits enforced · ledger sum always equals cached balance · **no card data anywhere in the database** · **checkout completes on a 320px viewport** |
-| **You provide** | **A payment gateway account** (decision D-01) and your plan pricing |
+| **You provide** | **A Razorpay account**, your plan pricing, and your accountant's confirmation of GST treatment (D-12) |
 | **You will see** | Customers can subscribe and pay, and credits deduct accurately as they use AI |
 | **Size** | 4–5 sessions |
 
@@ -144,10 +144,10 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | | |
 |---|---|
 | **Goal** | Safe to put real customers and real money on |
-| **Build** | Full security review vs §23 · optional MFA for admin accounts · rate limiting and API protection review · **permission audit: every admin action is gated and logged** · **hard-coded colour audit** · dependency vulnerability scan · backup + tested restore procedure (**including `APP_KEY`**) · monitoring, error tracking, uptime alerts · performance pass (N+1 queries, index verification, cache coverage) · staging environment · deployment documentation · environment configuration documentation · API/integration documentation · **service worker for the app shell + proper offline screen** · **cross-device QA on real phones and tablets** · production launch |
+| **Build** | Full security review vs §23 · optional MFA for admin accounts · rate limiting and API protection review · **permission audit: every admin action is gated and logged** · **hard-coded colour audit** · dependency vulnerability scan · backup + tested restore procedure (**including `APP_KEY`**) · monitoring, error tracking, uptime alerts · performance pass (N+1 queries, index verification, cache coverage) · staging environment · deployment documentation · environment configuration documentation · API/integration documentation · **service worker for the app shell + proper offline screen** · **cross-device QA on real phones and tablets** · **migration from cPanel to cloud/VPS per the 10-step checklist, with streaming enabled and persistent queue workers started** · production launch |
 | **Blueprint** | §23, §28, §29 |
 | **Test gate** | Full suite green · **a restore from backup is actually performed and verified**, not merely scripted · no critical dependency vulnerabilities · load test at expected concurrency · every §23 item signed off |
-| **You provide** | Production hosting, domain, SSL, and production provider/gateway accounts |
+| **You provide** | Production cloud/VPS hosting (per D-04), domain, SSL, and production provider/gateway accounts |
 | **You will see** | Aziv AI live on your own domain |
 | **Size** | 4–5 sessions |
 

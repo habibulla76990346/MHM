@@ -20,6 +20,9 @@ If you only read two documents, read:
 
 The requirements baseline is [`docs/blueprint/`](docs/blueprint/).
 
+**Deployment:** cPanel shared hosting for development and staging, migrating to cloud/VPS for
+production — see [`docs/13-deployment-portability.md`](docs/13-deployment-portability.md).
+
 ## Every screen is device-adaptive
 
 Mobile, tablet and desktop get genuinely different layouts — not one layout resized. Bottom

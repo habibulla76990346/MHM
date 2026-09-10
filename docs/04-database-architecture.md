@@ -49,12 +49,30 @@ changes, "who changed it, when, from what, to what" must all be answerable.
 | `payments` | Payment intent/record (§20) | uuid, user_id, subscription_id, gateway, gateway_payment_id, amount, currency, status, paid_at |
 | `payment_transactions` | Every gateway state change | payment_id, type, amount, status, gateway_reference, raw_payload (json) |
 | `payment_webhook_events` | **Idempotency guard (§19)** | gateway, event_id (**unique**), event_type, payload, processed_at, result |
-| `invoices` | Invoice records (§20) | uuid, user_id, number, subtotal, tax, total, currency, status, issued_at, pdf_media_id |
+| `invoices` | Invoice records (§20) | uuid, user_id, number (sequential), subtotal, tax_total, total, currency, status, issued_at, pdf_media_id, **place_of_supply, supplier_gstin, customer_gstin, sac_code, is_export, tax_breakdown (json)** |
+| `tax_rates` | Configurable tax rules (D-12) | uuid, name, jurisdiction, rate_percent, tax_type (cgst/sgst/igst/vat/none), applies_from, applies_until, is_active |
+| `exchange_rates` | **USD provider cost → INR revenue (D-01)** | from_currency, to_currency, rate, effective_date, source, unique(from,to,effective_date) |
 | `coupons` | Promotions (§20) | code (unique), type, value, max_redemptions, redeemed_count, valid_from, valid_until, plan_restrictions (json) |
 | `coupon_redemptions` | Prevent reuse | coupon_id, user_id, payment_id, redeemed_at |
 | `credit_ledger` | **Append-only ledger (§19)** | uuid, user_id, entry_type, amount, balance_after, reason, reference_type, reference_id, expires_at, actor_id |
 | `credit_balances` | Fast current balance | user_id (unique), confirmed_balance, held_balance, updated_at |
 | `credit_holds` | Pre-authorisation | uuid, user_id, amount, status (held/settled/released), reference, expires_at |
+
+### Why `exchange_rates` exists — a direct consequence of decision D-01
+
+Aziv AI's costs and its revenue are in **different currencies**. AI providers bill in **USD**, at
+fractions of a cent per token. Customers in India are charged in **INR**.
+
+Blueprint §21 requires cost-versus-revenue and margin reporting. Comparing a USD cost to an INR
+price is meaningless without a rate, and using *today's* rate to evaluate *last quarter's* margin
+silently rewrites history every time the rupee moves.
+
+So: `api_usage_logs.provider_cost` is stored in its **native currency with the currency recorded
+alongside it**, and `exchange_rates` holds a dated rate. Margin for any period is computed at the
+rate effective on each usage date. The result is a margin figure that does not change retroactively.
+
+Rates are refreshed by a scheduled job from a configurable source, with the last known rate used
+if a refresh fails — a stale rate is far better than a missing one.
 
 ### How the ledger stays correct
 

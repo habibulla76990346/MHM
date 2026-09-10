@@ -20,7 +20,8 @@ Complete analysis and implementation plan derived from
 | 09 | [Development Phases](09-development-phases.md) | The 9 blueprint phases, detailed, with test gates and timeline |
 | 10 | [Decisions & Risks](10-decisions-and-risks.md) | **11 decisions I need from you, and 12 risks stated plainly** |
 | 11 | [Responsive Design System](11-responsive-design-system.md) | **Owner Addendum A** — adaptive layouts for mobile/tablet/desktop, and PWA readiness |
-| 12 | [Decision Log](12-decision-log.md) | **Authoritative status of all 11 decisions.** Read this to see what is settled and what is blocking |
+| 12 | [Decision Log](12-decision-log.md) | **Authoritative status of every decision.** Read this first to see what is settled and what is blocking |
+| 13 | [Deployment & Portability](13-deployment-portability.md) | **Owner Addendum B** — cPanel staging → cloud production, and exactly which features work where |
 
 ## The short version
 
@@ -68,12 +69,13 @@ layouts, not one layout resized. See [document 11](11-responsive-design-system.m
 
 Status is tracked in [document 12](12-decision-log.md). As of now:
 
-- ✅ **D-11 approved** — mobile bottom navigation, with navigation kept admin-configurable
-- 🔴 **D-04 · Hosting** — **blocks Phase 0/1.** Recommendation: a managed Laravel platform
-  ($25–75/mo), because the difference from a plain VPS is not the cost but who handles SSL,
-  patches and backups when you are not a developer
-- 🔴 **D-01 · Country and currency** — **blocks Phase 0/1.** These set the default currency and
-  money precision in the schema; the gateway itself is not needed until Phase 6
+- ✅ **D-01 approved** — India. Razorpay, INR, with dated USD→INR rates for margin reporting
+- ✅ **D-04 approved** — cPanel shared hosting for dev/staging, cloud/VPS for production, under
+  nine portability requirements. Environment is configuration, not architecture
+- ✅ **D-11 approved** — mobile bottom navigation, kept admin-configurable
+- 🔴 **E-1 … E-8** — cPanel account facts needed before Phase 0. **E-1 (PHP ≥ 8.2)** and
+  **E-2 (outbound HTTPS allowed)** are hard blockers
+- 🔴 **D-12 · GST handling** — raised by D-01; three questions to answer
 - 🟡 Eight further decisions carry a recommendation and await confirmation
 
-**No application code is written until D-04 and D-01 are resolved.**
+**No application code is written until E-1/E-2 are confirmed.**

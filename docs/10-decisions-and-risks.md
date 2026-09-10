@@ -258,6 +258,35 @@ drill-down, read-and-test-only for JSON mapping) and the panel says so, rather t
 cramped grid and letting an admin discover the problem mid-task. Detail in
 `11-responsive-design-system.md` §9.
 
+### R-13 · Shared hosting becoming permanent — **medium, and the real one to watch**
+
+D-04 puts development and staging on cPanel deliberately, with production on cloud/VPS later. The
+risk is not technical — the portability architecture handles it. The risk is **inertia**: once it
+works well enough, the migration keeps getting postponed, and streaming chat stays degraded
+permanently.
+
+**Mitigation:** the capability matrix in `13-deployment-portability.md` §2 states plainly which
+features are affected, the migration is a 10-step checklist rather than a project, and Phase 9
+includes the migration as a deliverable rather than an optional extra.
+
+### R-14 · Outbound HTTPS blocked on shared hosting — **would be fatal, check first**
+
+A small number of shared hosts block outbound connections by default. Aziv AI is an application
+whose entire purpose is calling external AI APIs.
+
+**Mitigation:** this is check **E-2**, verified in the first minutes of Phase 0 before anything is
+built. If it is blocked and cannot be lifted, hosting must change before development starts.
+
+### R-15 · GST compliance is a business obligation, not just a schema — **medium, bounded**
+
+D-01 (India) means GST applies, and Razorpay does not file it for you the way a merchant-of-record
+service would.
+
+**Mitigation:** all GST fields are in the invoice schema from Phase 1, and tax rules are
+configurable rather than hard-coded, so rates and treatment are set without code changes. **I am
+not a tax adviser** — the software will support what Indian GST requires; your accountant confirms
+the rates, registration status and export treatment. Recorded as decision D-12.
+
 ### R-09 · Realtime voice and video are deferred — **already scoped by the blueprint**
 
 §18 itself describes realtime voice as "a separate module" and video as adapter-ready "later."

@@ -60,6 +60,29 @@ weight as blueprint sections and are subject to the same no-removal rule.
 | A-8 | **Mobile bottom navigation = Chat · Library · Images · Account**, less frequent features under More/Drawer. Navigation must stay admin-configurable in future: labels, icons, ordering, visibility and destination where technically appropriate. Bottom bar must stay touch-friendly and must not interfere with the chat composer, keyboard, safe-area insets or scrolling | Content, Theming | 1–2 | PLANNED | **Owner-approved D-11.** Navigation is data, not code — `11-responsive-design-system.md` §3 |
 | A-7 | PWA-ready structure: manifest, icons, installability where appropriate. **Not a native app at this stage** | Branding, Ops | 2, 9 | PLANNED | Manifest generated from admin branding settings — §10 |
 
+### Owner Addendum B — deployment portability (decision D-04)
+
+| ID | Requirement | Where delivered |
+|---|---|---|
+| B-1 | Laravel application stays hosting-provider agnostic | `13-deployment-portability.md` §1 |
+| B-2 | Nothing hard-coded to the shared hosting provider | §1, enforced in every phase review |
+| B-3 | Database, cache, queue, storage, mail, AI providers all configurable via environment | §1 config table |
+| B-4 | Database-backed queue where no persistent worker exists | §3 — cron-driven bounded worker |
+| B-5 | Ready to switch to Redis, persistent workers and streaming infrastructure | §1, §4 |
+| B-6 | **No feature removed or downgraded because of shared-hosting limits** | §2 — every feature built in both environments |
+| B-7 | Document what is fully functional on shared hosting vs what needs cloud/VPS | §2 capability matrix |
+| B-8 | Final production architecture supports streaming, queues, background jobs, file processing, image generation, voice, scaling, monitoring | §2, Phase 9 |
+| B-9 | Migration as simple as configuration change, data migration and deployment steps | §4 — a 10-step checklist, zero code changes |
+
+### Owner Addendum C — Indian business requirements (decision D-01)
+
+| ID | Requirement | Where delivered |
+|---|---|---|
+| C-1 | Razorpay as the first payment gateway implementation | Phase 6; gateway stays pluggable |
+| C-2 | INR as default currency; money precision set accordingly | Phase 1 schema |
+| C-3 | **USD provider cost vs INR revenue** reconciled with dated exchange rates | `04-database-architecture.md` — `exchange_rates` |
+| C-4 | GST-compliant invoicing: GSTIN, place of supply, CGST/SGST/IGST split, SAC code, sequential numbering | Phase 6 — pending decision **D-12** |
+
 ## Implementation rules (§31) — how each is enforced
 
 | Rule | Requirement | Enforcement mechanism |
