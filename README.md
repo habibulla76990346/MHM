@@ -15,7 +15,8 @@ access, subscriptions, credits, analytics and operational feature flags.
 If you only read two documents, read:
 
 - **[`docs/09-development-phases.md`](docs/09-development-phases.md)** — what gets built, in what order
-- **[`docs/10-decisions-and-risks.md`](docs/10-decisions-and-risks.md)** — the 9 decisions needed, and the honest risks
+- **[`docs/12-decision-log.md`](docs/12-decision-log.md)** — authoritative status of all 11 decisions
+- **[`docs/10-decisions-and-risks.md`](docs/10-decisions-and-risks.md)** — the reasoning behind each, and the honest risks
 
 The requirements baseline is [`docs/blueprint/`](docs/blueprint/).
 

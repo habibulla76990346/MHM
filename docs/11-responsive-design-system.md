@@ -72,9 +72,64 @@ The single most visible difference between "a website on a phone" and "an app on
 | Account menu | Sheet from bottom | Dropdown | Dropdown |
 | Page actions | **Sticky bottom action bar** | Inline toolbar | Inline toolbar |
 
-Bottom navigation carries: **Chat · Library · Images · Account**, with overflow behind *More*.
-It sits above the safe-area inset, hides on scroll-down and returns on scroll-up, and is never
-shown at the same time as the chat composer's send row (see §5).
+Bottom navigation carries: **Chat · Library · Images · Account**, with everything less frequent
+behind *More* / the drawer. **Approved by the owner as decision D-11.**
+
+#### Behaviour rules for the bottom bar
+
+These are the owner's explicit constraints, each with the failure it prevents:
+
+| Rule | Prevents |
+|---|---|
+| Sits above `env(safe-area-inset-bottom)` | The home indicator overlapping a tab target |
+| Every tab ≥ 44 × 44 px with ≥ 8px separation | Mis-taps between adjacent destinations |
+| **Hidden while the chat composer is focused** | Two bars stacked at the bottom, and the bar sitting between the keyboard and the input |
+| Never overlaps the scrolling region — content is offset by `--nav-height-mobile` | The last message hiding permanently behind the bar |
+| Hides on scroll-down, returns on scroll-up | Losing vertical space while reading |
+| `position: fixed` with the message list scrolled independently | Scroll chaining and rubber-banding on iOS |
+
+### Admin-configurable navigation (owner requirement, D-11)
+
+Navigation is **data, not code**, consistent with blueprint Rule 4 and §6 (*"Admin can control
+sidebar menu labels, visibility and ordering where practical"*). The owner extended this to cover
+the mobile bottom bar, icons and destinations.
+
+The `navigation_menus` / `navigation_items` tables carry one menu per location —
+`customer_bottom_nav`, `customer_drawer`, `customer_sidebar`, `admin_sidebar`, `footer` — so the
+same records drive every device class.
+
+| Admin controls | Detail |
+|---|---|
+| **Label** | Per item, translatable per locale |
+| **Icon** | Chosen from a curated icon set |
+| **Order** | Drag to reorder within a menu |
+| **Visibility** | Show/hide per item |
+| **Destination** | Internal route, CMS page, or external URL |
+| **Device visibility** | Which breakpoint classes show this item |
+| **Permission gate** | Which permission a user needs to see it |
+| **Plan gate** | Which subscription plans see it |
+| **Feature-flag link** | Item disappears automatically when its feature is switched off |
+| **Promotion between menus** | Move an item between the bottom bar and the drawer |
+| **Preview before publish** | Same pattern as themes — you see the change, visitors don't, until you publish |
+
+#### Where "where technically appropriate" has real limits
+
+The owner's own phrasing anticipates this, and these are the honest boundaries:
+
+1. **The bottom bar is capped at 4 items + More.** This is not an arbitrary limit. At 320px, five
+   equal tabs give roughly 64px each; six give 53px; seven fall below the 44px minimum once
+   padding is accounted for. Exceeding the cap would break the touch-target rule stated elsewhere
+   in this document, so the admin chooses *which* four and their order — not how many.
+2. **An item cannot point at a destination that does not exist.** Routes are validated against
+   the application's real route list; a removed feature's route cannot be linked.
+3. **An item cannot escalate access.** Setting a permission on a nav item hides the link; it does
+   not grant entry. The destination's own policy still governs, so a hidden item is not a security
+   control and the panel says so.
+4. **Core destinations cannot all be hidden.** Account and Chat can be relabelled, reordered and
+   re-iconed, but hiding every route to account settings would strand users with no way to manage
+   their own subscription. The panel warns and blocks that specific case.
+5. **Admin panel navigation follows Filament's own structure**, configurable in label, icon,
+   group and order — but not re-architected into a different navigation model.
 
 ### Admin panel
 

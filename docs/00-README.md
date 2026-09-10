@@ -20,6 +20,7 @@ Complete analysis and implementation plan derived from
 | 09 | [Development Phases](09-development-phases.md) | The 9 blueprint phases, detailed, with test gates and timeline |
 | 10 | [Decisions & Risks](10-decisions-and-risks.md) | **11 decisions I need from you, and 12 risks stated plainly** |
 | 11 | [Responsive Design System](11-responsive-design-system.md) | **Owner Addendum A** — adaptive layouts for mobile/tablet/desktop, and PWA readiness |
+| 12 | [Decision Log](12-decision-log.md) | **Authoritative status of all 11 decisions.** Read this to see what is settled and what is blocking |
 
 ## The short version
 
@@ -65,11 +66,14 @@ layouts, not one layout resized. See [document 11](11-responsive-design-system.m
 
 ## What has *not* been decided
 
-Eleven open decisions are listed in [document 10](10-decisions-and-risks.md), each with a
-recommendation. The two that matter most:
+Status is tracked in [document 12](12-decision-log.md). As of now:
 
-- **D-04 · Hosting.** A VPS (~$20–60/mo) rather than shared hosting. Streaming chat does not work
-  reliably on shared hosting — blueprint §29 anticipates this.
-- **D-01 · Payment gateway.** Depends on your country and currency, which I need from you.
+- ✅ **D-11 approved** — mobile bottom navigation, with navigation kept admin-configurable
+- 🔴 **D-04 · Hosting** — **blocks Phase 0/1.** Recommendation: a managed Laravel platform
+  ($25–75/mo), because the difference from a plain VPS is not the cost but who handles SSL,
+  patches and backups when you are not a developer
+- 🔴 **D-01 · Country and currency** — **blocks Phase 0/1.** These set the default currency and
+  money precision in the schema; the gateway itself is not needed until Phase 6
+- 🟡 Eight further decisions carry a recommendation and await confirmation
 
-Neither blocks Phase 1.
+**No application code is written until D-04 and D-01 are resolved.**

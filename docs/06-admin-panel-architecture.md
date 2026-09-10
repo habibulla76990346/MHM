@@ -31,6 +31,9 @@ CONTENT            Homepage sections (hero, features, benefits, providers,
                      pricing, FAQ) · Pages · Banners & announcements with
                      scheduling and priority · FAQ manager · Navigation menus
                    SEO defaults & social preview · Contact/support content
+                   Navigation manager — labels, icons, order, visibility,
+                     destinations, per-device placement, permission & plan gates,
+                     preview before publish (D-11)
 
 USERS              List, search, filter by status/plan/date
                    Activate · Suspend · Verify · Restrict

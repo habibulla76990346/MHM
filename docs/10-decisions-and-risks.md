@@ -1,5 +1,8 @@
 # Aziv AI — Decisions Needed & Honest Risks
 
+> **The live status of every decision is in [`12-decision-log.md`](12-decision-log.md).** That
+> file is authoritative; this one explains the reasoning behind each option.
+
 ## Part 1 — Decisions I need from you
 
 I have given a recommendation for each. **If you agree with all of them, you can simply say
@@ -139,15 +142,16 @@ the whole build. Full offline is not proposed, because an AI platform is inheren
 
 ---
 
-### D-11 · Mobile bottom navigation destinations — *needed by Phase 1*
+### D-11 · Mobile bottom navigation — ✅ **APPROVED BY OWNER**
 
-The mobile bottom bar holds four items plus overflow. My proposal: **Chat · Library · Images ·
-Account**, with everything else behind *More*.
+**Chat · Library · Images · Account**, with less frequent features under *More* / the drawer.
 
-**Recommendation:** the four above. This is easy to change later, but the earlier it is right, the
-more of the interface is built around the correct hierarchy. Tell me if your priority order
-differs — for example if file/knowledge-base work matters more to your users than image
-generation.
+Owner additions accepted: navigation stays **admin-configurable** (labels, icons, ordering,
+visibility, destination) where technically appropriate, and the bottom bar must not interfere with
+the chat composer, keyboard, safe-area insets or scrolling.
+
+Implementation and the four honest limits on "where technically appropriate" are recorded in
+`12-decision-log.md` and `11-responsive-design-system.md` §3.
 
 ---
 

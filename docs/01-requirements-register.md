@@ -57,6 +57,7 @@ weight as blueprint sections and are subject to the same no-removal rule.
 | A-4 | Test important screens at mobile, tablet and desktop widths | QA | Every phase | PLANNED | **Automated** via Playwright at 6 viewports — §11 |
 | A-5 | Keep the design system consistent across all breakpoints | Theming | 1–2 | PLANNED | Responsive token layer — §7 |
 | A-6 | **Admin Panel must also be fully mobile responsive** | Admin | 2–9 | PARTIAL | Every screen usable on mobile; 3 dense surfaces are comfort-optimised for desktop and signposted — §9 |
+| A-8 | **Mobile bottom navigation = Chat · Library · Images · Account**, less frequent features under More/Drawer. Navigation must stay admin-configurable in future: labels, icons, ordering, visibility and destination where technically appropriate. Bottom bar must stay touch-friendly and must not interfere with the chat composer, keyboard, safe-area insets or scrolling | Content, Theming | 1–2 | PLANNED | **Owner-approved D-11.** Navigation is data, not code — `11-responsive-design-system.md` §3 |
 | A-7 | PWA-ready structure: manifest, icons, installability where appropriate. **Not a native app at this stage** | Branding, Ops | 2, 9 | PLANNED | Manifest generated from admin branding settings — §10 |
 
 ## Implementation rules (§31) — how each is enforced

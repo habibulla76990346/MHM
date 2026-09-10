@@ -208,10 +208,16 @@ table is designed so the storage backend can be swapped without touching the res
 | `content_sections` | Page building blocks (§7) | page_id, type, sort_order, payload (json), is_visible |
 | `banners` | Announcements (§7) | uuid, title, body, variant, cta_label, cta_url, priority, starts_at, ends_at, audience, is_active |
 | `faqs` | (§7) | question, answer, category, sort_order, is_published |
-| `navigation_menus` | Sidebar/footer (§6) | key, name, location |
-| `navigation_items` | Menu entries (§6) | menu_id, parent_id, label, url, icon, sort_order, permission, is_visible |
+| `navigation_menus` | One per location (§6, D-11) | key, name, location (`customer_bottom_nav`, `customer_drawer`, `customer_sidebar`, `admin_sidebar`, `footer`), max_items |
+| `navigation_items` | Menu entries (§6, D-11) | menu_id, parent_id, label, icon, destination_type (route/page/external), route_name, url, sort_order, is_visible, device_visibility (json), permission, plan_restrictions (json), feature_flag_key, badge_source |
 | `feature_flags` | Staged releases (§6, §24) | key (unique), name, description, is_enabled, rollout_strategy, conditions (json) |
 | `system_settings` | **The configuration backbone (§24)** | key (unique), value (longtext), type, group, is_encrypted, is_public, updated_by |
+
+`navigation_items` is what makes the owner's D-11 requirement work: labels, icons, ordering,
+visibility and destinations are rows, so navigation changes need no code. `device_visibility`
+lets one item appear in the mobile bottom bar and the desktop sidebar simultaneously, while
+`navigation_menus.max_items` enforces the 4-item bottom-bar cap that the 44px touch-target rule
+imposes.
 
 `theme_tokens` is the heart of §5. Instead of colours living in stylesheets, each theme owns a
 set of named tokens (`color.primary`, `color.surface`, `radius.md`, `shadow.lg`) in both light
