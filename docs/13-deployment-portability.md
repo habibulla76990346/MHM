@@ -17,6 +17,11 @@ functional on shared hosting and which require the later cloud/VPS environment."
 
 > **Environment is configuration, not architecture.**
 
+**No final hosting provider has been chosen, and none will be assumed.** The application must be
+deployable to *any* server meeting the documented requirements in
+[`15-delivery-and-handover.md`](15-delivery-and-handover.md) §6. cPanel is where it is developed
+and verified, not what it is built for.
+
 Every piece of infrastructure — database, cache, queue, storage, mail, AI providers, streaming —
 is reached through an interface whose implementation is chosen by an environment variable. The
 application never knows, and never asks, what it is running on.
@@ -51,6 +56,11 @@ These are enforced in review, every phase:
 8. **Nothing assumes Redis exists.** Cache and locks must work on the database driver.
 9. **Every long operation is a queued job**, never inline work in a web request — so raising
    `max_execution_time` is never the thing that makes a feature work.
+10. **Assume no SSH, no Supervisor, no Redis, no Node.js and no root access.** Each has a
+    documented fallback: a browser-based installer and Admin Panel maintenance utilities replace
+    SSH; cron replaces Supervisor; database drivers replace Redis; pre-compiled assets and a
+    bundled `vendor/` replace Node and Composer on the server. See
+    [`15-delivery-and-handover.md`](15-delivery-and-handover.md) §4.
 
 Rule 9 is the important one. It means the difference between shared hosting and a VPS is *how
 fast* a job runs, not *whether the feature exists*.
@@ -150,7 +160,8 @@ and `/vendor/autoload.php` over HTTP and **fails the phase if any of them is rea
 
 | Measure | Purpose |
 |---|---|
-| Assets compiled in CI, committed as build artifacts | Server needs neither Node nor Composer |
+| Assets compiled in CI; `vendor/` bundled in the release ZIP | **Server needs neither Node nor Composer** |
+| Browser-based installer and Admin Panel maintenance utilities | **Server needs no SSH** |
 | `config:cache`, `route:cache`, `view:cache` on deploy | Reduces per-request overhead materially |
 | OPcache enabled where the host allows | Significant PHP performance gain |
 | Admin file-size caps set to the host's real limits | Users get a clear message instead of a failed upload |
@@ -192,7 +203,7 @@ listed in `12-decision-log.md` as the remaining pre-Phase-0 checks.
 
 | Check | Why it matters | If unavailable |
 |---|---|---|
-| **PHP 8.2 or higher** (via cPanel's PHP selector) | **Laravel 13 requires PHP ≥ 8.2. This is a hard blocker** | Use Laravel 12 (PHP 8.1+), or upgrade the plan |
+| ~~PHP 8.2 or higher~~ ✅ **RESOLVED** | Owner confirmed cPanel offers **8.3, 8.4 and 8.5**. Target is **8.4**; Composer constraint `^8.3` so it runs on all three. No PHP 8.5-only feature is used | — |
 | **MySQL 8.0+ or MariaDB 10.6+** | JSON columns and modern index behaviour | Schema adjusted for the available version |
 | **SSH or cPanel Terminal access** | Running `artisan migrate`, caching config, deploying | A secured web-based migration runner is added |
 | **Cron jobs available** | Queue processing and the scheduler both depend on cron | Queues become manual-trigger — a significant degradation |

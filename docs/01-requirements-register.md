@@ -116,6 +116,55 @@ Razorpay is the **initial default** gateway, not the only one. Full design in
 | PG-24 | **Gateway transaction IDs alongside internal Aziv transaction ID** | §6 — every payment record carries both |
 | PG-25 | INR primary initially, architecture ready for more currencies | §3, §9 — nothing assumes a single currency |
 
+### Owner Addendum E — delivery, handover & ownership
+
+Full spec in [`15-delivery-and-handover.md`](15-delivery-and-handover.md).
+
+| ID | Requirement | Where delivered |
+|---|---|---|
+| DL-1 | **Not locked to any hosting provider**; deployable to any server meeting documented requirements | §1, §7 + Addendum B |
+| DL-2 | Complete source-code ZIP + complete Laravel source | §2.1 |
+| DL-3 | Database migrations | §2.1 |
+| DL-4 | Seeders | §2.1 |
+| DL-5 | Clean SQL schema/database export for import | §2.1–2.2 — **generated from migrations, version-stamped** |
+| DL-6 | Public/web-root deployment instructions | Guide 4 |
+| DL-7 | `.env.example` with **every** variable documented | §2.1 |
+| DL-8 … DL-27 | The 20 guides: installation, database, storage, queue/cron, mail, AI providers, payment gateways, tax, admin account creation/reset, production, cPanel, Cloud/VPS, migration, backup/restore, troubleshooting, server requirements, permissions, cron, workers, build commands, security checklist, upgrade | §3 |
+| DL-28 | **Do not assume SSH, Supervisor, Redis, Node.js or root** | §4 — web installer, `vendor/` and assets pre-built, cron queue, DB drivers |
+| DL-29 | Portable feature implementation with documented shared-hosting mode (A) and Cloud/VPS mode (B) | Addendum B §2 capability matrix |
+| DL-30 | Complete, installable, transferable product the owner owns; installable by another developer without the original environment | §1 **handover test**, §7 |
+
+### Owner Addendum F — tax & international billing
+
+Full spec in [`16-tax-and-international-billing.md`](16-tax-and-international-billing.md).
+
+| ID | Requirement | Where delivered |
+|---|---|---|
+| TX-1 | **GST must not be hard-coded** | §1 Rule 1 — no tax value, rate, label or code in application code |
+| TX-2 | Admin controls: enabled/disabled, GSTIN, legal name, address, state, country, place of supply | §2 `tax_settings` |
+| TX-3 | Admin controls: CGST, SGST, IGST as **admin-defined components** | §2 `tax_rates` — nothing in code knows these names |
+| TX-4 | Admin controls: GST rate, SAC code | §2 — **no rate assumed or pre-filled** |
+| TX-5 | Tax-inclusive or tax-exclusive pricing | §2 `pricing_mode` |
+| TX-6 | Invoice numbering | §3 — sequences, padding, reset policy, gap-free |
+| TX-7 | Tax invoice settings & display settings | §7 |
+| TX-8 | Tax rules | §2 `tax_rules` |
+| TX-9 | Effective dates | §2 — rates carry `effective_from` / `effective_until` |
+| TX-10 | Tax exemptions | §2 `customer_tax_profiles` |
+| TX-11 | Customer tax information; business/customer billing details | §2 |
+| TX-12 | Tax stored as configurable data, not hard-coded | §1, §2 |
+| TX-13 | **No specific rate or treatment assumed** | §2 — seeders ship inactive, unfilled templates only |
+| TX-14 | **Historical invoice/tax records unchanged after config changes** | §1 Rule 2 — full snapshot, invoice immutable after issue, corrections via credit note |
+| TX-15 | Billing architecture serves Indian **and** international customers | §4 |
+| TX-16 | Configurable customer country, billing address | §4 `countries`, `customer_tax_profiles` |
+| TX-17 | Configurable currency | §4 `currencies` — including per-currency decimal places |
+| TX-18 | Country-specific gateway availability | §4 + Addendum D |
+| TX-19 | Per-country tax configuration | §2 `tax_jurisdictions` |
+| TX-20 | Invoice information; customer tax/VAT information | §1, §2 |
+| TX-21 | International payment methods where supported | §5.1 — configured per what the merchant account actually supports |
+| TX-22 | Currency conversion / exchange-rate records | §4 `exchange_rates` |
+| TX-23 | **Historical exchange rates** for financial reporting | §4 — dated, never overwritten |
+| TX-24 | Country/currency-specific gateway rules; **no India-only assumptions in core billing**; INR initial primary with more currencies supported | §4, §5 |
+
 ## Implementation rules (§31) — how each is enforced
 
 | Rule | Requirement | Enforcement mechanism |

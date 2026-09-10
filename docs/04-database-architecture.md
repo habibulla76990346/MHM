@@ -50,18 +50,51 @@ changes, "who changed it, when, from what, to what" must all be answerable.
 | `payment_gateway_credentials` | **Encrypted, per mode** | gateway_id, mode, label, credentials (**encrypted json**), webhook_secret (**encrypted**), publishable_key, status, last_verified_at |
 | `payment_gateway_rules` | Which gateway for what | gateway_id, payment_type, country, currency, plan_id, priority, is_active |
 | `gateway_health_logs` | Availability tracking | gateway_id, checked_at, success, latency_ms, error_class |
-| `payments` | Payment intent/record (§20) | uuid, user_id, subscription_id, **gateway_id**, **gateway_payment_id**, **gateway_order_id**, **mode**, **idempotency_key (unique)**, amount, currency, status, failure_code, failure_reason, paid_at |
+| `payments` | Payment intent/record (§20) | uuid, user_id, subscription_id, **gateway_id**, **gateway_payment_id**, **gateway_order_id**, **mode**, **idempotency_key (unique)**, **presentment_amount + presentment_currency**, **settlement_amount + settlement_currency**, **base_amount**, exchange_rate_used, status, failure_code, failure_reason, paid_at |
 | `payment_transactions` | Every gateway state change | payment_id, **gateway_id**, **gateway_transaction_id**, type, amount, status, gateway_reference, raw_payload (json) |
 | `refunds` | **Refund records (Addendum D)** | uuid, payment_id, gateway_id, gateway_refund_id, amount, currency, status, reason, requested_by, processed_at |
 | `payment_webhook_events` | **Idempotency guard (§19)** | **gateway_id**, event_id, **unique(gateway_id, event_id)**, event_type, raw_payload, signature_valid, processed_at, result, attempts |
-| `invoices` | Invoice records (§20) | uuid, user_id, number (sequential), subtotal, tax_total, total, currency, status, issued_at, pdf_media_id, **place_of_supply, supplier_gstin, customer_gstin, sac_code, is_export, tax_breakdown (json)** |
-| `tax_rates` | Configurable tax rules (D-12) | uuid, name, jurisdiction, rate_percent, tax_type (cgst/sgst/igst/vat/none), applies_from, applies_until, is_active |
+| `invoices` | Invoice records (§20). **Immutable once `issued_at` is set** | uuid, user_id, number, subtotal, tax_total, total, currency, exchange_rate_used, base_total, status, issued_at, pdf_media_id, **snapshotted at issue:** supplier_legal_name, supplier_address, supplier_tax_number, customer_name, customer_address, customer_country, customer_tax_number, place_of_supply, service_code, pricing_mode, is_export |
+| `tax_settings` | **Business tax identity (Addendum F)** | legal_name, address_lines, city, state, postal_code, country, tax_registration_number, registration_type, default_place_of_supply, service_code, tax_enabled, pricing_mode, rounding_mode |
+| `tax_jurisdictions` | Where rules apply | uuid, name, country, state, is_domestic, priority, is_active |
+| `tax_rates` | **Admin-defined rates** | uuid, jurisdiction_id, name, code, rate_percent, component_type, applies_to, **effective_from**, **effective_until**, is_active |
+| `tax_rules` | When a rate applies | uuid, jurisdiction_id, condition_type, rate_ids (json), priority, is_active |
+| `customer_tax_profiles` | Customer-side tax data | user_id, country, state, billing_address, tax_registration_number, registration_verified_at, is_business, exemption_reference, exemption_expires_at |
+| `invoice_tax_lines` | **Frozen tax snapshot per invoice** | invoice_id, component_name, component_code, rate_percent, taxable_amount, tax_amount, jurisdiction_name |
+| `invoice_number_sequences` | Gap-free numbering | key, prefix, suffix, current_value, padding, reset_policy, fy_start_month, format_template |
+| `credit_notes` | Corrections without editing invoices | uuid, invoice_id, number, reason, amount, tax_snapshot (json), issued_at |
+| `countries` | Billing countries | code, name, default_currency, requires_state, is_billing_enabled, tax_jurisdiction_id |
+| `currencies` | Supported currencies | code, symbol, **decimal_places**, display_format, is_active, is_base |
+| `plan_prices` | Deliberate per-currency pricing | plan_id, currency, amount, is_active |
 | `exchange_rates` | **USD provider cost → INR revenue (D-01)** | from_currency, to_currency, rate, effective_date, source, unique(from,to,effective_date) |
 | `coupons` | Promotions (§20) | code (unique), type, value, max_redemptions, redeemed_count, valid_from, valid_until, plan_restrictions (json) |
 | `coupon_redemptions` | Prevent reuse | coupon_id, user_id, payment_id, redeemed_at |
 | `credit_ledger` | **Append-only ledger (§19)** | uuid, user_id, entry_type, amount, balance_after, reason, reference_type, reference_id, expires_at, actor_id |
 | `credit_balances` | Fast current balance | user_id (unique), confirmed_balance, held_balance, updated_at |
 | `credit_holds` | Pre-authorisation | uuid, user_id, amount, status (held/settled/released), reference, expires_at |
+
+### Why invoices are frozen, not recomputed (Addendum F)
+
+The owner's requirement is that **historical invoice and tax records must not change when tax
+configuration changes later**. The naive design — storing a reference to a tax rule and recomputing
+on display — quietly violates it: the day a rate changes, every past invoice changes with it, and
+filed returns stop matching the system.
+
+So the full computation is **copied onto the invoice** at issue time: every tax component's name,
+rate and amount into `invoice_tax_lines`, and supplier and customer identity, place of supply and
+exchange rate onto the invoice row itself. After `issued_at` is set the record is immutable at the
+model layer. Corrections use `credit_notes` and a fresh invoice — the way accounting requires —
+never an edit.
+
+The same principle governs rate selection: tax is computed from rates **effective on the invoice
+date**, not today's, so reissuing a historical invoice produces the identical document.
+
+### Three amounts on every payment (Addendum F)
+
+Presentment, settlement and base are different numbers and conflating them produces books that
+never balance. A customer shown \$20 may settle as a rupee amount the gateway determines at its own
+rate. Customer-facing records use presentment; gateway reconciliation uses settlement; revenue and
+margin analytics use `base_amount` at the dated rate.
 
 ### Two identifiers on every payment (Addendum D)
 

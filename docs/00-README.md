@@ -23,6 +23,8 @@ Complete analysis and implementation plan derived from
 | 12 | [Decision Log](12-decision-log.md) | **Authoritative status of every decision.** Read this first to see what is settled and what is blocking |
 | 13 | [Deployment & Portability](13-deployment-portability.md) | **Owner Addendum B** — cPanel staging → cloud production, and exactly which features work where |
 | 14 | [Payment Gateway Architecture](14-payment-gateway-architecture.md) | **Owner Addendum D** — multi-gateway, adapter-based payments; Razorpay is the default, not the only one |
+| 15 | [Delivery & Handover](15-delivery-and-handover.md) | **Owner Addendum E** — the release package, 20 guides, web installer, and the handover test that defines "done" |
+| 16 | [Tax & International Billing](16-tax-and-international-billing.md) | **Owner Addendum F** — fully configurable tax, frozen invoices, multi-currency, international customers |
 
 ## The short version
 
@@ -42,11 +44,16 @@ providers, models, routing, pricing, credits and limits from an Admin Panel — 
 | Database | MySQL 8+ |
 | Cache/queue | Redis, with database fallback for basic hosting |
 
-**Scale:** 68 tables · 15 modules · ~90 admin screens · 5 adapter types · 8 routing modes ·
+**Scale:** 79 tables · 15 modules · ~90 admin screens · 5 adapter types · 8 routing modes ·
 8 built-in themes · ~95 design tokens per mode · 6 breakpoints across 3 device classes.
 
-**Timeline:** 32–45 working sessions. A usable branded AI chat platform exists at Phase 4
-(~15–21 sessions); it earns revenue at Phase 6 (~22–31).
+**Timeline:** 38–53 working sessions. A usable branded AI chat platform exists at Phase 4
+(~15–21 sessions); it earns revenue at Phase 6 (~24–34); the complete owned, installable product
+ships at Phase 9.
+
+**You own the result.** Phase 9 delivers a release ZIP, generated SQL package and 20 guides, and
+proves it with a handover test: installing Aziv AI on a clean server from the package alone, with
+no access to the development environment.
 
 **Every interface is device-adaptive** — mobile, tablet and desktop get genuinely different
 layouts, not one layout resized. See [document 11](11-responsive-design-system.md).
@@ -75,9 +82,10 @@ Status is tracked in [document 12](12-decision-log.md). As of now:
 - ✅ **D-04 approved** — cPanel shared hosting for dev/staging, cloud/VPS for production, under
   nine portability requirements. Environment is configuration, not architecture
 - ✅ **D-11 approved** — mobile bottom navigation, kept admin-configurable
-- 🔴 **E-1 … E-8** — cPanel account facts needed before Phase 0. **E-1 (PHP ≥ 8.2)** and
-  **E-2 (outbound HTTPS allowed)** are hard blockers
-- 🔴 **D-12 · GST handling** — raised by D-01; three questions to answer
+- ✅ **E-1 resolved** — PHP 8.3/8.4/8.5 available; **targeting 8.4**, constraint `^8.3`, no 8.5-only features
+- ✅ **D-12 resolved** — fully configurable tax engine, nothing assumed (Addendum F)
+- 🔴 **E-2** — does the host allow **outbound HTTPS**? **The only remaining hard blocker**
+- 🟠 **E-3 … E-8** — six smaller cPanel facts; these adjust the plan rather than stop it
 - 🟡 Eight further decisions carry a recommendation and await confirmation
 
-**No application code is written until E-1/E-2 are confirmed.**
+**No application code is written until E-2 is confirmed.**

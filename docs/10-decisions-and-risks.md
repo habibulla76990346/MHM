@@ -310,6 +310,48 @@ rather than assuming one. Each adapter's real capabilities are verified against 
 documentation at implementation time and stored as data, so the platform stays correct without code
 changes.
 
+### R-18 · A web installer is a serious attack surface — **high if done carelessly, controlled here**
+
+Because SSH is not assumed, Aziv AI ships a browser-based installer. An unlocked installer on a
+live site is a full compromise: it can rewrite `.env` and create an admin account.
+
+**Mitigation:** it refuses to run unless *both* the install marker is absent and the database has no
+tables; it self-locks on completion and the route then returns 404; it is deletable and the
+application runs fine without it; it is rate limited; it never echoes credentials; and it warns
+prominently over plain HTTP. The command-line route stays available and documented as preferred
+where SSH exists.
+
+### R-19 · Presentment currency is not settlement currency — **medium, designed for**
+
+Showing a price in USD and receiving USD are different things. An Indian merchant account typically
+settles in INR whatever the customer was shown, at the gateway's own rate plus a cross-border fee.
+
+**Mitigation:** every payment stores three amounts — presentment, settlement and base — so
+customer-facing records, gateway reconciliation and margin analytics each use the right one.
+**Whether a specific gateway and merchant account can take international payments at all is a fact
+about your merchant agreement**, configured by the admin, never assumed by the software.
+
+### R-20 · International tax is not automatable, and Aziv AI will not pretend otherwise — **medium, scoped honestly**
+
+Cross-border digital-services tax involves EU VAT rules, place-of-supply tests, reverse charge, US
+state nexus thresholds and India's own export-of-services treatment — each with registration
+obligations that depend on the business, not the software.
+
+**Mitigation:** Aziv AI provides a **configurable tax engine, not tax advice.** It applies whatever
+the admin configures, records the full computation permanently, and captures every field an
+accountant needs. It does **not** decide jurisdictions, determine correct rates, track thresholds or
+file returns. The engine is structured so an external tax-determination service can be integrated
+behind the same interface later, using the same adapter pattern as AI providers and gateways.
+
+### R-21 · A stale SQL export installs a schema the code does not expect — **medium, prevented mechanically**
+
+The owner requires both migrations and a clean SQL export. Maintained separately, they drift, and a
+stale export is worse than none.
+
+**Mitigation:** the SQL files are **generated, never hand-edited** — a build command runs migrations
+and seeders on a scratch database, exports the result and stamps it with the migration checksum.
+Installation verifies that stamp and **refuses to run on a mismatch** rather than half-installing.
+
 ### R-09 · Realtime voice and video are deferred — **already scoped by the blueprint**
 
 §18 itself describes realtime voice as "a separate module" and video as adapter-ready "later."

@@ -6,7 +6,7 @@ Inspected on the build machine before any planning decisions were fixed.
 
 | Component | Version found | Verdict |
 |---|---|---|
-| PHP | **8.4.19** (CLI, NTS) | Exceeds the blueprint's "PHP 8.3+" requirement |
+| PHP | **8.4.19** (CLI, NTS) | **Matches the owner's chosen target of PHP 8.4 exactly.** Their cPanel offers 8.3/8.4/8.5; the Composer constraint will be `^8.3` so the release runs on all three, and no PHP 8.5-only feature is used |
 | Composer | **2.8.12** | Current |
 | Packagist reachability | HTTP 200 | Packages install cleanly |
 | Node.js / npm | 22.22.2 / 10.9.7 | Available for **asset compilation only** |

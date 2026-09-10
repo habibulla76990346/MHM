@@ -61,6 +61,21 @@ ROUTING            Default routing mode · Provider priority order
                    Routing rules · Fallback depth · Retry & backoff settings
                    Circuit breaker thresholds · Routing decision log viewer
 
+TAX & COMPLIANCE   Business tax identity — legal name, address, registration number
+                   Tax enabled/disabled · Inclusive or exclusive pricing
+                   Jurisdictions · Rates with effective dates · Tax rules
+                   Invoice numbering — prefix, padding, reset policy
+                   Tax invoice layout & display · Customer tax profiles
+                   Exemptions · Tax report by period/jurisdiction/component
+                   Tax preview — "what would this customer pay?"
+
+COUNTRIES &        Countries — billing enabled, default currency, state
+CURRENCIES           requirement, tax jurisdiction
+                   Currencies — symbol, decimal places, formatting
+                   Exchange rates — current, history, source, manual override
+                   Plan pricing per currency
+                   Gateway availability by country and currency
+
 PAYMENT GATEWAYS   Gateway list with status, mode and health
                    Enable/disable · Set default · Priority order
                    Credentials per sandbox/live mode (encrypted, masked)
@@ -80,7 +95,13 @@ ANALYTICS          Cost by day/month/provider/model/plan
                    Cost vs revenue and margin indicators
                    Budget alerts · Usage trends · Provider performance
 
-SYSTEM             Site status & maintenance mode + message + page
+SYSTEM             System health check — PHP version, extensions, permissions,
+                     database, outbound HTTPS, cron liveness, queue backlog,
+                     storage quota, mail test, .env not web-reachable
+                   Maintenance utilities (no SSH required) — run migrations,
+                     clear caches, rebuild storage link, process queue once,
+                     reset admin password, view logs
+                   Site status & maintenance mode + message + page
                    Locale, timezone, currency, pagination, table density
                    Upload limits & retention · SMTP & email templates
                    Storage driver · Queue configuration

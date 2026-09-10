@@ -11,9 +11,12 @@ appears here as **APPROVED**.
 
 | Status | IDs | Count |
 |---|---|---|
-| ✅ **APPROVED** | D-01, D-04, D-11 | 3 |
-| 🔴 **BLOCKS PHASE 0/1** | E-1 … E-8 (hosting facts), D-12 (GST) | 2 groups |
+| ✅ **APPROVED / RESOLVED** | D-01, D-04, D-11, **E-1**, **D-12** | 5 |
+| 🔴 **BLOCKS PHASE 0** | **E-2 only** (outbound HTTPS) | 1 |
+| 🟠 **Needed, but adjusts rather than blocks** | E-3 … E-8 | 6 |
 | 🟡 **Recommended, awaiting confirmation** | D-02, D-03, D-05, D-06, D-07, D-08, D-09, D-10 | 8 |
+
+**One hard blocker remains: E-2.**
 
 ---
 
@@ -120,8 +123,8 @@ Most can be read from cPanel in a few minutes.
 
 | # | Check | Why it matters |
 |---|---|---|
-| **E-1** | **PHP version available** (cPanel → MultiPHP / PHP Selector) | **Hard blocker.** Laravel 13 requires **PHP ≥ 8.2**. Below that, we use Laravel 12 instead |
-| **E-2** | **Outbound HTTPS permitted** | **Hard blocker.** Some shared hosts block outbound connections. Every AI provider call depends on this — without it Aziv AI cannot function at all |
+| ~~**E-1**~~ | ~~PHP version available~~ | ✅ **RESOLVED.** Owner confirmed **8.3, 8.4 and 8.5** available. **Target: PHP 8.4.** Composer constraint `^8.3` so the release runs on all three; **no PHP 8.5-only feature used**; CI matrix on 8.3 + 8.4 |
+| **E-2** | **Outbound HTTPS permitted** | 🔴 **THE ONLY REMAINING HARD BLOCKER.** Some shared hosts block outbound connections. Every AI provider and payment gateway call depends on this — without it Aziv AI cannot function at all |
 | **E-3** | MySQL / MariaDB version | Determines JSON column and index behaviour |
 | **E-4** | Cron jobs available | Queues and the scheduler both depend on cron. Without it, background work becomes manual |
 | **E-5** | SSH or cPanel Terminal access | Running migrations and cache commands. Without it, a secured web migration runner is added |
@@ -129,43 +132,44 @@ Most can be read from cPanel in a few minutes.
 | **E-7** | `upload_max_filesize`, `post_max_size` | Sets admin file-size caps honestly |
 | **E-8** | `memory_limit`, `max_execution_time` | Tunes chunk sizes for file processing |
 
-**E-1 and E-2 are true blockers.** The rest adjust the plan rather than stopping it.
+**E-1 is resolved. E-2 is the only remaining true blocker.** E-3 … E-8 adjust the plan rather than
+stopping it, and can arrive after Phase 0 starts if necessary.
 
 ---
 
-### D-12 · GST handling — **BLOCKS PHASE 6, decide before Phase 1 schema is final**
+### D-12 · GST handling — ✅ **RESOLVED BY OWNER DIRECTION**
 
-Raised by decision D-01. India applies GST to SaaS, and Razorpay — unlike a merchant-of-record
-service such as Paddle — **does not handle GST filing on your behalf.** Aziv AI must therefore
-produce compliant invoices itself.
+The owner's final clarification answers this decisively, and in a better way than the options I
+offered:
 
-What compliant invoicing requires:
+> *"GST must NOT be hard-coded… Do not automatically assume a specific GST rate or tax treatment…
+> The system must keep historical invoice/tax records unchanged after future tax configuration
+> changes."*
 
-| Field | Purpose |
+**Resolution: a fully configurable tax engine, with nothing assumed.** Recorded as Owner Addendum F
+— full design in [`16-tax-and-international-billing.md`](16-tax-and-international-billing.md).
+
+| Question I asked | Answer |
 |---|---|
-| Supplier GSTIN | Your registration number |
-| Customer GSTIN | For B2B sales |
-| Place of supply | Determines which tax applies |
-| **CGST + SGST** (intra-state) or **IGST** (inter-state) | The split depends on customer location |
-| SAC code | Service classification for software services |
-| Sequential invoice numbering | Gaps are a compliance problem |
-| Export flag | Sales outside India are treated differently |
+| Are you GST-registered? | **No longer blocking.** Tax is enabled/disabled and configured entirely from the Admin Panel. Registration status is a setting, not a build-time assumption |
+| Will you sell outside India? | **Yes** — international customers are now an explicit requirement (Addendum F §4) |
+| Do you have an accountant? | Recommended, and the architecture is built so their answers are *configuration*, not code changes |
 
-**What I need from you — three facts:**
+**Two design consequences worth stating:**
 
-1. **Are you GST-registered?** (If turnover is below the threshold you may not be yet.)
-2. **Will you sell to customers outside India**, or India only?
-3. **Do you have an accountant** who should confirm the tax treatment?
+1. **No tax rate, label or code appears anywhere in application code.** Not GST, not 18%, not
+   CGST/SGST/IGST. Seeders ship *inactive, unfilled* templates the admin activates. Until
+   configured, tax is simply off.
+2. **Issued invoices are frozen.** The full tax computation is snapshotted onto the invoice at
+   issue; the record becomes immutable; corrections use credit notes, never edits. This is the only
+   structure under which "historical records never change" can actually hold — the naive design of
+   recomputing from current configuration silently rewrites every past invoice the day a rate
+   changes.
 
-**Recommendation:** build the invoice schema with all GST fields from Phase 1 — they cost nothing
-to include and are painful to retrofit — and make tax rules **configurable** via the `tax_rates`
-table rather than hard-coded. Then set the actual rates and treatment in Phase 6 once your
-accountant confirms them.
-
-> **I am not a tax adviser and will not act as one.** The system will support the fields and
-> calculations Indian GST requires; the correct rates, registration status and export treatment
-> for your business are for your accountant to confirm. What I can guarantee is that the software
-> will not be the thing preventing compliance.
+**Standing limitation, stated plainly:** Aziv AI provides a configurable tax *engine*, not tax
+*advice*. It will not decide which jurisdictions you must register in, determine correct rates,
+track threshold obligations, or file returns. Your accountant does that; the software guarantees it
+will never be the reason compliance is impossible.
 
 ---
 
@@ -188,12 +192,13 @@ Silence is not approval. Each proceeds on my recommendation only if you say so.
 
 ## What happens next
 
-1. You provide the **E-1 … E-8** cPanel facts (E-1 PHP version and E-2 outbound HTTPS are the
-   two that can actually stop the project) and answer **D-12**'s three GST questions.
+1. You confirm **E-2** — that your host allows outbound HTTPS connections. **This is the only
+   remaining hard blocker.** E-3 … E-8 are useful but can follow.
 2. I confirm the final decision list back to you.
-3. **Phase 0 begins** — MySQL setup, Laravel project creation, Livewire 4, Filament 5, Spatie
-   Permission 8, the six-breakpoint Tailwind scale, the Playwright responsive harness, and the
-   cPanel deployment verification that fails the phase if `.env` is web-reachable.
+3. **Phase 0 begins** — MySQL setup, Laravel 13 project on **PHP 8.4** with a `^8.3` constraint,
+   Livewire 4, Filament 5, Spatie Permission 8, the six-breakpoint Tailwind scale, the Playwright
+   responsive harness, the release build pipeline, and the deployment verification that fails the
+   phase if `.env` is reachable over HTTP.
 4. Phase 0 ends with a test gate and a stop point before Phase 1.
 
 **No application code is written before step 3.**
@@ -212,3 +217,7 @@ Silence is not approval. Each proceeds on my recommendation only if you say so.
 | Arising from D-01 | **D-12 raised** — GST handling |
 | Arising from D-04 | **E-1 … E-8 raised** — cPanel account facts needed before Phase 0 |
 | Owner Addendum D | **D-01 amended** — multi-gateway payment architecture; Razorpay is the initial default, not the only gateway |
+| Owner final clarification | **E-1 RESOLVED** — PHP 8.3/8.4/8.5 available; target 8.4, constraint `^8.3`, no 8.5-only features |
+| Owner final clarification | **D-12 RESOLVED** — fully configurable tax engine, nothing assumed (Addendum F) |
+| Owner Addendum E | Delivery, handover & ownership — installable, transferable product; no SSH/Supervisor/Redis/Node/root assumed |
+| Owner Addendum F | Tax & international billing — configurable tax, multi-currency, international customers |

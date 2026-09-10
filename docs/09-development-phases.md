@@ -19,9 +19,9 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | | |
 |---|---|
 | **Goal** | A working Laravel skeleton that boots, connects to a database and runs its test suite |
-| **Build** | Install MariaDB/MySQL locally · `composer create-project laravel/laravel` (Laravel 13) · configure `.env` · install Livewire 4, Filament 5, Spatie Permission 8, Sanctum · set up Tailwind build with the **6-breakpoint scale** · correct viewport meta incl. `viewport-fit=cover` · hashed/versioned build assets (PWA prerequisite) · **Playwright + Chromium responsive test harness** · Git structure, `.gitignore`, `.env.example` · CI that runs tests on push |
+| **Build** | Install MariaDB/MySQL locally · `composer create-project laravel/laravel` (Laravel 13) · configure `.env` · install Livewire 4, Filament 5, Spatie Permission 8, Sanctum · **PHP 8.4 target, Composer constraint `^8.3` so the release runs on 8.3/8.4/8.5; no PHP 8.5-only features; CI matrix on 8.3 + 8.4** · set up Tailwind build with the **6-breakpoint scale** · correct viewport meta incl. `viewport-fit=cover` · hashed/versioned build assets (PWA prerequisite) · **Playwright + Chromium responsive test harness** · Git structure, `.gitignore`, `.env.example` · CI that runs tests on push |
 | **Test gate** | App boots · database connects · `php artisan test` passes · assets compile · **responsive harness runs and reports at all 6 viewports** · **cPanel deployment verification: requesting `/.env`, `/composer.json`, `/vendor/autoload.php` and `/storage/logs/laravel.log` over HTTP must all fail — any one reachable fails the phase** · cron-driven queue processes a test job |
-| **You provide** | The **E-1 … E-8** cPanel facts (see `12-decision-log.md`). E-1 (PHP ≥ 8.2) and E-2 (outbound HTTPS allowed) are hard blockers |
+| **You provide** | **E-1 ✅ resolved** (PHP 8.3/8.4/8.5 available — targeting 8.4). Still needed: **E-2 (outbound HTTPS allowed)** — the remaining hard blocker — plus E-3…E-8 |
 | **You will see** | The default Laravel welcome page, running on your own cPanel hosting. Nothing that looks like Aziv AI yet — that is expected |
 | **Size** | 1 session |
 
@@ -102,12 +102,12 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | | |
 |---|---|
 | **Goal** | The platform earns money |
-| **Build** | Plan management (FREE/PRO/PREMIUM, all 11 configurable dimensions) · plan → model/provider access matrix · `EntitlementService` · **credit ledger (append-only) + balances + holds** · pre-authorisation and settlement · promotional credits, expiry, optional rollover · manual adjustments with mandatory reason · **multi-gateway payment framework (Addendum D): `PaymentGateway` interface + capability contracts, `PaymentGatewayRegistry`, capability-aware `GatewaySelector`, encrypted per-mode credentials, sandbox/live switching, per-gateway webhook verification, `ReconciliationService` with scheduled sweep, refunds, admin gateway manager** · **Razorpay adapter live (default gateway)** · **GST-compliant invoicing: GSTIN, place of supply, CGST/SGST/IGST split, SAC code, sequential numbering, export flag (D-12)** · **dated USD→INR exchange rates for margin reporting** · purchase, upgrade, downgrade, renewal, cancellation · **idempotent webhooks** · invoices, coupons, tax display · billing history · notification system + templates + announcements · **mobile checkout flow, plan comparison stacked on narrow screens, payment forms with correct `autocomplete` tokens** |
+| **Build** | Plan management (FREE/PRO/PREMIUM, all 11 configurable dimensions) · plan → model/provider access matrix · `EntitlementService` · **credit ledger (append-only) + balances + holds** · pre-authorisation and settlement · promotional credits, expiry, optional rollover · manual adjustments with mandatory reason · **configurable tax engine (Addendum F): jurisdictions, admin-defined rate components, rules with conditions, effective dates, inclusive/exclusive pricing, exemptions, customer tax profiles, tax preview tool** · **invoice numbering sequences, invoice immutability after issue, credit notes** · **countries, currencies with per-currency decimal places, per-currency plan pricing, dated exchange rates** · **presentment / settlement / base amounts on every payment** · **multi-gateway payment framework (Addendum D): `PaymentGateway` interface + capability contracts, `PaymentGatewayRegistry`, capability-aware `GatewaySelector`, encrypted per-mode credentials, sandbox/live switching, per-gateway webhook verification, `ReconciliationService` with scheduled sweep, refunds, admin gateway manager** · **Razorpay adapter live (default gateway)** · **GST-compliant invoicing: GSTIN, place of supply, CGST/SGST/IGST split, SAC code, sequential numbering, export flag (D-12)** · **dated USD→INR exchange rates for margin reporting** · purchase, upgrade, downgrade, renewal, cancellation · **idempotent webhooks** · invoices, coupons, tax display · billing history · notification system + templates + announcements · **mobile checkout flow, plan comparison stacked on narrow screens, payment forms with correct `autocomplete` tokens** |
 | **Blueprint** | §19, §20, §22, §8 (billing parts), §13 (pricing) |
-| **Test gate** | **A webhook replayed 5× grants credits once** · **a subscription period cannot be activated twice** · **an unsigned or wrongly-signed webhook is rejected and alerts admins** · **a payment whose webhook never arrives is settled by the scheduled reconciliation sweep** · **parallel requests cannot drive a balance negative** · failed AI call releases its hold and charges nothing · upgrade/downgrade prorates correctly · plan limits enforced · ledger sum always equals cached balance · **no card data anywhere in the database** · **no gateway name appears in subscriptions, plans, invoices, credits or checkout code** · **a subscription is never routed to a gateway lacking recurring capability** · **checkout completes on a 320px viewport** |
+| **Test gate** | **A webhook replayed 5× grants credits once** · **a subscription period cannot be activated twice** · **an unsigned or wrongly-signed webhook is rejected and alerts admins** · **a payment whose webhook never arrives is settled by the scheduled reconciliation sweep** · **parallel requests cannot drive a balance negative** · failed AI call releases its hold and charges nothing · upgrade/downgrade prorates correctly · plan limits enforced · ledger sum always equals cached balance · **no card data anywhere in the database** · **no gateway name appears in subscriptions, plans, invoices, credits or checkout code** · **no tax rate, label or code appears anywhere in application code** · **changing a tax rate does not alter any previously issued invoice** · **an issued invoice cannot be edited; corrections produce a credit note** · **invoice numbers are gap-free under concurrent checkout** · **a subscription is never routed to a gateway lacking recurring capability** · **checkout completes on a 320px viewport** |
 | **You provide** | **A Razorpay account** (plus any other gateway accounts you want live), your plan pricing, and your accountant's confirmation of GST treatment (D-12) |
 | **You will see** | Customers can subscribe and pay, credits deduct accurately, and you can add or switch payment gateways from the Admin Panel |
-| **Size** | 5–7 sessions |
+| **Size** | 7–10 sessions — the largest phase; will be split into 6a (billing + tax + currencies) and 6b (gateways) |
 
 ---
 
@@ -144,12 +144,12 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | | |
 |---|---|
 | **Goal** | Safe to put real customers and real money on |
-| **Build** | Full security review vs §23 · optional MFA for admin accounts · rate limiting and API protection review · **permission audit: every admin action is gated and logged** · **hard-coded colour audit** · dependency vulnerability scan · backup + tested restore procedure (**including `APP_KEY`**) · monitoring, error tracking, uptime alerts · performance pass (N+1 queries, index verification, cache coverage) · staging environment · deployment documentation · environment configuration documentation · API/integration documentation · **service worker for the app shell + proper offline screen** · **cross-device QA on real phones and tablets** · **migration from cPanel to cloud/VPS per the 10-step checklist, with streaming enabled and persistent queue workers started** · production launch |
+| **Build** | Full security review vs §23 · optional MFA for admin accounts · rate limiting and API protection review · **permission audit: every admin action is gated and logged** · **hard-coded colour audit** · dependency vulnerability scan · backup + tested restore procedure (**including `APP_KEY`**) · monitoring, error tracking, uptime alerts · performance pass (N+1 queries, index verification, cache coverage) · staging environment · deployment documentation · environment configuration documentation · API/integration documentation · **service worker for the app shell + proper offline screen** · **cross-device QA on real phones and tablets** · **migration from cPanel to cloud/VPS per the 10-step checklist, with streaming enabled and persistent queue workers started** · **DELIVERY PACKAGE (Addendum E): release build pipeline, source ZIP with bundled `vendor/` and compiled assets, generated + version-stamped SQL exports, fully documented `.env.example`, browser-based installer with self-lock, Admin Panel maintenance utilities and system health check, and all 20 documentation guides** · **handover rehearsal: install from the package alone on a clean server, using only the written docs** · production launch |
 | **Blueprint** | §23, §28, §29 |
-| **Test gate** | Full suite green · **a restore from backup is actually performed and verified**, not merely scripted · no critical dependency vulnerabilities · load test at expected concurrency · every §23 item signed off |
+| **Test gate** | Full suite green · **a restore from backup is actually performed and verified**, not merely scripted · no critical dependency vulnerabilities · load test at expected concurrency · every §23 item signed off · **THE HANDOVER TEST: Aziv AI installs on a clean, never-used server from the ZIP + SQL + documentation alone — no SSH assumed, no access to the development environment, no undocumented steps** · installer self-locks and returns 404 afterwards · health check reports green |
 | **You provide** | Production cloud/VPS hosting (per D-04), domain, SSL, and production provider/gateway accounts |
 | **You will see** | Aziv AI live on your own domain |
-| **Size** | 4–5 sessions |
+| **Size** | 7–10 sessions — hardening plus the full delivery package |
 
 ---
 
@@ -163,18 +163,19 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | 3 — AI gateway, credentials, catalog | 3–4 | 11–15 |
 | 4 — OpenAI + Gemini + chat | 4–6 | 15–21 |
 | 5 — Routing, health, cost | 2–3 | 17–24 |
-| 6 — Subscriptions, credits, **multi-gateway payments** | 5–7 | 22–31 |
-| 7 — More providers | 2–3 | 24–34 |
-| 8 — Files, image, voice | 5–6 | 29–40 |
-| 9 — Hardening, deployment | 4–5 | 32–45 |
-| **Total** | **32–45 sessions** | |
+| 6 — Subscriptions, credits, **tax, currencies, multi-gateway payments** | 7–10 | 24–34 |
+| 7 — More providers | 2–3 | 26–37 |
+| 8 — Files, image, voice | 5–6 | 31–43 |
+| 9 — Hardening, **delivery package & handover** | 7–10 | 38–53 |
+| **Total** | **38–53 sessions** | |
 
 Additional payment gateways beyond Razorpay (PhonePe, PayU, Cashfree, CCAvenue) are **incremental**
 — roughly half a session to one session each, added when you have the merchant accounts, without
 touching the core. That is the return on building the framework in Phase 6.
 
-Figures include Owner Addendum A (device-adaptive design, **+5 to +8 sessions**) and Owner
-Addendum D (multi-gateway payments, **+1 to +2 sessions** in Phase 6). The per-phase breakdown of that increase is in `11-responsive-design-system.md` §12.
+Figures include Owner Addendum A (device-adaptive design, **+5 to +8**), Addendum D (multi-gateway
+payments, **+1 to +2**), Addendum E (delivery package and handover, **+3 to +5**) and Addendum F
+(configurable tax and international billing, **+2.5 to +3.5**). The per-phase breakdown of that increase is in `11-responsive-design-system.md` §12.
 
 **How to read this.** A "session" is one working conversation with me that ends in tested,
 committed code. It is not a fixed number of hours or days — it depends how quickly you review
@@ -189,7 +190,7 @@ profitable, resilient and safe to scale.
 
 | | **Early launch** — after Phase 6 | **Full launch** — after Phase 9 |
 |---|---|---|
-| Sessions | ~22–31 | ~32–45 |
+| Sessions | ~24–34 | ~38–53 |
 | You get | Branded platform, chat with several providers, smart routing, subscriptions and payments | Everything, plus files/RAG, image, voice, full hardening |
 | Missing | File analysis, image, voice | — |
 | Sensible when | You want revenue and real user feedback sooner | You want the complete blueprint before any customer sees it |

@@ -18,6 +18,8 @@
 | 11 | **MediaAi** | Image generation | `ImageGenerationService` | `image_generations` | 8 |
 | 12 | **Audio** | Speech-to-text, text-to-speech | `TranscriptionService`, `SpeechService` | `audio_jobs` | 8 |
 | 13 | **Notifications** | In-app, email, announcements, templates | `NotificationDispatcher`, `TemplateRenderer` | `notifications`, `notification_templates`, `announcements`, `notification_deliveries` | 6 |
+| 14a | **Tax** | Jurisdictions, rates, rules, invoice snapshots, numbering, credit notes | `TaxResolver`, `TaxCalculator`, `InvoiceNumberAllocator`, `TaxSnapshotWriter` | `tax_settings`, `tax_jurisdictions`, `tax_rates`, `tax_rules`, `customer_tax_profiles`, `invoice_tax_lines`, `invoice_number_sequences`, `credit_notes` | 6 |
+| 14b | **Localisation** | Countries, currencies, exchange rates, per-currency pricing | `CurrencyService`, `ExchangeRateService`, `CountryRegistry` | `countries`, `currencies`, `exchange_rates`, `plan_prices` | 6 |
 | 14 | **Analytics** | Cost, revenue, margin, usage aggregation | `CostAggregator`, `RevenueReporter`, `MarginCalculator`, `BudgetMonitor` | Reads logs; writes daily summary tables | 5–6 |
 | 15 | **Admin** | Filament panel, resources, widgets | Filament resources per module | — | 2–9 |
 
