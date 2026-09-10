@@ -95,13 +95,20 @@ ANALYTICS          Cost by day/month/provider/model/plan
                    Cost vs revenue and margin indicators
                    Budget alerts · Usage trends · Provider performance
 
-SYSTEM             System health check — PHP version, extensions, permissions,
-                     database, outbound HTTPS, cron liveness, queue backlog,
-                     storage quota, mail test, .env not web-reachable
+SYSTEM HEALTH      Overall status · Deployment mode (shared / cloud, detected)
+& DIAGNOSTICS      Findings grouped by category, sorted by severity
+                   Each finding: title · category · severity · exact technical
+                     reason · responsibility · recommended solution · what to
+                     change · whether hosting support is needed · last checked
+                     · re-test button · log reference
+                   GREEN / YELLOW / RED / GREY, relative to deployment mode
+                   Run Diagnostics · Per-check re-test · History & drift
+                   Export shareable report (secret-free by construction)
                    Maintenance utilities (no SSH required) — run migrations,
                      clear caches, rebuild storage link, process queue once,
                      reset admin password, view logs
-                   Site status & maintenance mode + message + page
+
+SYSTEM             Site status & maintenance mode + message + page
                    Locale, timezone, currency, pagination, table density
                    Upload limits & retention · SMTP & email templates
                    Storage driver · Queue configuration
@@ -161,6 +168,9 @@ security.*     logs.*          settings.*
 | Analytics | ✅ | ✅ | limited | ✅ | — |
 | Security & logs | ✅ | limited | — | — | — |
 | System settings | ✅ | limited | — | — | — |
+| Diagnostics — view | ✅ | ✅ | view only | — | — |
+| Diagnostics — security section | ✅ | limited | — | — | — |
+| Diagnostics — export report | ✅ | ✅ | — | — | — |
 
 The two bold rows are explicit blueprint requirements: *"A support role must not automatically
 gain access to API credentials or financial configuration"* (§9). They are enforced by policy, so

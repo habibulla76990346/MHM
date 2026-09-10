@@ -11,12 +11,19 @@ appears here as **APPROVED**.
 
 | Status | IDs | Count |
 |---|---|---|
-| ✅ **APPROVED / RESOLVED** | D-01, D-04, D-11, **E-1**, **D-12** | 5 |
-| 🔴 **BLOCKS PHASE 0** | **E-2 only** (outbound HTTPS) | 1 |
-| 🟠 **Needed, but adjusts rather than blocks** | E-3 … E-8 | 6 |
+| ✅ **APPROVED / RESOLVED** | D-01, D-04, D-11, D-12, **E-1 … E-8** | 5 + 8 |
+| 🔴 **BLOCKING** | — | **none** |
 | 🟡 **Recommended, awaiting confirmation** | D-02, D-03, D-05, D-06, D-07, D-08, D-09, D-10 | 8 |
 
-**One hard blocker remains: E-2.**
+> ## ✅ No blockers remain. Phase 0 can begin on the owner's approval.
+>
+> Owner Addendum G resolved the last one. The owner has not chosen a hosting provider and will not
+> be asked to: **E-2 … E-8 became diagnostic checks the application performs on whatever server it
+> is deployed to**, rather than questions to answer in advance. See
+> [`17-system-health-diagnostics.md`](17-system-health-diagnostics.md) §9.
+>
+> The eight recommendations below still stand unconfirmed. **Silence is not approval** — say
+> "approved" and I proceed on them, or name the ones you want changed.
 
 ---
 
@@ -116,24 +123,34 @@ device class. Design in [`11-responsive-design-system.md`](11-responsive-design-
 
 ## 🔴 Blocking Phase 0/1
 
-### E-1 … E-8 · cPanel account facts — **BLOCKS PHASE 0**
+### E-1 … E-8 · Environment facts — ✅ **ALL RESOLVED**
 
-Decision D-04 makes these specific to the owner's hosting plan, and they change what Phase 0 does.
-Most can be read from cPanel in a few minutes.
+**E-1** was answered directly: cPanel offers PHP **8.3, 8.4 and 8.5**. Target is **8.4**; the
+Composer constraint is `^8.3` so the release runs on all three; **no PHP 8.5-only feature is used**;
+CI runs the suite on 8.3 and 8.4.
 
-| # | Check | Why it matters |
-|---|---|---|
-| ~~**E-1**~~ | ~~PHP version available~~ | ✅ **RESOLVED.** Owner confirmed **8.3, 8.4 and 8.5** available. **Target: PHP 8.4.** Composer constraint `^8.3` so the release runs on all three; **no PHP 8.5-only feature used**; CI matrix on 8.3 + 8.4 |
-| **E-2** | **Outbound HTTPS permitted** | 🔴 **THE ONLY REMAINING HARD BLOCKER.** Some shared hosts block outbound connections. Every AI provider and payment gateway call depends on this — without it Aziv AI cannot function at all |
-| **E-3** | MySQL / MariaDB version | Determines JSON column and index behaviour |
-| **E-4** | Cron jobs available | Queues and the scheduler both depend on cron. Without it, background work becomes manual |
-| **E-5** | SSH or cPanel Terminal access | Running migrations and cache commands. Without it, a secured web migration runner is added |
-| **E-6** | Can the domain's document root be changed? | Security of `.env` and source code. Alternative layout exists if not |
-| **E-7** | `upload_max_filesize`, `post_max_size` | Sets admin file-size caps honestly |
-| **E-8** | `memory_limit`, `max_execution_time` | Tunes chunk sizes for file processing |
+**E-2 … E-8 are no longer questions.** Owner Addendum G changes their nature entirely:
 
-**E-1 is resolved. E-2 is the only remaining true blocker.** E-3 … E-8 adjust the plan rather than
-stopping it, and can arrive after Phase 0 starts if necessary.
+| Was a blocking question | Is now |
+|---|---|
+| E-2 · Outbound HTTPS permitted? | `network.outbound_https` — **Critical** check, run at install, first login, on schedule and on demand |
+| E-3 · MySQL/MariaDB version | `database.version` check |
+| E-4 · Cron available? | `cron.heartbeat` check — detects whether the scheduler is actually running |
+| E-5 · SSH / Terminal access? | Not required at all — browser installer and Admin maintenance utilities |
+| E-6 · Document root changeable? | `security.env_not_web_reachable` — **Critical** check that tests it over HTTP |
+| E-7 · Upload limits | `php.upload_limits` check, compared against configured admin caps |
+| E-8 · Memory / execution limits | `php.resource_limits` check |
+
+**Why this is the better answer.** Pre-verifying one specific server is the wrong shape of solution
+for a product that must install on servers nobody inspected in advance. A system that tests every
+server it lands on, and reports the result in language the owner can forward to support, is
+correct in every case rather than one.
+
+> **The risk itself has not vanished, and I want to be plain about that.** A host that blocks
+> outbound HTTPS still cannot run Aziv AI. What has changed is that this is now **detected within
+> minutes, named precisely, and accompanied by the exact sentence to send to the hosting provider**
+> — instead of surfacing as a mysterious failure after the platform is built. The installer refuses
+> to complete on a Critical failure, so it cannot be missed or ignored.
 
 ---
 
@@ -192,8 +209,8 @@ Silence is not approval. Each proceeds on my recommendation only if you say so.
 
 ## What happens next
 
-1. You confirm **E-2** — that your host allows outbound HTTPS connections. **This is the only
-   remaining hard blocker.** E-3 … E-8 are useful but can follow.
+1. **Nothing is blocking.** You say "approved" — either to the eight standing recommendations, or
+   naming any you want changed.
 2. I confirm the final decision list back to you.
 3. **Phase 0 begins** — MySQL setup, Laravel 13 project on **PHP 8.4** with a `^8.3` constraint,
    Livewire 4, Filament 5, Spatie Permission 8, the six-breakpoint Tailwind scale, the Playwright
@@ -221,3 +238,4 @@ Silence is not approval. Each proceeds on my recommendation only if you say so.
 | Owner final clarification | **D-12 RESOLVED** — fully configurable tax engine, nothing assumed (Addendum F) |
 | Owner Addendum E | Delivery, handover & ownership — installable, transferable product; no SSH/Supervisor/Redis/Node/root assumed |
 | Owner Addendum F | Tax & international billing — configurable tax, multi-currency, international customers |
+| Owner Addendum G | System health & diagnostics — two deployment modes, self-detecting environment, 11-field findings, secret-free reporting. **Resolved E-2 … E-8; no blockers remain** |

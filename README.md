@@ -23,6 +23,10 @@ The requirements baseline is [`docs/blueprint/`](docs/blueprint/).
 **Deployment:** cPanel shared hosting for development and staging, migrating to cloud/VPS for
 production — see [`docs/13-deployment-portability.md`](docs/13-deployment-portability.md).
 
+**Diagnostics:** the application detects and reports its own hosting, PHP, database, network,
+provider and security problems — with severity, cause, responsible party and a plain-language
+action. See [`docs/17-system-health-diagnostics.md`](docs/17-system-health-diagnostics.md).
+
 **Delivery:** a complete, installable, transferable product — release ZIP, generated SQL package
 and 20 guides, verified by a handover test on a clean server. See
 [`docs/15-delivery-and-handover.md`](docs/15-delivery-and-handover.md).

@@ -25,6 +25,7 @@ Complete analysis and implementation plan derived from
 | 14 | [Payment Gateway Architecture](14-payment-gateway-architecture.md) | **Owner Addendum D** — multi-gateway, adapter-based payments; Razorpay is the default, not the only one |
 | 15 | [Delivery & Handover](15-delivery-and-handover.md) | **Owner Addendum E** — the release package, 20 guides, web installer, and the handover test that defines "done" |
 | 16 | [Tax & International Billing](16-tax-and-international-billing.md) | **Owner Addendum F** — fully configurable tax, frozen invoices, multi-currency, international customers |
+| 17 | [System Health & Diagnostics](17-system-health-diagnostics.md) | **Owner Addendum G** — the app detects and explains its own hosting problems, in language you can forward to support |
 
 ## The short version
 
@@ -44,11 +45,11 @@ providers, models, routing, pricing, credits and limits from an Admin Panel — 
 | Database | MySQL 8+ |
 | Cache/queue | Redis, with database fallback for basic hosting |
 
-**Scale:** 79 tables · 15 modules · ~90 admin screens · 5 adapter types · 8 routing modes ·
+**Scale:** 82 tables · 15 modules · ~90 admin screens · 5 adapter types · 8 routing modes ·
 8 built-in themes · ~95 design tokens per mode · 6 breakpoints across 3 device classes.
 
-**Timeline:** 38–53 working sessions. A usable branded AI chat platform exists at Phase 4
-(~15–21 sessions); it earns revenue at Phase 6 (~24–34); the complete owned, installable product
+**Timeline:** 40–56 working sessions. A usable branded AI chat platform exists at Phase 4
+(~16–22 sessions); it earns revenue at Phase 6 (~25–35); the complete owned, installable product
 ships at Phase 9.
 
 **You own the result.** Phase 9 delivers a release ZIP, generated SQL package and 20 guides, and
@@ -84,8 +85,8 @@ Status is tracked in [document 12](12-decision-log.md). As of now:
 - ✅ **D-11 approved** — mobile bottom navigation, kept admin-configurable
 - ✅ **E-1 resolved** — PHP 8.3/8.4/8.5 available; **targeting 8.4**, constraint `^8.3`, no 8.5-only features
 - ✅ **D-12 resolved** — fully configurable tax engine, nothing assumed (Addendum F)
-- 🔴 **E-2** — does the host allow **outbound HTTPS**? **The only remaining hard blocker**
-- 🟠 **E-3 … E-8** — six smaller cPanel facts; these adjust the plan rather than stop it
+- ✅ **E-2 … E-8 resolved** — Addendum G turns them into **diagnostic checks the application runs
+  itself**, on whatever server it is deployed to. No hosting provider need be chosen now
 - 🟡 Eight further decisions carry a recommendation and await confirmation
 
-**No application code is written until E-2 is confirmed.**
+### ✅ No blockers remain — Phase 0 can begin on your approval.

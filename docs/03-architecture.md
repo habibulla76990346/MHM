@@ -236,3 +236,5 @@ several hundred settings costs one cache read per request, not several hundred q
 | A bad theme never bricks the site | Preview before publish; one-click restore of the previous active theme |
 | The page never scrolls sideways | Enforced by layout rules and an automated overflow assertion at six viewports |
 | A control is never too small to tap | 44px minimum touch target, asserted automatically |
+| An infrastructure failure is never a mystery | Every failure class is a named diagnostic check with a responsible party and an action — never "Something went wrong" |
+| A secret never appears in a diagnostic report | Checks never receive credential values; the report is secret-free by construction |

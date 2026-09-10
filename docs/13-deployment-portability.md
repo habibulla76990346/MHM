@@ -17,7 +17,13 @@ functional on shared hosting and which require the later cloud/VPS environment."
 
 > **Environment is configuration, not architecture.**
 
-**No final hosting provider has been chosen, and none will be assumed.** The application must be
+**No final hosting provider has been chosen, and none will be assumed — the owner will not be asked
+to choose one at this stage.** Two deployment modes are officially supported from the same
+codebase, selected by `AZIV_DEPLOYMENT_MODE` (`shared` / `cloud` / `auto`), and the application
+**detects and reports its own environment's capabilities** rather than assuming them — see
+[`17-system-health-diagnostics.md`](17-system-health-diagnostics.md).
+
+ The application must be
 deployable to *any* server meeting the documented requirements in
 [`15-delivery-and-handover.md`](15-delivery-and-handover.md) §6. cPanel is where it is developed
 and verified, not what it is built for.
@@ -107,6 +113,11 @@ Legend: ✅ full · ⚠️ works with a real limitation · ❌ unavailable until
 
 **Nothing in the codebase is removed.** Everything marked ⚠️ or ❌ is fully built, tested and
 present — it simply performs better, or becomes available, after the move.
+
+**And every row of this table is a live diagnostic check**, not a static document. The Admin
+Panel's System Health screen reports the *actual* state of the server Aziv AI is running on,
+graded relative to the active deployment mode — so an expected shared-hosting limitation shows as
+GREY or YELLOW rather than alarming RED, while a genuinely fatal problem is RED in either mode.
 
 ---
 
@@ -200,6 +211,10 @@ sync), and enable Horizon for queue monitoring.
 
 These are facts about the owner's specific hosting plan that change what Phase 0 does. They are
 listed in `12-decision-log.md` as the remaining pre-Phase-0 checks.
+
+These are now **diagnostic checks the application performs itself**, not questions the owner must
+answer in advance. They are listed here for reference; the System Health screen reports each one
+on whatever server is used.
 
 | Check | Why it matters | If unavailable |
 |---|---|---|

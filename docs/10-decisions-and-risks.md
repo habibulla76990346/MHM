@@ -269,13 +269,16 @@ permanently.
 features are affected, the migration is a 10-step checklist rather than a project, and Phase 9
 includes the migration as a deliverable rather than an optional extra.
 
-### R-14 · Outbound HTTPS blocked on shared hosting — **would be fatal, check first**
+### R-14 · Outbound HTTPS blocked — **would be fatal, now detected automatically**
 
-A small number of shared hosts block outbound connections by default. Aziv AI is an application
-whose entire purpose is calling external AI APIs.
+A small number of hosts block outbound connections by default. Aziv AI is an application whose
+entire purpose is calling external AI APIs and payment gateways.
 
-**Mitigation:** this is check **E-2**, verified in the first minutes of Phase 0 before anything is
-built. If it is blocked and cannot be lifted, hosting must change before development starts.
+**Mitigation:** now a **Critical diagnostic check** (Addendum G) that runs at installation, at first
+admin login, on a schedule and on demand — on whatever server Aziv AI is deployed to. The installer
+**refuses to complete** if it fails, and the finding names the problem and supplies the exact
+wording to send to the hosting provider. The risk is unchanged; the *time to discover it* drops
+from months to minutes.
 
 ### R-15 · GST compliance is a business obligation, not just a schema — **medium, bounded**
 
@@ -351,6 +354,27 @@ stale export is worse than none.
 **Mitigation:** the SQL files are **generated, never hand-edited** — a build command runs migrations
 and seeders on a scratch database, exports the result and stamps it with the migration checksum.
 Installation verifies that stamp and **refuses to run on a mismatch** rather than half-installing.
+
+### R-22 · Diagnostics could leak a secret — **high impact, prevented structurally**
+
+A health screen that displays connection errors is exactly the place a credential leaks: provider
+responses echo keys, exception messages contain connection strings, and the report is designed to be
+forwarded to a hosting provider.
+
+**Mitigation:** secret-free **by construction**, not by filtering. Checks never receive credential
+values — they ask "is this valid?" and get a boolean plus an error class. Provider response bodies
+are never stored. Exception text passes through a redactor. **Not even masked values are shown.**
+Phase 9 reviews the exported report adversarially before delivery.
+
+### R-23 · Diagnostics that cry wolf are worse than none — **medium, designed around**
+
+A screen showing permanent red for things working as designed trains the owner to ignore red. On
+shared hosting, absent Redis and no persistent worker are *expected*, not broken.
+
+**Mitigation:** every check reports **relative to the active deployment mode** — expected
+shared-hosting limitations show GREY or YELLOW, never RED — and alerts fire on *transitions* into
+Critical/High rather than repeating for a known issue. Failures that are fatal in any mode stay RED
+in both.
 
 ### R-09 · Realtime voice and video are deferred — **already scoped by the blueprint**
 

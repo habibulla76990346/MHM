@@ -300,6 +300,9 @@ and dark modes. Full detail in `08-theme-branding-system.md`.
 | `notification_templates` | Editable templates (§22) | key, channel, subject, body, variables (json), is_active |
 | `announcements` | Broadcast messages (§22) | uuid, title, body, audience, starts_at, ends_at, is_active |
 | `notification_deliveries` | Delivery audit (§22) | template_key, user_id, channel, status, sent_at, error |
+| `diagnostic_runs` | **One diagnostics execution (Addendum G)** | uuid, trigger, started_at, finished_at, deployment_mode, overall_status, counts by severity, run_by |
+| `diagnostic_results` | One check outcome | run_id, check_key, title, category, status, severity, technical_reason (**sanitised**), responsibility, recommended_action, admin_action, requires_hosting_support, log_reference, duration_ms, checked_at |
+| `diagnostic_baselines` | Detect drift — "when did this start failing?" | check_key, last_status, last_severity, changed_at, consecutive_failures |
 | `jobs`, `job_batches`, `failed_jobs` | Queue infrastructure | Laravel standard |
 | `cache`, `cache_locks` | Cache fallback for basic hosting (§2) | Laravel standard |
 

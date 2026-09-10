@@ -165,6 +165,39 @@ Full spec in [`16-tax-and-international-billing.md`](16-tax-and-international-bi
 | TX-23 | **Historical exchange rates** for financial reporting | §4 — dated, never overwritten |
 | TX-24 | Country/currency-specific gateway rules; **no India-only assumptions in core billing**; INR initial primary with more currencies supported | §4, §5 |
 
+### Owner Addendum G — system health & diagnostics *(binding, cross-cutting)*
+
+Full spec in [`17-system-health-diagnostics.md`](17-system-health-diagnostics.md). **Resolves
+blocker E-2** — see §9 of that document.
+
+| ID | Requirement | Where delivered |
+|---|---|---|
+| HD-1 | **No hosting provider need be chosen now**; not dependent on any one provider | §2 + Addendum B |
+| HD-2 | **Two documented deployment modes from one codebase** — shared/cPanel and Cloud/VPS | §2 |
+| HD-3 | Application **detects environment capabilities and limitations** and reports them clearly | §2, §5 |
+| HD-4 | Centralised **Admin → System Health / Diagnostics / Requirements Check** | §5, §7 |
+| HD-5 | Reports overall health, hosting/environment status, PHP version and compatibility | §5 |
+| HD-6 | Required and **missing** PHP extensions, individually | §5 |
+| HD-7 | Disabled PHP functions where relevant; web server information | §5 |
+| HD-8 | Database connection, version, **permissions** | §5 |
+| HD-9 | Storage permissions, file-upload capability, max upload size, disk availability | §5 |
+| HD-10 | Memory limit, execution timeout, POST limit, request timeout | §5 |
+| HD-11 | Cron status, queue status, background job status, scheduled task status | §5 — includes a scheduler heartbeat |
+| HD-12 | Cache status, session status | §5 |
+| HD-13 | Mail/SMTP status | §5 — send test is manual-only (side effect) |
+| HD-14 | SSL/HTTPS status; **outbound HTTPS/cURL connectivity**; DNS/network where testable | §5 — outbound HTTPS is Critical in every mode |
+| HD-15 | AI provider connectivity, **authentication status**, model availability | §5 — contributed by each adapter |
+| HD-16 | Payment gateway connectivity; **webhook configuration/status** | §5 — includes sandbox/live mismatch detection |
+| HD-17 | Application, environment and configuration problems; permission problems; security warnings; third-party API errors | §5 |
+| HD-18 | **Eleven fields on every finding** — title, category, severity, exact technical reason, responsibility, recommended solution, what to change, whether hosting support is needed, last checked, re-test button, log reference | §4 |
+| HD-19 | Severity: Critical / High / Medium / Low / Informational | §3 |
+| HD-20 | **GREEN / YELLOW / RED / GREY** status, distinct from severity | §3 — GREY covers not-configured and not-applicable-in-this-mode |
+| HD-21 | **Never expose secret keys, passwords, webhook secrets or credentials** | §6 — secret-free **by construction**, not by filtering |
+| HD-22 | Secure, **extensible** framework for future modules/providers; initial check, manual run, event-driven checks, **safe** scheduled checks | §5 registry, §7 — scheduled runs never cost money or cause side effects |
+| HD-23 | **Understandable messages, never "Something went wrong"** | §4 — worked examples |
+| HD-24 | Where a capability is unavailable on shared hosting: **do not remove the feature** — detect, report, use the compatible mode, document the production recommendation | §2 + Addendum B §2 |
+| HD-25 | Delivery docs cover cPanel and Cloud/VPS requirements, PHP, database, cron, queue, storage, mail, SSL, outbound API, production recommendations, full troubleshooting | Addendum E §3 — troubleshooting guide written **around this screen** |
+
 ## Implementation rules (§31) — how each is enforced
 
 | Rule | Requirement | Enforcement mechanism |

@@ -88,7 +88,12 @@ Every guide the owner listed, written for someone who has never seen the project
 | 14 | **Production deployment guide** | Release process, caching, zero-downtime approach |
 | 15 | **Migration: shared hosting → Cloud/VPS** | The checklist, with `APP_KEY` called out |
 | 16 | **Backup & restore** | What to back up, how, and a **tested** restore procedure |
-| 17 | **Troubleshooting** | Symptom → cause → fix, for the failures that actually occur |
+| 17 | **Troubleshooting** | Symptom → cause → fix, **written around the System Health screen** — each diagnostic finding maps to a section here |
+| 17a | **cPanel / shared requirements** | Explicit minimum plan capabilities |
+| 17b | **Cloud / VPS requirements** | Explicit production requirements |
+| 17c | **Outbound API requirements** | Which hosts Aziv AI must reach, on which ports — the page to send a hosting provider |
+| 17d | **SSL/HTTPS requirements** | Certificate, enforcement, mixed content |
+| 17e | **Production recommendations** | The configuration to aim for once past shared hosting |
 | 18 | **Security checklist** | Pre-launch verification |
 | 19 | **Upgrade / update guide** | Applying a new release without losing configuration or data |
 | 20 | **Build & deployment commands** | Every command, what it does, when to run it |
@@ -170,13 +175,16 @@ hosting the owner cannot run diagnostics from a terminal.
 | PHP version within the supported range | Required extensions, each listed pass/fail |
 | Directory writability (`storage/`, `bootstrap/cache/`) | Database connectivity and version |
 | **Outbound HTTPS reachability** | Cron last-run time (is the scheduler alive?) |
+| AI provider auth and model freshness | Payment gateway and webhook status |
 | Queue backlog and oldest pending job | Storage disk usage against quota |
 | Mail configuration test | `APP_KEY` present and credentials decryptable |
 | **`.env` not reachable over HTTP** | `APP_DEBUG` off in production |
 | Streaming mode detected | Cache and session drivers in use |
 
 This screen is also the first thing to check when something breaks, and the troubleshooting guide
-is written around it.
+is written around it. **Full specification in
+[`17-system-health-diagnostics.md`](17-system-health-diagnostics.md) (Owner Addendum G)** — the
+health check summarised here is the entry point to that system, not a separate feature.
 
 ---
 

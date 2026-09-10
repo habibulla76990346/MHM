@@ -21,6 +21,7 @@
 | 14a | **Tax** | Jurisdictions, rates, rules, invoice snapshots, numbering, credit notes | `TaxResolver`, `TaxCalculator`, `InvoiceNumberAllocator`, `TaxSnapshotWriter` | `tax_settings`, `tax_jurisdictions`, `tax_rates`, `tax_rules`, `customer_tax_profiles`, `invoice_tax_lines`, `invoice_number_sequences`, `credit_notes` | 6 |
 | 14b | **Localisation** | Countries, currencies, exchange rates, per-currency pricing | `CurrencyService`, `ExchangeRateService`, `CountryRegistry` | `countries`, `currencies`, `exchange_rates`, `plan_prices` | 6 |
 | 14 | **Analytics** | Cost, revenue, margin, usage aggregation | `CostAggregator`, `RevenueReporter`, `MarginCalculator`, `BudgetMonitor` | Reads logs; writes daily summary tables | 5–6 |
+| 14c | **Diagnostics** | Health checks, severity model, findings, shareable export | `CheckRegistry`, `DiagnosticRunner`, `ResultSanitiser`, `DeploymentModeDetector`, `ReportExporter` | `diagnostic_runs`, `diagnostic_results`, `diagnostic_baselines` | 0–1, extended every phase |
 | 15 | **Admin** | Filament panel, resources, widgets | Filament resources per module | — | 2–9 |
 
 ## Dependency direction
@@ -97,6 +98,7 @@ than a requirement:
 | `ThemePublished` | Theming | — | Invalidate CSS cache |
 | `SettingUpdated` | Settings | — | Invalidate settings cache |
 | `ModelSyncCompleted` | AI | Notifications | Report new/deprecated models |
+| `DiagnosticStatusChanged` | Diagnostics | Notifications | Alert on a **transition** into Critical/High — never repeatedly for a known issue |
 
 The benefit for you: when analytics needs a new metric, a listener is added. Nothing in the AI or
 billing code is touched, so nothing that currently works can break.
