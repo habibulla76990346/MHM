@@ -169,6 +169,27 @@ Settings in this category: `APP_KEY`, database connection, Redis host, S3 creden
 transport host/port, PHP memory and execution limits, cron/scheduler registration, queue worker
 supervision, SSL certificates.
 
+## 5b. The Admin Panel on mobile (Owner Addendum A)
+
+*"Admin Panel must also be fully mobile responsive."* Filament 5 is responsive out of the box, but
+responsive is not adaptive. Per-resource work:
+
+| Adaptation | Applies to |
+|---|---|
+| Tables become **card lists** below 768px — 2–3 key fields, status pill, overflow menu | ~40 resources |
+| Filters open as a **sheet** with an applied-count badge | Filtered resources |
+| Forms become single column with a **sticky save bar** | ~50 forms |
+| Row actions move into an overflow menu (no hover-only controls) | Every table |
+| Bulk actions use a selection mode with a sticky action bar | Resources with bulk actions |
+| Charts simplify: fewer ticks, tap-for-value, no legend overlay | Analytics |
+
+**Three surfaces are honestly desktop-first**, and are signposted rather than silently cramped:
+the theme colour editor (becomes tabbed light/dark on mobile), the cost/margin analytics grid
+(becomes summary cards with drill-down), and the custom provider mapping builder (read and test on
+mobile; editing is desktop-first). Every admin screen remains **usable** on a phone — navigable,
+readable, no overflow, every record viewable and editable. Reasoning in
+`11-responsive-design-system.md` §9.
+
 ## 6. API test console (§25)
 
 A single admin screen to answer *"is this provider actually working?"*:

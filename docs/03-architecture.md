@@ -167,6 +167,8 @@ together. To understand billing, you open one folder.
 | Built with | Blade + Livewire + Alpine + Tailwind | Filament 5 (which is itself Blade + Livewire + Alpine + Tailwind) |
 | Styled by | The DB-driven theme system — fully admin-controlled | Filament's own admin styling, with Aziv branding applied |
 | Guard | `web`, standard users | `web` + admin-role check + optional MFA |
+| Mobile | Bottom nav + drawer + bottom sheets; app-like, installable as a PWA | Drawer + card lists + filter sheets; fully usable on a phone |
+| Desktop | Persistent sidebar, multi-column workspaces | Sidebar, full tables, inline filters |
 
 The customer-facing theme engine (blueprint §5) controls the **customer** application. The admin
 panel receives your logo and brand colours but is not itself re-skinnable into eight themes —
@@ -232,3 +234,5 @@ several hundred settings costs one cache read per request, not several hundred q
 | A secret never reaches the browser | Encrypted at rest, never serialised into any response or view payload |
 | A sensitive admin action is never invisible | Policy check + audit log entry, both mandatory |
 | A bad theme never bricks the site | Preview before publish; one-click restore of the previous active theme |
+| The page never scrolls sideways | Enforced by layout rules and an automated overflow assertion at six viewports |
+| A control is never too small to tap | 44px minimum touch target, asserted automatically |

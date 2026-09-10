@@ -44,6 +44,21 @@ or a provider dashboard (blueprint §28 acknowledges this class).
 | 29 | Deployment & ownership: owner controls domain/hosting/DB/storage/provider accounts/gateway/repo; dev+staging+prod; env docs, migrations, deployment + API docs; move to VPS/cloud for concurrency/streaming/queues/large files | Ops | 0, 9 | PLANNED | Ownership checklist in `10-decisions-and-risks.md` |
 | 30 | Development order: 9 named phases, each tested before the next | Process | 1–9 | PLANNED | Kept verbatim; a Phase 0 prep step is added ahead of them |
 
+## Owner addenda — requirements added after the original blueprint
+
+These were added by the project owner after the blueprint was issued. They carry the same
+weight as blueprint sections and are subject to the same no-removal rule.
+
+| ID | Requirement | Module | Phase | Status | Notes |
+|---|---|---|---|---|---|
+| A-1 | **Fully responsive and device-adaptive from the beginning.** Mobile must feel like a modern AI mobile app, not a shrunken desktop site. Mobile-first touch-friendly forms; drawers, bottom navigation, bottom sheets, sticky actions, responsive chat composer, mobile-friendly tables/cards. No horizontal overflow. Inputs, buttons, dropdowns, modals and validation usable with mobile keyboards and touch. | All UI | **Cross-cutting, 0–9** | PLANNED | Full spec: `11-responsive-design-system.md` |
+| A-2 | Desktop must feel like a professional SaaS application — sidebars, top navigation, multi-column layouts, dashboards, tables, filters, wide workspaces | All UI | Cross-cutting | PLANNED | §3–§4 of the responsive spec |
+| A-3 | **Do not simply shrink the desktop UI.** Proper distinct layouts at mobile/tablet/desktop; components adapt layout, spacing, navigation and interaction by screen size | All UI | Cross-cutting | PLANNED | Adaptive ≠ responsive — §1 of the spec |
+| A-4 | Test important screens at mobile, tablet and desktop widths | QA | Every phase | PLANNED | **Automated** via Playwright at 6 viewports — §11 |
+| A-5 | Keep the design system consistent across all breakpoints | Theming | 1–2 | PLANNED | Responsive token layer — §7 |
+| A-6 | **Admin Panel must also be fully mobile responsive** | Admin | 2–9 | PARTIAL | Every screen usable on mobile; 3 dense surfaces are comfort-optimised for desktop and signposted — §9 |
+| A-7 | PWA-ready structure: manifest, icons, installability where appropriate. **Not a native app at this stage** | Branding, Ops | 2, 9 | PLANNED | Manifest generated from admin branding settings — §10 |
+
 ## Implementation rules (§31) — how each is enforced
 
 | Rule | Requirement | Enforcement mechanism |

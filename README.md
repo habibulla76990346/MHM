@@ -19,6 +19,14 @@ If you only read two documents, read:
 
 The requirements baseline is [`docs/blueprint/`](docs/blueprint/).
 
+## Every screen is device-adaptive
+
+Mobile, tablet and desktop get genuinely different layouts — not one layout resized. Bottom
+navigation, drawers and bottom sheets on mobile; sidebars, multi-column workspaces and full
+tables on desktop. The Admin Panel included. Structured for PWA installability.
+
+Spec: [`docs/11-responsive-design-system.md`](docs/11-responsive-design-system.md).
+
 ## Planned stack
 
 PHP 8.4 · Laravel 13 · Livewire 4 · Alpine.js · Tailwind CSS · Filament 5 ·

@@ -187,10 +187,37 @@ Text branding — company name, short name, site title, tagline, support email a
 URL, social links, footer copyright, legal/company information — lives in `system_settings` under
 the `branding.*` group and is available anywhere via `settings('branding.app_name')`.
 
+## 8b. Responsive token layer (Owner Addendum A)
+
+The token system extends across breakpoints so that a single admin change stays coherent on every
+device rather than looking right only on desktop.
+
+| Addition | Purpose |
+|---|---|
+| **Fluid typography** | Type scales continuously via `clamp()` between mobile and desktop instead of jumping at breakpoints |
+| **Responsive spacing** | Section spacing and page gutters scale with viewport width |
+| `--tap-min` | 44px minimum touch target, applied to every interactive element |
+| `--safe-top` / `--safe-bottom` | `env(safe-area-inset-*)`, so nothing sits under a notch or home indicator |
+| `--nav-height-mobile` | Bottom navigation height, used to offset page content |
+| `--composer-height` | Live chat composer height, used to offset the message list |
+| `--content-max` | Reading-width cap, so text never runs to uncomfortable line lengths on wide screens |
+
+The admin's existing controls — spacing scale, radius, shadow intensity, typography — feed these
+fluid values. Choosing "compact" spacing therefore produces a coherent compact interface at every
+width, not one that only reads correctly at one size.
+
+**PWA connection.** The `theme-color` browser meta tag and the `manifest.webmanifest` are generated
+from the active theme's tokens and your branding settings. Changing your brand colour in the panel
+also changes how Aziv AI appears when installed on someone's home screen. Detail in
+`11-responsive-design-system.md` §10.
+
 ## 9. The rule that makes all of this work
 
 > **No colour, radius, shadow, spacing value or font may be hard-coded in any Blade template,
 > Livewire component or CSS file in the customer-facing application.**
+>
+> **And no component may ship without a declared mobile, tablet and desktop behaviour** — the
+> adaptation matrix in `11-responsive-design-system.md` §4 is the contract.
 
 Every one must reference a token. This is checked in the Phase 2 review and re-checked in Phase 9.
 If a single template hard-codes `bg-blue-600`, that element silently stops responding to theme

@@ -122,6 +122,35 @@ without a developer. This should not delay anything.
 
 ---
 
+### D-10 · How far to take PWA now — *needed by Phase 2*
+
+You asked for PWA-*ready* structure, not a native app. The manifest, icons, theme colour and
+installability ship in Phase 2 either way. The open question is the service worker.
+
+| Option | Effect |
+|---|---|
+| **Manifest + icons + installability only** | Aziv AI installs to a home screen and launches without browser chrome |
+| Add app-shell service worker | Also opens instantly and shows a proper offline screen instead of a browser error |
+| Full offline mode | Not meaningful — AI responses are generated per request and cannot be cached |
+
+**Recommendation:** manifest and installability in Phase 2; **app-shell service worker in Phase 9**,
+once the asset set has stopped changing. Adding it earlier means fighting cache invalidation for
+the whole build. Full offline is not proposed, because an AI platform is inherently online.
+
+---
+
+### D-11 · Mobile bottom navigation destinations — *needed by Phase 1*
+
+The mobile bottom bar holds four items plus overflow. My proposal: **Chat · Library · Images ·
+Account**, with everything else behind *More*.
+
+**Recommendation:** the four above. This is easy to change later, but the earlier it is right, the
+more of the interface is built around the correct hierarchy. Tell me if your priority order
+differs — for example if file/knowledge-base work matters more to your users than image
+generation.
+
+---
+
 ## Part 2 — Risks stated honestly
 
 ### R-01 · Streaming needs proper hosting — **high impact, fully mitigable**
@@ -190,6 +219,40 @@ Nothing has been removed, per Rule 2.
 **Mitigation:** the phasing delivers a usable product at Phase 4 and a revenue-generating one at
 Phase 6. If a phase turns out larger than estimated, you will hear it at that phase's stop point
 rather than at the end.
+
+### R-10 · Adaptive design costs more than responsive design — **schedule, accepted deliberately**
+
+Building genuinely different layouts per device class — rather than one flexible layout — adds
+**5 to 8 sessions**, concentrated in Phases 1, 2, 4, 6 and 8. Per-phase detail in
+`11-responsive-design-system.md` §12.
+
+**Mitigation:** none needed, and none proposed — this is a deliberate purchase. Retrofitting
+adaptive layouts later costs several times more, because every component must be reopened and the
+design system fractures in the process. Requiring it before any code exists is the cheapest this
+will ever be.
+
+### R-11 · The mobile chat composer is the hardest surface in the product — **high, planned for**
+
+Mobile keyboards resize the viewport unpredictably across iOS and Android. Get it wrong and the
+input hides behind the keyboard, the page zooms on focus, or the view yanks to the bottom while
+someone is reading. These are the defects users notice immediately and forgive least.
+
+**Mitigation:** the specific techniques are pinned down in advance rather than discovered during
+the build — `dvh` units, `visualViewport` tracking, safe-area insets, a 16px minimum input size to
+stop iOS zoom, and scroll anchoring that only follows the stream when the user is already at the
+bottom. Each has an automated test at six viewports.
+
+### R-12 · Three admin surfaces are genuinely desktop-first — **medium, signposted not hidden**
+
+The theme colour editor (~95 tokens × light/dark), the cost/margin analytics grid, and the custom
+provider mapping builder are dense, multi-column tasks. Every admin screen will be *usable* on a
+phone — navigable, readable, no overflow, every record editable — but these three are more
+comfortable on a large screen.
+
+**Mitigation:** each gets a deliberate mobile form (tabbed light/dark, summary cards with
+drill-down, read-and-test-only for JSON mapping) and the panel says so, rather than presenting a
+cramped grid and letting an admin discover the problem mid-task. Detail in
+`11-responsive-design-system.md` §9.
 
 ### R-09 · Realtime voice and video are deferred — **already scoped by the blueprint**
 

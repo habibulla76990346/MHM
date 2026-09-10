@@ -18,7 +18,8 @@ Complete analysis and implementation plan derived from
 | 07 | [Universal AI Provider Architecture](07-ai-provider-architecture.md) | How one app talks to many AI companies, and adds more without code |
 | 08 | [Theme & Branding System](08-theme-branding-system.md) | The design-token engine behind full colour control |
 | 09 | [Development Phases](09-development-phases.md) | The 9 blueprint phases, detailed, with test gates and timeline |
-| 10 | [Decisions & Risks](10-decisions-and-risks.md) | **9 decisions I need from you, and 9 risks stated plainly** |
+| 10 | [Decisions & Risks](10-decisions-and-risks.md) | **11 decisions I need from you, and 12 risks stated plainly** |
+| 11 | [Responsive Design System](11-responsive-design-system.md) | **Owner Addendum A** — adaptive layouts for mobile/tablet/desktop, and PWA readiness |
 
 ## The short version
 
@@ -39,10 +40,13 @@ providers, models, routing, pricing, credits and limits from an Admin Panel — 
 | Cache/queue | Redis, with database fallback for basic hosting |
 
 **Scale:** 62 tables · 15 modules · ~90 admin screens · 5 adapter types · 8 routing modes ·
-8 built-in themes · ~95 design tokens per mode.
+8 built-in themes · ~95 design tokens per mode · 6 breakpoints across 3 device classes.
 
-**Timeline:** 26–35 working sessions. A usable branded AI chat platform exists at Phase 4
-(~12–16 sessions); it earns revenue at Phase 6 (~17–23).
+**Timeline:** 31–43 working sessions. A usable branded AI chat platform exists at Phase 4
+(~15–21 sessions); it earns revenue at Phase 6 (~22–29).
+
+**Every interface is device-adaptive** — mobile, tablet and desktop get genuinely different
+layouts, not one layout resized. See [document 11](11-responsive-design-system.md).
 
 ## The blueprint's ten rules, and where each is enforced
 
@@ -61,7 +65,7 @@ providers, models, routing, pricing, credits and limits from an Admin Panel — 
 
 ## What has *not* been decided
 
-Nine open decisions are listed in [document 10](10-decisions-and-risks.md), each with a
+Eleven open decisions are listed in [document 10](10-decisions-and-risks.md), each with a
 recommendation. The two that matter most:
 
 - **D-04 · Hosting.** A VPS (~$20–60/mo) rather than shared hosting. Streaming chat does not work

@@ -7,6 +7,11 @@ preparation — it creates no application features, it only makes Phase 1 possib
 Blueprint §30 closes with *"Each phase must be tested before moving to the next."* Every phase
 therefore ends with a **test gate** and a **stop point** where you review before I continue.
 
+**Owner Addendum A (responsive/adaptive design) is cross-cutting**, not a phase of its own. Every
+phase that ships an interface carries a **responsive gate**: automated Playwright checks at six
+viewports asserting no horizontal overflow, 44px minimum touch targets, and readable text. A
+screen failing at any viewport fails the phase. Full spec in `11-responsive-design-system.md`.
+
 ---
 
 ## Phase 0 — Preparation *(no features)*
@@ -14,8 +19,8 @@ therefore ends with a **test gate** and a **stop point** where you review before
 | | |
 |---|---|
 | **Goal** | A working Laravel skeleton that boots, connects to a database and runs its test suite |
-| **Build** | Install MariaDB/MySQL locally · `composer create-project laravel/laravel` (Laravel 13) · configure `.env` · install Livewire 4, Filament 5, Spatie Permission 8, Sanctum · set up Tailwind build · Git structure, `.gitignore`, `.env.example` · CI that runs tests on push |
-| **Test gate** | App boots · database connects · `php artisan test` passes · assets compile |
+| **Build** | Install MariaDB/MySQL locally · `composer create-project laravel/laravel` (Laravel 13) · configure `.env` · install Livewire 4, Filament 5, Spatie Permission 8, Sanctum · set up Tailwind build with the **6-breakpoint scale** · correct viewport meta incl. `viewport-fit=cover` · hashed/versioned build assets (PWA prerequisite) · **Playwright + Chromium responsive test harness** · Git structure, `.gitignore`, `.env.example` · CI that runs tests on push |
+| **Test gate** | App boots · database connects · `php artisan test` passes · assets compile · **responsive harness runs and reports at all 6 viewports** |
 | **You provide** | Nothing |
 | **You will see** | The default Laravel welcome page. Nothing that looks like Aziv AI yet — that is expected |
 | **Size** | 1 session |
@@ -27,12 +32,12 @@ therefore ends with a **test gate** and a **stop point** where you review before
 | | |
 |---|---|
 | **Goal** | Accounts, roles and permissions working; the token system that Phase 2's themes build on |
-| **Build** | Core migrations (identity, security, settings groups) · registration, login, password reset, email verification · session limits + idle timeout · `SettingsService` with typed registry + caching · roles/permissions with the full §9 matrix, deny-by-default · `ActivityLogger` on every sensitive write · design-token infrastructure + CSS custom property pipeline · base layouts using tokens only |
+| **Build** | Core migrations (identity, security, settings groups) · registration, login, password reset, email verification · session limits + idle timeout · `SettingsService` with typed registry + caching · roles/permissions with the full §9 matrix, deny-by-default · `ActivityLogger` on every sensitive write · design-token infrastructure + CSS custom property pipeline · **responsive token layer (fluid type, responsive spacing, `--tap-min`, safe-area tokens)** · **app shell with all three navigation models — bottom nav + drawer (mobile), icon rail (tablet), sidebar (desktop)** · **mobile-first auth forms with `inputmode`/`autocomplete`/`enterkeyhint`** · base layouts using tokens only |
 | **Blueprint** | §2, §8 (partial), §9, §23 (partial), §26, §5 (foundation) |
-| **Test gate** | Register/login/verify/reset all work · each of the 5 roles can reach exactly what the matrix permits and nothing more · settings read/write with cache invalidation · audit rows written · **zero hard-coded colours in any template** |
+| **Test gate** | Register/login/verify/reset all work · each of the 5 roles can reach exactly what the matrix permits and nothing more · settings read/write with cache invalidation · audit rows written · **zero hard-coded colours in any template** · **auth + shell pass all 6 viewports: no horizontal overflow, 44px targets, 16px inputs** |
 | **You provide** | Nothing |
 | **You will see** | A working login. Register an account, sign in, see an empty dashboard |
-| **Size** | 2–3 sessions |
+| **Size** | 3–4 sessions |
 
 ---
 
@@ -41,12 +46,12 @@ therefore ends with a **test gate** and a **stop point** where you review before
 | | |
 |---|---|
 | **Goal** | You can control how Aziv AI looks and reads — without me |
-| **Build** | Filament panel at `/admin` with permission integration · branding screens (all logo variants, favicon, app icons, names, tagline, contact, social, footer) · media library w/ safe deletion · theme engine: 8 built-in themes seeded, colour editor for all ~95 tokens × light/dark, component tokens, radius/shadow/spacing/typography, custom CSS (sanitised + permission-gated), preview → publish → restore · WCAG contrast warnings · content management: homepage sections, pages, banners w/ scheduling + priority, FAQ, navigation menus, SEO + social preview · UI/UX settings (pagination, density, date/time, locale, timezone, currency) · maintenance mode · feature-flag framework |
+| **Build** | Filament panel at `/admin` with permission integration · branding screens (all logo variants, favicon, app icons, names, tagline, contact, social, footer) · media library w/ safe deletion · theme engine: 8 built-in themes seeded, colour editor for all ~95 tokens × light/dark, component tokens, radius/shadow/spacing/typography, custom CSS (sanitised + permission-gated), preview → publish → restore · WCAG contrast warnings · content management: homepage sections, pages, banners w/ scheduling + priority, FAQ, navigation menus, SEO + social preview · UI/UX settings (pagination, density, date/time, locale, timezone, currency) · maintenance mode · feature-flag framework · **mobile adaptation across ~40 admin resources: card lists, filter sheets, overflow menus, sticky save bars** · **theme editor tabbed light/dark mode for mobile** · **`manifest.webmanifest` generated from branding settings + `theme-color` + apple-touch icons + installability** |
 | **Blueprint** | §3, §4, §5, §6, §7, §24 (partial), §27 |
-| **Test gate** | Every branding asset uploads and appears · switching theme changes the entire site · preview is visible only to the previewer · restore recovers the previous theme · custom CSS is sanitised · content edits appear on the public site · maintenance mode locks out non-admins |
+| **Test gate** | Every branding asset uploads and appears · switching theme changes the entire site · preview is visible only to the previewer · restore recovers the previous theme · custom CSS is sanitised · content edits appear on the public site · maintenance mode locks out non-admins · **admin tables become cards below 768px, filters open as sheets, every row action reachable by touch** · **homepage + admin pass all 6 viewports** · **manifest validates and the app installs to a home screen** |
 | **You provide** | Logo files, brand colours, company details, homepage copy — *or* accept placeholders and change them later in the panel |
 | **You will see** | **This is the first phase that feels like your product.** A real homepage, your branding, your colours, and a working admin panel |
-| **Size** | 3–4 sessions |
+| **Size** | 4–6 sessions |
 
 ---
 
@@ -69,12 +74,12 @@ therefore ends with a **test gate** and a **stop point** where you review before
 | | |
 |---|---|
 | **Goal** | Working AI chat |
-| **Build** | `OpenAiAdapter` and `GeminiAdapter` (chat, vision, streaming, model discovery) · chat UI: new chat, history, search, rename, delete, archive · SSE streaming · stop generation · regenerate (preserving the original) · copy · feedback · manual model selection + Auto mode · `ContextBuilder` with configurable limits · admin personas/system prompts · message length, attachment and rate limits · retention rules |
+| **Build** | `OpenAiAdapter` and `GeminiAdapter` (chat, vision, streaming, model discovery) · chat UI: new chat, history, search, rename, delete, archive · SSE streaming · stop generation · regenerate (preserving the original) · copy · feedback · manual model selection + Auto mode · `ContextBuilder` with configurable limits · admin personas/system prompts · message length, attachment and rate limits · retention rules · **mobile chat: `dvh` layout, `visualViewport` keyboard tracking, safe-area composer, auto-growing textarea, scroll anchoring during streaming, conversation list as a bottom sheet, attachment picker as a sheet, thumb-reachable stop button** |
 | **Blueprint** | §12 (initial), §15 |
-| **Test gate** | Streamed response from both providers · stop generation halts upstream and settles partial usage · regenerate keeps history · conversation search works · context limits enforced · rate limits enforced · **non-streaming fallback works** (see risk R-01) |
+| **Test gate** | Streamed response from both providers · stop generation halts upstream and settles partial usage · regenerate keeps history · conversation search works · context limits enforced · rate limits enforced · **non-streaming fallback works** (see risk R-01) · **composer stays visible above a simulated mobile keyboard** · **scrolling back during a stream does not yank the view to the bottom** · **no horizontal overflow with long code blocks or unbroken URLs** |
 | **You provide** | Nothing new |
 | **You will see** | **Aziv AI works.** Real conversations with real AI, streaming live |
-| **Size** | 3–4 sessions |
+| **Size** | 4–6 sessions |
 
 ---
 
@@ -97,12 +102,12 @@ therefore ends with a **test gate** and a **stop point** where you review before
 | | |
 |---|---|
 | **Goal** | The platform earns money |
-| **Build** | Plan management (FREE/PRO/PREMIUM, all 11 configurable dimensions) · plan → model/provider access matrix · `EntitlementService` · **credit ledger (append-only) + balances + holds** · pre-authorisation and settlement · promotional credits, expiry, optional rollover · manual adjustments with mandatory reason · payment gateway interface + first implementation · purchase, upgrade, downgrade, renewal, cancellation · **idempotent webhooks** · invoices, coupons, tax display · billing history · notification system + templates + announcements |
+| **Build** | Plan management (FREE/PRO/PREMIUM, all 11 configurable dimensions) · plan → model/provider access matrix · `EntitlementService` · **credit ledger (append-only) + balances + holds** · pre-authorisation and settlement · promotional credits, expiry, optional rollover · manual adjustments with mandatory reason · payment gateway interface + first implementation · purchase, upgrade, downgrade, renewal, cancellation · **idempotent webhooks** · invoices, coupons, tax display · billing history · notification system + templates + announcements · **mobile checkout flow, plan comparison stacked on narrow screens, payment forms with correct `autocomplete` tokens** |
 | **Blueprint** | §19, §20, §22, §8 (billing parts), §13 (pricing) |
-| **Test gate** | **A webhook replayed 5× grants credits once** · **parallel requests cannot drive a balance negative** · failed AI call releases its hold and charges nothing · upgrade/downgrade prorates correctly · plan limits enforced · ledger sum always equals cached balance · **no card data anywhere in the database** |
+| **Test gate** | **A webhook replayed 5× grants credits once** · **parallel requests cannot drive a balance negative** · failed AI call releases its hold and charges nothing · upgrade/downgrade prorates correctly · plan limits enforced · ledger sum always equals cached balance · **no card data anywhere in the database** · **checkout completes on a 320px viewport** |
 | **You provide** | **A payment gateway account** (decision D-01) and your plan pricing |
 | **You will see** | Customers can subscribe and pay, and credits deduct accurately as they use AI |
-| **Size** | 3–4 sessions |
+| **Size** | 4–5 sessions |
 
 ---
 
@@ -125,12 +130,12 @@ therefore ends with a **test gate** and a **stop point** where you review before
 | | |
 |---|---|
 | **Goal** | Aziv AI stops being chat-only |
-| **Build** | **Files:** upload → validation → storage → extraction (PDF/DOCX/TXT/CSV) → optional scan → chunking → embeddings → retrieval · knowledge bases w/ access control and retrieval settings · admin file rules, retention, storage limits, plan access · **Image:** text-to-image, provider/model selection, credits, history, status, prompt history, regeneration, admin controls; architecture prepared for editing/background removal/upscaling · **Audio:** speech-to-text and text-to-speech w/ admin-controlled providers, quotas and credit costs |
+| **Build** | **Files:** upload → validation → storage → extraction (PDF/DOCX/TXT/CSV) → optional scan → chunking → embeddings → retrieval · knowledge bases w/ access control and retrieval settings · admin file rules, retention, storage limits, plan access · **Image:** text-to-image, provider/model selection, credits, history, status, prompt history, regeneration, admin controls; architecture prepared for editing/background removal/upscaling · **Audio:** speech-to-text and text-to-speech w/ admin-controlled providers, quotas and credit costs · **mobile: camera capture for uploads, touch-friendly image gallery, mobile voice recorder with a clear recording state** |
 | **Blueprint** | §16, §17, §18 |
 | **Test gate** | Each supported file type extracts correctly · oversized and disallowed types rejected · RAG retrieval returns relevant chunks · knowledge base permissions enforced · image generation deducts correct credits · failed generation refunds · STT/TTS round-trips |
 | **You provide** | Vector storage decision (D-03) · malware scanning decision (D-08) · image/voice provider keys |
 | **You will see** | Upload a PDF and ask questions about it. Generate images. Speak to Aziv AI and hear it answer |
-| **Size** | 4–5 sessions — the largest phase; may be split |
+| **Size** | 5–6 sessions — the largest phase; may be split |
 
 ---
 
@@ -139,12 +144,12 @@ therefore ends with a **test gate** and a **stop point** where you review before
 | | |
 |---|---|
 | **Goal** | Safe to put real customers and real money on |
-| **Build** | Full security review vs §23 · optional MFA for admin accounts · rate limiting and API protection review · **permission audit: every admin action is gated and logged** · **hard-coded colour audit** · dependency vulnerability scan · backup + tested restore procedure (**including `APP_KEY`**) · monitoring, error tracking, uptime alerts · performance pass (N+1 queries, index verification, cache coverage) · staging environment · deployment documentation · environment configuration documentation · API/integration documentation · production launch |
+| **Build** | Full security review vs §23 · optional MFA for admin accounts · rate limiting and API protection review · **permission audit: every admin action is gated and logged** · **hard-coded colour audit** · dependency vulnerability scan · backup + tested restore procedure (**including `APP_KEY`**) · monitoring, error tracking, uptime alerts · performance pass (N+1 queries, index verification, cache coverage) · staging environment · deployment documentation · environment configuration documentation · API/integration documentation · **service worker for the app shell + proper offline screen** · **cross-device QA on real phones and tablets** · production launch |
 | **Blueprint** | §23, §28, §29 |
 | **Test gate** | Full suite green · **a restore from backup is actually performed and verified**, not merely scripted · no critical dependency vulnerabilities · load test at expected concurrency · every §23 item signed off |
 | **You provide** | Production hosting, domain, SSL, and production provider/gateway accounts |
 | **You will see** | Aziv AI live on your own domain |
-| **Size** | 3–4 sessions |
+| **Size** | 4–5 sessions |
 
 ---
 
@@ -153,30 +158,34 @@ therefore ends with a **test gate** and a **stop point** where you review before
 | Phase | Sessions | Cumulative |
 |---|---|---|
 | 0 — Preparation | 1 | 1 |
-| 1 — Foundation | 2–3 | 3–4 |
-| 2 — Admin, branding, themes, content | 3–4 | 6–8 |
-| 3 — AI gateway, credentials, catalog | 3–4 | 9–12 |
-| 4 — OpenAI + Gemini + chat | 3–4 | 12–16 |
-| 5 — Routing, health, cost | 2–3 | 14–19 |
-| 6 — Subscriptions, credits, payments | 3–4 | 17–23 |
-| 7 — More providers | 2–3 | 19–26 |
-| 8 — Files, image, voice | 4–5 | 23–31 |
-| 9 — Hardening, deployment | 3–4 | 26–35 |
-| **Total** | **26–35 sessions** | |
+| 1 — Foundation | 3–4 | 4–5 |
+| 2 — Admin, branding, themes, content | 4–6 | 8–11 |
+| 3 — AI gateway, credentials, catalog | 3–4 | 11–15 |
+| 4 — OpenAI + Gemini + chat | 4–6 | 15–21 |
+| 5 — Routing, health, cost | 2–3 | 17–24 |
+| 6 — Subscriptions, credits, payments | 4–5 | 21–29 |
+| 7 — More providers | 2–3 | 23–32 |
+| 8 — Files, image, voice | 5–6 | 28–38 |
+| 9 — Hardening, deployment | 4–5 | 31–43 |
+| **Total** | **31–43 sessions** | |
+
+Figures include Owner Addendum A (device-adaptive design), which added **+5 to +8 sessions**
+overall. The per-phase breakdown of that increase is in `11-responsive-design-system.md` §12.
 
 **How to read this.** A "session" is one working conversation with me that ends in tested,
 committed code. It is not a fixed number of hours or days — it depends how quickly you review
 each phase and how much changes after you see it. Your own testing time between phases is real
 calendar time and is not included above.
 
-**A usable product arrives well before the end.** After Phase 4 (roughly 12–16 sessions) you have
-a branded, working AI chat platform. Phases 5–9 make it profitable, resilient and safe to scale.
+**A usable product arrives well before the end.** After Phase 4 (roughly 15–21 sessions) you have
+a branded, working AI chat platform that behaves like a real app on a phone. Phases 5–9 make it
+profitable, resilient and safe to scale.
 
 ## Two natural launch points
 
 | | **Early launch** — after Phase 6 | **Full launch** — after Phase 9 |
 |---|---|---|
-| Sessions | ~17–23 | ~26–35 |
+| Sessions | ~21–29 | ~31–43 |
 | You get | Branded platform, chat with several providers, smart routing, subscriptions and payments | Everything, plus files/RAG, image, voice, full hardening |
 | Missing | File analysis, image, voice | — |
 | Sensible when | You want revenue and real user feedback sooner | You want the complete blueprint before any customer sees it |
