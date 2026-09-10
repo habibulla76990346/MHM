@@ -27,7 +27,7 @@ appears here as **APPROVED**.
 
 | Item | Resolution |
 |---|---|
-| **Gateway** | **Razorpay** — strongest local coverage (UPI, netbanking, cards). Stripe's India availability is restricted. The gateway stays behind a pluggable interface, so switching later means one adapter, not a billing rebuild |
+| **Gateway** | **Razorpay as the initial default** — strongest local coverage (UPI, netbanking, cards). **Amended by Owner Addendum D: Aziv AI is multi-gateway from the start**, with Razorpay, PhonePe, PayU, Cashfree and CCAvenue all supported by the architecture. See `14-payment-gateway-architecture.md` |
 | **Default currency** | **INR**, 2-decimal precision for customer-facing money |
 | **Provider costs** | Remain **USD** at 6-decimal precision — per-token prices are that small |
 | **Margin reporting** | New `exchange_rates` table with **dated** rates. Margin for any period uses the rate effective on each usage date, so past margins never change retroactively when the rupee moves |
@@ -37,6 +37,12 @@ appears here as **APPROVED**.
 currency in the schema, and changing those after real payments exist is genuinely painful.
 
 **A new decision this raises: D-12 (GST handling), below.**
+
+**Amended by Owner Addendum D.** Razorpay is the initial default gateway. The payment layer is
+adapter-based and provider-agnostic, supporting Razorpay, PhonePe, PayU, Cashfree and CCAvenue,
+with additional gateways addable later as independent modules. No gateway-specific logic is
+permitted in subscriptions, plans, invoices or transactions. Full design in
+[`14-payment-gateway-architecture.md`](14-payment-gateway-architecture.md).
 
 ---
 
@@ -205,3 +211,4 @@ Silence is not approval. Each proceeds on my recommendation only if you say so.
 | Owner decision | **D-01 APPROVED** — India; Razorpay, INR, dated exchange rates (Addendum C) |
 | Arising from D-01 | **D-12 raised** — GST handling |
 | Arising from D-04 | **E-1 … E-8 raised** — cPanel account facts needed before Phase 0 |
+| Owner Addendum D | **D-01 amended** — multi-gateway payment architecture; Razorpay is the initial default, not the only gateway |

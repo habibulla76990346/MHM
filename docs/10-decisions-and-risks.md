@@ -287,6 +287,29 @@ configurable rather than hard-coded, so rates and treatment are set without code
 not a tax adviser** — the software will support what Indian GST requires; your accountant confirms
 the rates, registration status and export treatment. Recorded as decision D-12.
 
+### R-16 · A single payment gateway is a single point of revenue failure — **resolved by Addendum D**
+
+Gateways have outages. Merchant accounts get held for review, sometimes for days, sometimes without
+warning. Settlement terms and success rates differ by payment method and bank.
+
+**Mitigation:** the multi-gateway architecture means a second gateway can be enabled from the Admin
+Panel in minutes once its adapter exists. **A platform that can only take money one way stops
+earning entirely when that way is unavailable** — which is the actual argument for building the
+framework rather than a single integration.
+
+### R-17 · Indian recurring payments are not one mechanism — **medium, designed around**
+
+Recurring card and UPI payments in India run under RBI rules covering e-mandates, additional-factor
+authentication and tokenisation. Depending on gateway and payment method, renewal may use a native
+subscription API, UPI Autopay, e-NACH, or manual invoice-and-pay. Gateways differ in what they
+support, and the rules change.
+
+**Mitigation:** capability-aware gateway selection — **a subscription is never routed to a gateway
+that cannot renew it**, and `subscriptions.renewal_mechanism` records which mechanism is in use
+rather than assuming one. Each adapter's real capabilities are verified against current provider
+documentation at implementation time and stored as data, so the platform stays correct without code
+changes.
+
 ### R-09 · Realtime voice and video are deferred — **already scoped by the blueprint**
 
 §18 itself describes realtime voice as "a separate module" and video as adapter-ready "later."

@@ -83,6 +83,39 @@ weight as blueprint sections and are subject to the same no-removal rule.
 | C-3 | **USD provider cost vs INR revenue** reconciled with dated exchange rates | `04-database-architecture.md` — `exchange_rates` |
 | C-4 | GST-compliant invoicing: GSTIN, place of supply, CGST/SGST/IGST split, SAC code, sequential numbering | Phase 6 — pending decision **D-12** |
 
+### Owner Addendum D — multi-gateway payment architecture (amends D-01)
+
+Razorpay is the **initial default** gateway, not the only one. Full design in
+[`14-payment-gateway-architecture.md`](14-payment-gateway-architecture.md).
+
+| ID | Requirement | Where delivered |
+|---|---|---|
+| PG-1 | Modular, provider-agnostic, **adapter-based** gateway architecture | §1–§2 — mirrors the AI provider manager |
+| PG-2 | Architecture supports Razorpay, PhonePe, PayU, Cashfree, CCAvenue | §2 — one adapter each, capabilities declared as data |
+| PG-3 | Additional gateways later **without changing core subscription/payment architecture** | §9 — new adapter class + a database row |
+| PG-4 | Admin: enable/disable any gateway | §7.1 |
+| PG-5 | Admin: set default gateway | §7.2 |
+| PG-6 | Admin: configure credentials securely | §7.3, §5 — encrypted, masked, permission-gated |
+| PG-7 | Admin: test gateway connection | §7.4 — never reveals the secret |
+| PG-8 | Admin: set priority/order | §7.5 |
+| PG-9 | Admin: enable by country/currency | §7.6 |
+| PG-10 | Admin: which payment types use which gateway | §7.7 — `payment_gateway_rules` |
+| PG-11 | Admin: view transaction status | §7.8 |
+| PG-12 | Admin: successful/failed/pending/refunded views | §7.9 |
+| PG-13 | Admin: webhook configuration & status | §7.10 |
+| PG-14 | Admin: sandbox/test/live mode | §7.11 — separate credentials per mode |
+| PG-15 | Admin: gateway-specific settings stored securely | §7.12 — encrypted `extra_config`, no schema change per gateway |
+| PG-16 | Consistent customer checkout experience across gateways | §2 — checkout modes wrapped in one Aziv-branded flow |
+| PG-17 | **No Razorpay-specific logic in subscriptions, plans, invoices, transactions** | §8 — a gateway name in those components is a defect, checked in Phases 6 and 9 |
+| PG-18 | Never store secret credentials in frontend code | §5 — publishable identifiers distinguished from secrets |
+| PG-19 | Credentials encrypted / securely stored | §5 |
+| PG-20 | **Webhook verification for every gateway** | §4.4 — raw-body signature verification; an adapter that cannot verify does not ship |
+| PG-21 | Payment status reconciled **server-side** | §4.1 — return callback, webhook and scheduled sweep converge on one handler |
+| PG-22 | Prevent duplicate payment processing and duplicate subscription activation | §4.2–§4.3 — idempotency at four levels plus row-level locking |
+| PG-23 | Complete payment/audit logs | §7 — transaction timeline; every admin action audit-logged |
+| PG-24 | **Gateway transaction IDs alongside internal Aziv transaction ID** | §6 — every payment record carries both |
+| PG-25 | INR primary initially, architecture ready for more currencies | §3, §9 — nothing assumes a single currency |
+
 ## Implementation rules (§31) — how each is enforced
 
 | Rule | Requirement | Enforcement mechanism |

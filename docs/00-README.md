@@ -22,6 +22,7 @@ Complete analysis and implementation plan derived from
 | 11 | [Responsive Design System](11-responsive-design-system.md) | **Owner Addendum A** — adaptive layouts for mobile/tablet/desktop, and PWA readiness |
 | 12 | [Decision Log](12-decision-log.md) | **Authoritative status of every decision.** Read this first to see what is settled and what is blocking |
 | 13 | [Deployment & Portability](13-deployment-portability.md) | **Owner Addendum B** — cPanel staging → cloud production, and exactly which features work where |
+| 14 | [Payment Gateway Architecture](14-payment-gateway-architecture.md) | **Owner Addendum D** — multi-gateway, adapter-based payments; Razorpay is the default, not the only one |
 
 ## The short version
 
@@ -41,11 +42,11 @@ providers, models, routing, pricing, credits and limits from an Admin Panel — 
 | Database | MySQL 8+ |
 | Cache/queue | Redis, with database fallback for basic hosting |
 
-**Scale:** 62 tables · 15 modules · ~90 admin screens · 5 adapter types · 8 routing modes ·
+**Scale:** 68 tables · 15 modules · ~90 admin screens · 5 adapter types · 8 routing modes ·
 8 built-in themes · ~95 design tokens per mode · 6 breakpoints across 3 device classes.
 
-**Timeline:** 31–43 working sessions. A usable branded AI chat platform exists at Phase 4
-(~15–21 sessions); it earns revenue at Phase 6 (~22–29).
+**Timeline:** 32–45 working sessions. A usable branded AI chat platform exists at Phase 4
+(~15–21 sessions); it earns revenue at Phase 6 (~22–31).
 
 **Every interface is device-adaptive** — mobile, tablet and desktop get genuinely different
 layouts, not one layout resized. See [document 11](11-responsive-design-system.md).
@@ -69,7 +70,8 @@ layouts, not one layout resized. See [document 11](11-responsive-design-system.m
 
 Status is tracked in [document 12](12-decision-log.md). As of now:
 
-- ✅ **D-01 approved** — India. Razorpay, INR, with dated USD→INR rates for margin reporting
+- ✅ **D-01 approved** (amended by Addendum D) — India. **Multi-gateway payments** with Razorpay as
+  the initial default; INR primary, with dated USD→INR rates for margin reporting
 - ✅ **D-04 approved** — cPanel shared hosting for dev/staging, cloud/VPS for production, under
   nine portability requirements. Environment is configuration, not architecture
 - ✅ **D-11 approved** — mobile bottom navigation, kept admin-configurable

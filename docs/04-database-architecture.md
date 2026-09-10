@@ -45,10 +45,15 @@ changes, "who changed it, when, from what, to what" must all be answerable.
 | `plan_features` | Per-plan limits without schema changes | plan_id, key, value, limit_type (hard/soft/unlimited) |
 | `plan_model_access` | Enable models per plan (§11) | plan_id, ai_model_id, is_allowed |
 | `plan_provider_access` | Enable providers per plan | plan_id, ai_provider_id, is_allowed |
-| `subscriptions` | Active user subscriptions | uuid, user_id, plan_id, status, current_period_start/end, cancel_at, gateway_subscription_id |
-| `payments` | Payment intent/record (§20) | uuid, user_id, subscription_id, gateway, gateway_payment_id, amount, currency, status, paid_at |
-| `payment_transactions` | Every gateway state change | payment_id, type, amount, status, gateway_reference, raw_payload (json) |
-| `payment_webhook_events` | **Idempotency guard (§19)** | gateway, event_id (**unique**), event_type, payload, processed_at, result |
+| `subscriptions` | Active user subscriptions | uuid, user_id, plan_id, status, current_period_start/end, cancel_at, **gateway_id**, gateway_subscription_id, **renewal_mechanism**, **mandate_reference**, **unique(id, current_period_start)** activation guard |
+| `payment_gateways` | **Gateway registry (Addendum D)** | uuid, key (unique), name, adapter_class, status, is_default, priority, mode (sandbox/live), supported_countries (json), supported_currencies (json), capabilities (json), checkout_mode, maintenance_mode |
+| `payment_gateway_credentials` | **Encrypted, per mode** | gateway_id, mode, label, credentials (**encrypted json**), webhook_secret (**encrypted**), publishable_key, status, last_verified_at |
+| `payment_gateway_rules` | Which gateway for what | gateway_id, payment_type, country, currency, plan_id, priority, is_active |
+| `gateway_health_logs` | Availability tracking | gateway_id, checked_at, success, latency_ms, error_class |
+| `payments` | Payment intent/record (§20) | uuid, user_id, subscription_id, **gateway_id**, **gateway_payment_id**, **gateway_order_id**, **mode**, **idempotency_key (unique)**, amount, currency, status, failure_code, failure_reason, paid_at |
+| `payment_transactions` | Every gateway state change | payment_id, **gateway_id**, **gateway_transaction_id**, type, amount, status, gateway_reference, raw_payload (json) |
+| `refunds` | **Refund records (Addendum D)** | uuid, payment_id, gateway_id, gateway_refund_id, amount, currency, status, reason, requested_by, processed_at |
+| `payment_webhook_events` | **Idempotency guard (§19)** | **gateway_id**, event_id, **unique(gateway_id, event_id)**, event_type, raw_payload, signature_valid, processed_at, result, attempts |
 | `invoices` | Invoice records (§20) | uuid, user_id, number (sequential), subtotal, tax_total, total, currency, status, issued_at, pdf_media_id, **place_of_supply, supplier_gstin, customer_gstin, sac_code, is_export, tax_breakdown (json)** |
 | `tax_rates` | Configurable tax rules (D-12) | uuid, name, jurisdiction, rate_percent, tax_type (cgst/sgst/igst/vat/none), applies_from, applies_until, is_active |
 | `exchange_rates` | **USD provider cost → INR revenue (D-01)** | from_currency, to_currency, rate, effective_date, source, unique(from,to,effective_date) |
@@ -57,6 +62,17 @@ changes, "who changed it, when, from what, to what" must all be answerable.
 | `credit_ledger` | **Append-only ledger (§19)** | uuid, user_id, entry_type, amount, balance_after, reason, reference_type, reference_id, expires_at, actor_id |
 | `credit_balances` | Fast current balance | user_id (unique), confirmed_balance, held_balance, updated_at |
 | `credit_holds` | Pre-authorisation | uuid, user_id, amount, status (held/settled/released), reference, expires_at |
+
+### Two identifiers on every payment (Addendum D)
+
+Every payment and transaction carries **both** Aziv's internal `uuid` and the gateway's own
+reference. Support conversations start from one and end at the other: a customer quotes an Aziv
+invoice number, the gateway dashboard knows only its own ID, and reconciliation has to move between
+them. Storing only one guarantees a painful support experience.
+
+`subscriptions.renewal_mechanism` exists because "subscription" is not a single mechanism in the
+Indian market — renewal may run through a gateway's native subscription API, a UPI Autopay mandate,
+an e-NACH mandate, or manual invoice-and-pay. The schema records which, rather than assuming.
 
 ### Why `exchange_rates` exists — a direct consequence of decision D-01
 

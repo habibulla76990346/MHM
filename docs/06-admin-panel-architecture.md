@@ -61,6 +61,14 @@ ROUTING            Default routing mode · Provider priority order
                    Routing rules · Fallback depth · Retry & backoff settings
                    Circuit breaker thresholds · Routing decision log viewer
 
+PAYMENT GATEWAYS   Gateway list with status, mode and health
+                   Enable/disable · Set default · Priority order
+                   Credentials per sandbox/live mode (encrypted, masked)
+                   Test connection · Webhook URL, secret & delivery status
+                   Country/currency availability · Payment-type routing rules
+                   Transactions: successful / failed / pending / refunded
+                   Reconciliation view · Transaction timeline · Refunds
+
 BILLING            Plans (price, currency, cycle, all limits)
                    Plan → model/provider access matrix
                    Coupons & promotions · Invoices · Payments · Refunds
@@ -119,7 +127,11 @@ security.*     logs.*          settings.*
 | Users — suspend/restrict | ✅ | ✅ | ✅ | — | — |
 | Users — adjust credits | ✅ | ✅ | limited | ✅ | — |
 | Providers — view | ✅ | ✅ | — | — | — |
-| **Credentials — any access** | ✅ | ✅ | **❌ denied** | **❌ denied** | **❌ denied** |
+| **AI credentials — any access** | ✅ | ✅ | **❌ denied** | **❌ denied** | **❌ denied** |
+| **Gateway credentials — any access** | ✅ | ✅ | **❌ denied** | limited | **❌ denied** |
+| Gateway config (enable, default, routing) | ✅ | ✅ | — | ✅ | — |
+| Transactions — view | ✅ | ✅ | view only | ✅ | — |
+| Refunds — issue | ✅ | ✅ | — | ✅ | — |
 | Models — manage | ✅ | ✅ | — | — | — |
 | Routing — configure | ✅ | ✅ | — | — | — |
 | **Billing — configure** | ✅ | ✅ | **❌ denied** | ✅ | **❌ denied** |

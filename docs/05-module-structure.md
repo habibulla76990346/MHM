@@ -13,7 +13,7 @@
 | 6 | **Content** | Pages, sections, banners, FAQ, menus, SEO | `PageRenderer`, `BannerScheduler`, `SeoResolver` | `content_pages`, `content_sections`, `banners`, `faqs`, `navigation_menus`, `navigation_items` | 2 |
 | 7 | **AI** | Providers, credentials, models, routing, health, sync | `ProviderRegistry`, `AiRouter`, `CircuitBreaker`, `ModelSyncService`, `UsageRecorder`, `CredentialResolver` | 15 tables (groups 3–5) | 3–5, 7 |
 | 8 | **Chat** | Conversations, messages, streaming, personas | `ConversationService`, `StreamController`, `ContextBuilder` | `chat_conversations`, `chat_messages`, `chat_message_attachments`, `message_feedback`, `personas`, `conversation_shares` | 4 |
-| 9 | **Billing** | Plans, subscriptions, payments, credits, coupons | `PlanService`, `SubscriptionManager`, `CreditService`, `PaymentGateway`, `WebhookProcessor`, `EntitlementService` | 14 tables (group 2) | 6 |
+| 9 | **Billing** | Plans, subscriptions, payments, credits, coupons, **payment gateways** | `PlanService`, `SubscriptionManager`, `CreditService`, **`PaymentGatewayRegistry`**, **`GatewaySelector`**, **`ReconciliationService`**, `WebhookProcessor`, `EntitlementService` | 19 tables (group 2) | 6 |
 | 10 | **Files** | Upload, extraction, chunking, knowledge bases, retrieval | `UploadValidator`, `TextExtractor`, `Chunker`, `EmbeddingService`, `RetrievalService` | `files`, `file_chunks`, `file_scan_results`, `knowledge_bases`, `knowledge_base_files`, `embeddings` | 8 |
 | 11 | **MediaAi** | Image generation | `ImageGenerationService` | `image_generations` | 8 |
 | 12 | **Audio** | Speech-to-text, text-to-speech | `TranscriptionService`, `SpeechService` | `audio_jobs` | 8 |
@@ -90,6 +90,8 @@ than a requirement:
 | `BudgetThresholdReached` | Analytics | AI, Notifications | Apply threshold action; alert |
 | `SubscriptionActivated` | Billing | Identity, Notifications | Update entitlements; welcome email |
 | `PaymentSucceeded` | Billing | Billing | Grant credits (idempotently) |
+| `PaymentReconciled` | Billing | Billing, Notifications | Settle a payment whose webhook was lost |
+| `GatewayWebhookFailedVerification` | Billing | Security, Notifications | Alert admins — a signature failure is a security signal |
 | `ThemePublished` | Theming | — | Invalidate CSS cache |
 | `SettingUpdated` | Settings | — | Invalidate settings cache |
 | `ModelSyncCompleted` | AI | Notifications | Report new/deprecated models |

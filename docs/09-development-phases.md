@@ -102,12 +102,12 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | | |
 |---|---|
 | **Goal** | The platform earns money |
-| **Build** | Plan management (FREE/PRO/PREMIUM, all 11 configurable dimensions) · plan → model/provider access matrix · `EntitlementService` · **credit ledger (append-only) + balances + holds** · pre-authorisation and settlement · promotional credits, expiry, optional rollover · manual adjustments with mandatory reason · payment gateway interface + **Razorpay implementation (D-01)** · **GST-compliant invoicing: GSTIN, place of supply, CGST/SGST/IGST split, SAC code, sequential numbering, export flag (D-12)** · **dated USD→INR exchange rates for margin reporting** · purchase, upgrade, downgrade, renewal, cancellation · **idempotent webhooks** · invoices, coupons, tax display · billing history · notification system + templates + announcements · **mobile checkout flow, plan comparison stacked on narrow screens, payment forms with correct `autocomplete` tokens** |
+| **Build** | Plan management (FREE/PRO/PREMIUM, all 11 configurable dimensions) · plan → model/provider access matrix · `EntitlementService` · **credit ledger (append-only) + balances + holds** · pre-authorisation and settlement · promotional credits, expiry, optional rollover · manual adjustments with mandatory reason · **multi-gateway payment framework (Addendum D): `PaymentGateway` interface + capability contracts, `PaymentGatewayRegistry`, capability-aware `GatewaySelector`, encrypted per-mode credentials, sandbox/live switching, per-gateway webhook verification, `ReconciliationService` with scheduled sweep, refunds, admin gateway manager** · **Razorpay adapter live (default gateway)** · **GST-compliant invoicing: GSTIN, place of supply, CGST/SGST/IGST split, SAC code, sequential numbering, export flag (D-12)** · **dated USD→INR exchange rates for margin reporting** · purchase, upgrade, downgrade, renewal, cancellation · **idempotent webhooks** · invoices, coupons, tax display · billing history · notification system + templates + announcements · **mobile checkout flow, plan comparison stacked on narrow screens, payment forms with correct `autocomplete` tokens** |
 | **Blueprint** | §19, §20, §22, §8 (billing parts), §13 (pricing) |
-| **Test gate** | **A webhook replayed 5× grants credits once** · **parallel requests cannot drive a balance negative** · failed AI call releases its hold and charges nothing · upgrade/downgrade prorates correctly · plan limits enforced · ledger sum always equals cached balance · **no card data anywhere in the database** · **checkout completes on a 320px viewport** |
-| **You provide** | **A Razorpay account**, your plan pricing, and your accountant's confirmation of GST treatment (D-12) |
-| **You will see** | Customers can subscribe and pay, and credits deduct accurately as they use AI |
-| **Size** | 4–5 sessions |
+| **Test gate** | **A webhook replayed 5× grants credits once** · **a subscription period cannot be activated twice** · **an unsigned or wrongly-signed webhook is rejected and alerts admins** · **a payment whose webhook never arrives is settled by the scheduled reconciliation sweep** · **parallel requests cannot drive a balance negative** · failed AI call releases its hold and charges nothing · upgrade/downgrade prorates correctly · plan limits enforced · ledger sum always equals cached balance · **no card data anywhere in the database** · **no gateway name appears in subscriptions, plans, invoices, credits or checkout code** · **a subscription is never routed to a gateway lacking recurring capability** · **checkout completes on a 320px viewport** |
+| **You provide** | **A Razorpay account** (plus any other gateway accounts you want live), your plan pricing, and your accountant's confirmation of GST treatment (D-12) |
+| **You will see** | Customers can subscribe and pay, credits deduct accurately, and you can add or switch payment gateways from the Admin Panel |
+| **Size** | 5–7 sessions |
 
 ---
 
@@ -163,14 +163,18 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | 3 — AI gateway, credentials, catalog | 3–4 | 11–15 |
 | 4 — OpenAI + Gemini + chat | 4–6 | 15–21 |
 | 5 — Routing, health, cost | 2–3 | 17–24 |
-| 6 — Subscriptions, credits, payments | 4–5 | 21–29 |
-| 7 — More providers | 2–3 | 23–32 |
-| 8 — Files, image, voice | 5–6 | 28–38 |
-| 9 — Hardening, deployment | 4–5 | 31–43 |
-| **Total** | **31–43 sessions** | |
+| 6 — Subscriptions, credits, **multi-gateway payments** | 5–7 | 22–31 |
+| 7 — More providers | 2–3 | 24–34 |
+| 8 — Files, image, voice | 5–6 | 29–40 |
+| 9 — Hardening, deployment | 4–5 | 32–45 |
+| **Total** | **32–45 sessions** | |
 
-Figures include Owner Addendum A (device-adaptive design), which added **+5 to +8 sessions**
-overall. The per-phase breakdown of that increase is in `11-responsive-design-system.md` §12.
+Additional payment gateways beyond Razorpay (PhonePe, PayU, Cashfree, CCAvenue) are **incremental**
+— roughly half a session to one session each, added when you have the merchant accounts, without
+touching the core. That is the return on building the framework in Phase 6.
+
+Figures include Owner Addendum A (device-adaptive design, **+5 to +8 sessions**) and Owner
+Addendum D (multi-gateway payments, **+1 to +2 sessions** in Phase 6). The per-phase breakdown of that increase is in `11-responsive-design-system.md` §12.
 
 **How to read this.** A "session" is one working conversation with me that ends in tested,
 committed code. It is not a fixed number of hours or days — it depends how quickly you review
@@ -185,7 +189,7 @@ profitable, resilient and safe to scale.
 
 | | **Early launch** — after Phase 6 | **Full launch** — after Phase 9 |
 |---|---|---|
-| Sessions | ~21–29 | ~31–43 |
+| Sessions | ~22–31 | ~32–45 |
 | You get | Branded platform, chat with several providers, smart routing, subscriptions and payments | Everything, plus files/RAG, image, voice, full hardening |
 | Missing | File analysis, image, voice | — |
 | Sensible when | You want revenue and real user feedback sooner | You want the complete blueprint before any customer sees it |
