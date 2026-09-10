@@ -26,6 +26,8 @@ Complete analysis and implementation plan derived from
 | 15 | [Delivery & Handover](15-delivery-and-handover.md) | **Owner Addendum E** — the release package, 20 guides, web installer, and the handover test that defines "done" |
 | 16 | [Tax & International Billing](16-tax-and-international-billing.md) | **Owner Addendum F** — fully configurable tax, frozen invoices, multi-currency, international customers |
 | 17 | [System Health & Diagnostics](17-system-health-diagnostics.md) | **Owner Addendum G** — the app detects and explains its own hosting problems, in language you can forward to support |
+| 18 | [Upload Security](18-upload-security.md) | **Owner Addendum H** — nine controls in Phase 1, scanning as an extensible layer |
+| — | [Brand assets](../brand/README.md) | The official Aziv AI artwork and what Phase 2 derives from it |
 
 ## The short version
 
@@ -45,11 +47,11 @@ providers, models, routing, pricing, credits and limits from an Admin Panel — 
 | Database | MySQL 8+ |
 | Cache/queue | Redis, with database fallback for basic hosting |
 
-**Scale:** 82 tables · 15 modules · ~90 admin screens · 5 adapter types · 8 routing modes ·
+**Scale:** 83 tables · 15 modules · ~90 admin screens · 5 adapter types · 8 routing modes ·
 8 built-in themes · ~95 design tokens per mode · 6 breakpoints across 3 device classes.
 
-**Timeline:** 40–56 working sessions. A usable branded AI chat platform exists at Phase 4
-(~16–22 sessions); it earns revenue at Phase 6 (~25–35); the complete owned, installable product
+**Timeline:** 42–59 working sessions. A usable branded AI chat platform exists at Phase 4
+(~18–25 sessions); it earns revenue at Phase 6 (~27–38); the complete owned, installable product
 ships at Phase 9.
 
 **You own the result.** Phase 9 delivers a release ZIP, generated SQL package and 20 guides, and
@@ -87,6 +89,9 @@ Status is tracked in [document 12](12-decision-log.md). As of now:
 - ✅ **D-12 resolved** — fully configurable tax engine, nothing assumed (Addendum F)
 - ✅ **E-2 … E-8 resolved** — Addendum G turns them into **diagnostic checks the application runs
   itself**, on whatever server it is deployed to. No hosting provider need be chosen now
-- 🟡 Eight further decisions carry a recommendation and await confirmation
+- ✅ **D-07 changed** — Admin Panel **fully themeable**, on the same token engine
+- ✅ **D-08 modified** — upload security lands in **Phase 1**, scanning as an extensible layer
+- ✅ **D-09 changed** — the **official Aziv AI artwork** is the initial branding, no placeholder
+- 🟡 Five further decisions carry a recommendation and await confirmation (D-02, D-03, D-05, D-06, D-10)
 
-### ✅ No blockers remain — Phase 0 can begin on your approval.
+### ✅ No blockers remain — Phase 0 begins on your explicit approval of the decision board.

@@ -11,9 +11,9 @@ appears here as **APPROVED**.
 
 | Status | IDs | Count |
 |---|---|---|
-| ✅ **APPROVED / RESOLVED** | D-01, D-04, D-11, D-12, **E-1 … E-8** | 5 + 8 |
+| ✅ **APPROVED / RESOLVED** | D-01, D-04, D-11, D-12, **D-07, D-08, D-09**, E-1 … E-8 | 8 + 8 |
 | 🔴 **BLOCKING** | — | **none** |
-| 🟡 **Recommended, awaiting confirmation** | D-02, D-03, D-05, D-06, D-07, D-08, D-09, D-10 | 8 |
+| 🟡 **Recommended, awaiting confirmation** | D-02, D-03, D-05, D-06, D-10 | 5 |
 
 > ## ✅ No blockers remain. Phase 0 can begin on the owner's approval.
 >
@@ -22,8 +22,10 @@ appears here as **APPROVED**.
 > is deployed to**, rather than questions to answer in advance. See
 > [`17-system-health-diagnostics.md`](17-system-health-diagnostics.md) §9.
 >
-> The eight recommendations below still stand unconfirmed. **Silence is not approval** — say
-> "approved" and I proceed on them, or name the ones you want changed.
+> **The owner changed D-07, D-08 and D-09** — all three recorded below. Five recommendations
+> remain unconfirmed: D-02, D-03, D-05, D-06 and D-10. **Silence is not approval.**
+>
+> **Phase 0 will not start until the owner explicitly approves this decision board.**
 
 ---
 
@@ -121,6 +123,95 @@ device class. Design in [`11-responsive-design-system.md`](11-responsive-design-
 
 ---
 
+### D-07 · Admin Panel theming — ✅ **CHANGED BY OWNER: fully themeable**
+
+**My recommendation was overruled, and recorded as decided.** I proposed the Admin Panel receive
+only logo and brand colours. The owner requires the **complete practical design system**.
+
+**Now in scope for the Admin Panel:** multiple themes · light/dark/system modes · brand, primary,
+secondary and accent colours · backgrounds · surfaces · text · borders · buttons · forms · cards ·
+sidebar · navigation · chat UI · status colours · typography · font sizes and weights · border
+radius · shadows · spacing and design tokens · logo · favicon · branding · homepage visual settings.
+
+**How:** the same token engine as the customer application, with a second admin-scoped token set
+compiled into Filament's CSS custom properties via a render hook. One engine, two token sets.
+
+**One implementation detail:** Filament expects a full 50–950 shade ramp per colour, not a single
+hex — so picking one brand colour **generates the ramp** in a perceptually uniform colour space,
+with per-step override available.
+
+**The owner's own constraint is the harder half:** *"keep the interface organized into categories
+so the Admin Panel remains easy to use."* ~190 tokens per panel as a flat list would be technically
+complete and practically unusable. So: grouped editor, progressive disclosure (set ~8 brand colours
+and the rest derive), search, "affects" hints, live preview, per-group reset, contrast warnings.
+
+**Honest boundary, and the owner's word *"practical"* is the right one:** every visual property is
+themeable; Filament's internal component *structure* is not. Changing how a table header is
+assembled means overriding Filament's Blade views, which creates upgrade work on each release.
+Any visual property — yes. Layout restructuring — a scoped piece of work, not something the theme
+system covers.
+
+**Cost: +1 to +2 sessions in Phase 2.** Full design in
+[`08-theme-branding-system.md`](08-theme-branding-system.md) §8c.
+
+---
+
+### D-08 · Upload security — ✅ **MODIFIED BY OWNER: Phase 1, not Phase 8**
+
+**The owner is right, and this is a better decision than mine.** File upload is the most commonly
+exploited feature in web applications, and security added after the feature is security applied to
+code already written around insecure assumptions.
+
+**All nine controls now land in Phase 1:** file type allowlist · MIME validation from content, not
+the request · extension cross-checked against detected type · layered size limits · filename and
+path security · **storage isolation outside the web root** · dangerous-file prevention · upload
+authorization before any bytes are written · secure download rules with UUIDs, per-download policy
+checks and signed expiring links.
+
+**Scanning is an extensible layer**, exactly as instructed: a `FileScanner` interface with
+`NullScanner` as default, `ClamAvScanner` for VPS, and `ApiScanner` which **works on shared
+hosting** since it needs only outbound HTTPS. Selected by configuration.
+
+**And the basic security is not weakened by a scanner's absence.** Without one configured, Aziv AI
+is not scanning for malware and the diagnostics screen says exactly that — GREY, not a reassuring
+false green. The nine controls carry the security either way.
+
+**Cost: +1 session in Phase 1, −0.5 in Phase 8. Net +0.5.** Full design in
+[`18-upload-security.md`](18-upload-security.md).
+
+---
+
+### D-09 · Initial branding — ✅ **CHANGED BY OWNER: use the real asset**
+
+**Found it.** The owner said the branding asset was already provided. No logo file was uploaded to
+this session — but the **cover page of the Master Blueprint carries embedded artwork**, and that is
+the asset. Extracted and committed to [`brand/`](../brand/README.md).
+
+| Property | Value |
+|---|---|
+| Format / size | JPEG, 1536 × 1536 |
+| Background | Solid black `#000000`, **no transparency** |
+| Subject | Stylised head in profile formed from flowing black-and-white ribbon shapes |
+
+**No placeholder will be used.** It remains fully changeable later from the Admin Panel.
+
+**Four practical constraints, and what Phase 2 does about each:**
+
+| Constraint | Phase 2 action |
+|---|---|
+| No transparency — black is baked in | Generate a transparent variant; the background is uniform `#000000`, so removal is clean |
+| Light-on-dark artwork | Needs a light-mode treatment — a dark lockup container or tonal inversion. **A design decision I need from you** |
+| Raster only, no vector | Fine at every size the app needs; a vector redraw is worth commissioning eventually, not required to ship |
+| Highly detailed | Derive a **simplified compact mark** — head silhouette only — for favicon and collapsed sidebar, where the ribbons would merge into grey |
+
+All eight assets blueprint §4 requires are derived from it in Phase 2.
+
+**One neutral note, stated once:** if this artwork came from a third party or stock source, confirm
+the licence covers commercial use **and** use as a brand identity — those are often licensed
+separately. A business check, not a technical one; it does not affect the build.
+
+---
+
 ## 🔴 Blocking Phase 0/1
 
 ### E-1 … E-8 · Environment facts — ✅ **ALL RESOLVED**
@@ -190,28 +281,24 @@ will never be the reason compliance is impossible.
 
 ---
 
-## 🟡 Recommended — awaiting confirmation
+## 🟡 Recommended — awaiting confirmation (5 remaining)
 
-Silence is not approval. Each proceeds on my recommendation only if you say so.
+The owner confirmed these stay as proposed **for now**. Silence is still not approval.
 
 | ID | Decision | Recommendation | Needed by |
 |---|---|---|---|
-| **D-02** | Filament for the admin panel | **Yes.** ~90 screens on exactly the blueprint's stack. Trade-off: a major dependency needing upgrades every year or two | Phase 2 |
+| **D-02** | Filament for the admin panel | **Yes.** ~90 screens on exactly the blueprint's stack. Note: D-07 makes Filament's themeability a live concern — it is met via CSS custom properties, confirmed workable | Phase 2 |
 | **D-03** | Vector storage for document search | **Start with MySQL.** Schema allows swapping the backend later without a rewrite | Phase 8 |
 | **D-05** | Launch after Phase 6 or Phase 9 | **After Phase 6.** Nothing is skipped; Phases 7–9 happen with real customers already using it | Phase 6 |
-| **D-06** | Tailwind build tooling | **Standard Node build.** Node never touches your server — and with D-04, assets are built in CI and deployed as artifacts, so cPanel needs neither Node nor Composer | Phase 0 |
-| **D-07** | Admin panel fully themeable | **No.** It gets your logo and brand colours, not the full 95-token engine | Phase 2 |
-| **D-08** | Malware scanning for uploads | **Type/size validation for launch**, real scanning before opening uploads publicly. Note: self-hosted scanning is not possible on shared hosting, so this naturally aligns with migration | Phase 8 |
-| **D-09** | Brand details | **Placeholders are fine** — all editable in the panel later. Confirm the product name is exactly "Aziv AI" | Phase 2 |
+| **D-06** | Tailwind build tooling | **Standard Node build.** Node never touches your server — assets are built in CI and shipped compiled, so cPanel needs neither Node nor Composer | Phase 0 |
 | **D-10** | PWA depth | **Installability in Phase 2, service worker in Phase 9.** Full offline not proposed: AI answers cannot be cached, and caching customer data creates privacy risk | Phase 2 |
 
 ---
 
 ## What happens next
 
-1. **Nothing is blocking.** You say "approved" — either to the eight standing recommendations, or
-   naming any you want changed.
-2. I confirm the final decision list back to you.
+1. **Nothing is blocking.** You review this decision board and **explicitly approve it**.
+2. Five recommendations remain: D-02, D-03, D-05, D-06, D-10.
 3. **Phase 0 begins** — MySQL setup, Laravel 13 project on **PHP 8.4** with a `^8.3` constraint,
    Livewire 4, Filament 5, Spatie Permission 8, the six-breakpoint Tailwind scale, the Playwright
    responsive harness, the release build pipeline, and the deployment verification that fails the
@@ -238,4 +325,7 @@ Silence is not approval. Each proceeds on my recommendation only if you say so.
 | Owner final clarification | **D-12 RESOLVED** — fully configurable tax engine, nothing assumed (Addendum F) |
 | Owner Addendum E | Delivery, handover & ownership — installable, transferable product; no SSH/Supervisor/Redis/Node/root assumed |
 | Owner Addendum F | Tax & international billing — configurable tax, multi-currency, international customers |
+| Owner decision | **D-07 CHANGED** — Admin Panel fully themeable, not partially |
+| Owner decision | **D-08 MODIFIED** — upload security moved to Phase 1; scanning becomes an extensible layer |
+| Owner decision | **D-09 CHANGED** — official Aziv AI artwork used as initial branding; no placeholder |
 | Owner Addendum G | System health & diagnostics — two deployment modes, self-detecting environment, 11-field findings, secret-free reporting. **Resolved E-2 … E-8; no blockers remain** |

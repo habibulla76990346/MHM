@@ -237,9 +237,10 @@ destroying the original answer — required by §15's "regenerate" while preserv
 
 | Table | Purpose | Key columns |
 |---|---|---|
-| `files` | (§17) | uuid, user_id, disk, path, original_name, mime_type, size_bytes, checksum, extraction_status, scan_status, expires_at |
+| `files` | (§17, Addendum H) | uuid, user_id, disk (**private, outside web root**), path, **stored_name (generated)**, **original_name (display only)**, **detected_mime**, **declared_mime**, size_bytes, checksum, extraction_status, **scan_status**, **scan_verdict**, **scanner_key**, **quarantined_at**, expires_at |
 | `file_chunks` | RAG chunks (§17) | file_id, chunk_index, content, token_count, metadata (json) |
-| `file_scan_results` | Security scan (§17) | file_id, scanner, verdict, details, scanned_at |
+| `file_scan_results` | Security scan (§17) | file_id, scanner_key, verdict, details, scanned_at, duration_ms |
+| `file_access_logs` | Download audit for sensitive files | file_id, user_id, action, ip, occurred_at |
 | `knowledge_bases` | (§17) | uuid, name, owner_id, visibility, retrieval_settings (json), status |
 | `knowledge_base_files` | Membership pivot | knowledge_base_id, file_id, added_at |
 | `embeddings` | Vector references (§17, §26) | chunk_id, model_id, dimensions, vector (see note), created_at |

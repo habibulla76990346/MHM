@@ -32,12 +32,12 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | | |
 |---|---|
 | **Goal** | Accounts, roles and permissions working; the token system that Phase 2's themes build on |
-| **Build** | Core migrations (identity, security, settings groups) · registration, login, password reset, email verification · session limits + idle timeout · `SettingsService` with typed registry + caching · roles/permissions with the full §9 matrix, deny-by-default · `ActivityLogger` on every sensitive write · design-token infrastructure + CSS custom property pipeline · **diagnostics framework: check registry, severity model (Critical…Informational), GREEN/YELLOW/RED/GREY status relative to deployment mode, result storage, sanitiser, Admin System Health screen, security checks** · **responsive token layer (fluid type, responsive spacing, `--tap-min`, safe-area tokens)** · **app shell with all three navigation models — bottom nav + drawer (mobile), icon rail (tablet), sidebar (desktop)** · **mobile-first auth forms with `inputmode`/`autocomplete`/`enterkeyhint`** · base layouts using tokens only |
+| **Build** | Core migrations (identity, security, settings groups) · registration, login, password reset, email verification · session limits + idle timeout · `SettingsService` with typed registry + caching · roles/permissions with the full §9 matrix, deny-by-default · `ActivityLogger` on every sensitive write · design-token infrastructure + CSS custom property pipeline · **diagnostics framework: check registry, severity model (Critical…Informational), GREEN/YELLOW/RED/GREY status relative to deployment mode, result storage, sanitiser, Admin System Health screen, security checks** · **responsive token layer (fluid type, responsive spacing, `--tap-min`, safe-area tokens)** · **app shell with all three navigation models — bottom nav + drawer (mobile), icon rail (tablet), sidebar (desktop)** · **mobile-first auth forms with `inputmode`/`autocomplete`/`enterkeyhint`** · **file upload security (Addendum H): allowlist type validation, content-based MIME detection, extension cross-check, layered size limits, generated filenames, storage outside the web root, dangerous-file prevention, upload authorization, authorising download controller with signed expiring links, `FileScanner` interface + `NullScanner`** · base layouts using tokens only |
 | **Blueprint** | §2, §8 (partial), §9, §23 (partial), §26, §5 (foundation) |
-| **Test gate** | Register/login/verify/reset all work · each of the 5 roles can reach exactly what the matrix permits and nothing more · settings read/write with cache invalidation · audit rows written · **zero hard-coded colours in any template** · **auth + shell pass all 6 viewports: no horizontal overflow, 44px targets, 16px inputs** · **every diagnostic finding carries all 11 required fields** · **no credential value can reach a diagnostic result — verified by test** |
+| **Test gate** | Register/login/verify/reset all work · each of the 5 roles can reach exactly what the matrix permits and nothing more · settings read/write with cache invalidation · audit rows written · **zero hard-coded colours in any template** · **auth + shell pass all 6 viewports: no horizontal overflow, 44px targets, 16px inputs** · **every diagnostic finding carries all 11 required fields** · **no credential value can reach a diagnostic result — verified by test** · **a PHP file renamed `.jpg` is rejected; an uploaded file is not reachable by direct URL; one user cannot download another's file by changing the ID** |
 | **You provide** | Nothing |
 | **You will see** | A working login. Register an account, sign in, see an empty dashboard |
-| **Size** | 4–5 sessions |
+| **Size** | 5–6 sessions |
 
 ---
 
@@ -46,12 +46,12 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | | |
 |---|---|
 | **Goal** | You can control how Aziv AI looks and reads — without me |
-| **Build** | Filament panel at `/admin` with permission integration · branding screens (all logo variants, favicon, app icons, names, tagline, contact, social, footer) · media library w/ safe deletion · theme engine: 8 built-in themes seeded, colour editor for all ~95 tokens × light/dark, component tokens, radius/shadow/spacing/typography, custom CSS (sanitised + permission-gated), preview → publish → restore · WCAG contrast warnings · content management: homepage sections, pages, banners w/ scheduling + priority, FAQ, navigation menus, SEO + social preview · UI/UX settings (pagination, density, date/time, locale, timezone, currency) · maintenance mode · feature-flag framework · **mobile adaptation across ~40 admin resources: card lists, filter sheets, overflow menus, sticky save bars** · **theme editor tabbed light/dark mode for mobile** · **`manifest.webmanifest` generated from branding settings + `theme-color` + apple-touch icons + installability** |
+| **Build** | Filament panel at `/admin` with permission integration · branding screens (all logo variants, favicon, app icons, names, tagline, contact, social, footer) · media library w/ safe deletion · theme engine: 8 built-in themes seeded, colour editor for all ~95 tokens × light/dark, component tokens, radius/shadow/spacing/typography, custom CSS (sanitised + permission-gated), preview → publish → restore · WCAG contrast warnings · content management: homepage sections, pages, banners w/ scheduling + priority, FAQ, navigation menus, SEO + social preview · UI/UX settings (pagination, density, date/time, locale, timezone, currency) · maintenance mode · feature-flag framework · **mobile adaptation across ~40 admin resources: card lists, filter sheets, overflow menus, sticky save bars** · **theme editor tabbed light/dark mode for mobile** · **Admin Panel fully themeable (D-07 changed): admin-scoped token set driving Filament's CSS variables, shade-ramp generation from a single brand colour, grouped editor with progressive disclosure, search, live preview and contrast warnings** · **official Aziv AI brand asset (D-09 changed) derived into all 8 required assets — dark/light/compact/login/email logo, favicon, app icons** · **`manifest.webmanifest` generated from branding settings + `theme-color` + apple-touch icons + installability** |
 | **Blueprint** | §3, §4, §5, §6, §7, §24 (partial), §27 |
 | **Test gate** | Every branding asset uploads and appears · switching theme changes the entire site · preview is visible only to the previewer · restore recovers the previous theme · custom CSS is sanitised · content edits appear on the public site · maintenance mode locks out non-admins · **admin tables become cards below 768px, filters open as sheets, every row action reachable by touch** · **homepage + admin pass all 6 viewports** · **manifest validates and the app installs to a home screen** |
-| **You provide** | Logo files, brand colours, company details, homepage copy — *or* accept placeholders and change them later in the panel |
+| **You provide** | **Brand asset already supplied** — the Aziv AI artwork from the blueprint cover. Still needed: company details, homepage copy, and a decision on the light-background logo treatment (see `brand/README.md`) |
 | **You will see** | **This is the first phase that feels like your product.** A real homepage, your branding, your colours, and a working admin panel |
-| **Size** | 4–6 sessions |
+| **Size** | 5–8 sessions |
 
 ---
 
@@ -135,7 +135,7 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | **Test gate** | Each supported file type extracts correctly · oversized and disallowed types rejected · RAG retrieval returns relevant chunks · knowledge base permissions enforced · image generation deducts correct credits · failed generation refunds · STT/TTS round-trips |
 | **You provide** | Vector storage decision (D-03) · malware scanning decision (D-08) · image/voice provider keys |
 | **You will see** | Upload a PDF and ask questions about it. Generate images. Speak to Aziv AI and hear it answer |
-| **Size** | 5–6 sessions — the largest phase; may be split |
+| **Size** | 5–6 sessions — the largest phase; may be split. Upload security already exists from Phase 1, so this phase adds analysis, not foundations |
 
 ---
 
@@ -158,16 +158,16 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | Phase | Sessions | Cumulative |
 |---|---|---|
 | 0 — Preparation | 1 | 1 |
-| 1 — Foundation | 4–5 | 5–6 |
-| 2 — Admin, branding, themes, content | 4–6 | 9–12 |
-| 3 — AI gateway, credentials, catalog | 3–4 | 12–16 |
-| 4 — OpenAI + Gemini + chat | 4–6 | 16–22 |
-| 5 — Routing, health, cost | 2–3 | 18–25 |
-| 6 — Subscriptions, credits, **tax, currencies, multi-gateway payments** | 7–10 | 25–35 |
-| 7 — More providers | 2–3 | 27–38 |
-| 8 — Files, image, voice | 5–6 | 32–44 |
-| 9 — Hardening, **delivery package & handover** | 8–12 | 40–56 |
-| **Total** | **40–56 sessions** | |
+| 1 — Foundation **+ upload security** | 5–6 | 6–7 |
+| 2 — Admin, branding, **full admin theming**, content | 5–8 | 11–15 |
+| 3 — AI gateway, credentials, catalog | 3–4 | 14–19 |
+| 4 — OpenAI + Gemini + chat | 4–6 | 18–25 |
+| 5 — Routing, health, cost | 2–3 | 20–28 |
+| 6 — Subscriptions, credits, **tax, currencies, multi-gateway payments** | 7–10 | 27–38 |
+| 7 — More providers | 2–3 | 29–41 |
+| 8 — Files, image, voice | 5–6 | 34–47 |
+| 9 — Hardening, **delivery package & handover** | 8–12 | 42–59 |
+| **Total** | **42–59 sessions** | |
 
 Additional payment gateways beyond Razorpay (PhonePe, PayU, Cashfree, CCAvenue) are **incremental**
 — roughly half a session to one session each, added when you have the merchant accounts, without
@@ -175,15 +175,16 @@ touching the core. That is the return on building the framework in Phase 6.
 
 Figures include Owner Addendum A (device-adaptive design, **+5 to +8**), Addendum D (multi-gateway
 payments, **+1 to +2**), Addendum E (delivery package and handover, **+3 to +5**) Addendum F
-(configurable tax and international billing, **+2.5 to +3.5**) and Addendum G (system health and
-diagnostics, **+2 to +3**). The per-phase breakdown of that increase is in `11-responsive-design-system.md` §12.
+(configurable tax and international billing, **+2.5 to +3.5**) Addendum G (system health and
+diagnostics, **+2 to +3**) and Addendum H (full admin theming **+1 to +2**, upload security moved
+into Phase 1 **+0.5 net**). The per-phase breakdown of that increase is in `11-responsive-design-system.md` §12.
 
 **How to read this.** A "session" is one working conversation with me that ends in tested,
 committed code. It is not a fixed number of hours or days — it depends how quickly you review
 each phase and how much changes after you see it. Your own testing time between phases is real
 calendar time and is not included above.
 
-**A usable product arrives well before the end.** After Phase 4 (roughly 16–22 sessions) you have
+**A usable product arrives well before the end.** After Phase 4 (roughly 18–25 sessions) you have
 a branded, working AI chat platform that behaves like a real app on a phone. Phases 5–9 make it
 profitable, resilient and safe to scale.
 
@@ -191,7 +192,7 @@ profitable, resilient and safe to scale.
 
 | | **Early launch** — after Phase 6 | **Full launch** — after Phase 9 |
 |---|---|---|
-| Sessions | ~25–35 | ~40–56 |
+| Sessions | ~27–38 | ~42–59 |
 | You get | Branded platform, chat with several providers, smart routing, subscriptions and payments | Everything, plus files/RAG, image, voice, full hardening |
 | Missing | File analysis, image, voice | — |
 | Sensible when | You want revenue and real user feedback sooner | You want the complete blueprint before any customer sees it |

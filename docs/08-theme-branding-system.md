@@ -211,6 +211,66 @@ from the active theme's tokens and your branding settings. Changing your brand c
 also changes how Aziv AI appears when installed on someone's home screen. Detail in
 `11-responsive-design-system.md` §10.
 
+## 8c. The Admin Panel is fully themeable (owner decision D-07, changed)
+
+The owner overruled my recommendation that the Admin Panel receive only logo and brand colours.
+**It gets the complete practical design system**, on the same token engine as the customer
+application.
+
+### How this works with Filament
+
+Filament 5 styles itself through CSS custom properties, so the same mechanism already designed for
+the customer site drives the admin panel: an admin-scoped token set is compiled into a `<style>`
+block injected via a Filament render hook, mapping Aziv's tokens onto Filament's variable names.
+One engine, two token sets (`customer` and `admin`), so a change made once behaves consistently.
+
+**One implementation detail worth naming:** Filament's colour system expects a full shade ramp
+(50–950) per colour, not a single hex. So when an admin picks one primary colour, Aziv AI
+**generates the ramp** from it in a perceptually uniform colour space, keeping steps evenly spaced
+rather than mathematically lightened — which is what stops generated palettes looking muddy at the
+extremes. Admins who want precise control can override individual steps.
+
+### What the admin controls
+
+Everything the owner listed: multiple themes · light / dark / system modes · brand colours ·
+primary, secondary and accent · backgrounds · surfaces · text colours · borders · buttons · forms ·
+cards · sidebar · navigation · chat UI · status colours · typography · font sizes and weights ·
+border radius · shadows · spacing and design tokens · logo · favicon · branding · homepage visual
+settings.
+
+### Keeping ~190 tokens per panel usable
+
+The owner's own constraint — *"keep the interface organized into categories so the Admin Panel
+remains easy to use"* — is the harder half of this requirement. A flat list of 190 colour pickers
+is technically complete and practically unusable.
+
+| Measure | Effect |
+|---|---|
+| **Grouped editor** | Brand · Surfaces · Text · Borders · States · Components · Typography · Shape · Spacing — one group open at a time |
+| **Progressive disclosure** | Setting ~8 brand colours derives sensible defaults for the rest; the remaining ~180 are there when wanted, not demanded up front |
+| **Search** | Find any token by name or by the element it affects |
+| **"Affects" hints** | Each token names what it changes, so nobody edits blind |
+| **Live preview** | Sample components render beside the editor, updating as values change |
+| **Scope switch** | Toggle between customer and admin token sets in the same editor |
+| **Contrast warnings** | Every text/background pair checked as it is edited |
+| **Reset per group** | Undo one group without discarding the whole theme |
+| Mobile | Tabbed light/dark rather than side-by-side, per Addendum A |
+
+### The honest boundary
+
+The owner's word *"practical"* is doing real work here, and it is the right word.
+
+**Token-level control is complete** — every colour, size, radius, shadow and spacing value in both
+panels. **Structural change is not** — Filament's component internals (how a table header is
+assembled, where a form label sits) are its own markup. Changing those means overriding Filament's
+Blade views, which is possible but creates upgrade work on every Filament release.
+
+So: **any visual property is themeable; the admin panel's layout structure stays Filament's.** If a
+specific structural change matters later, it is a scoped piece of work rather than something the
+theme system covers.
+
+**Effort: +1 to +2 sessions in Phase 2.**
+
 ## 9. The rule that makes all of this work
 
 > **No colour, radius, shadow, spacing value or font may be hard-coded in any Blade template,

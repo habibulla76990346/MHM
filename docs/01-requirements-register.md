@@ -198,6 +198,27 @@ blocker E-2** — see §9 of that document.
 | HD-24 | Where a capability is unavailable on shared hosting: **do not remove the feature** — detect, report, use the compatible mode, document the production recommendation | §2 + Addendum B §2 |
 | HD-25 | Delivery docs cover cPanel and Cloud/VPS requirements, PHP, database, cron, queue, storage, mail, SSL, outbound API, production recommendations, full troubleshooting | Addendum E §3 — troubleshooting guide written **around this screen** |
 
+### Owner Addendum H — upload security & admin theming (decisions D-07, D-08, D-09 changed)
+
+| ID | Requirement | Where delivered |
+|---|---|---|
+| **US-1** | File type validation — allowlist | [`18-upload-security.md`](18-upload-security.md) §1 |
+| **US-2** | MIME validation from file content, not the request | §1 |
+| **US-3** | Extension validation, cross-checked against detected type | §1 |
+| **US-4** | File size limits, validated against real server limits | §1 |
+| **US-5** | Filename / path security | §1 — client filename is display text only |
+| **US-6** | **Storage isolation** — uploads outside the web root, served by an authorising controller | §1 |
+| **US-7** | Dangerous file prevention — scripts, SVG as active content, metadata stripping | §1 |
+| **US-8** | Upload authorization before any bytes are written | §1 |
+| **US-9** | Secure download/access rules — UUIDs, policy per download, signed expiring links | §1 |
+| **US-10** | Malware scanning as an **extensible layer**, optional/production capability | §2 — `FileScanner` interface, Null/ClamAV/API adapters |
+| **US-11** | **Basic upload security not weakened** by scanner absence | §2 — the nine controls hold regardless; diagnostics report scanning as GREY, never a false green |
+| **US-12** | All of the above in **Phase 1**, not Phase 8 | §3 |
+| **AT-1** | **Admin Panel fully themeable** — multiple themes, light/dark/system, brand/primary/secondary/accent, backgrounds, surfaces, text, borders, buttons, forms, cards, sidebar, navigation, chat UI, status colours, typography, font sizes/weights, radius, shadows, spacing tokens, logo, favicon, branding, homepage visual settings | [`08-theme-branding-system.md`](08-theme-branding-system.md) §8c |
+| **AT-2** | Editor organised into categories so the panel stays easy to use | §8c — grouped editor, progressive disclosure, search, "affects" hints, live preview |
+| **BR-1** | **Official Aziv AI branding asset used as initial branding**, not a placeholder | [`../brand/README.md`](../brand/README.md) |
+| **BR-2** | Branding remains fully changeable later from the Admin Panel | Blueprint §4 + Phase 2 |
+
 ## Implementation rules (§31) — how each is enforced
 
 | Rule | Requirement | Enforcement mechanism |

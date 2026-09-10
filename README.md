@@ -47,6 +47,12 @@ tables on desktop. The Admin Panel included. Structured for PWA installability.
 
 Spec: [`docs/11-responsive-design-system.md`](docs/11-responsive-design-system.md).
 
+**Branding:** the official Aziv AI artwork, in [`brand/`](brand/) — fully changeable later from the
+Admin Panel, which is itself fully themeable.
+
+**Upload security:** nine controls from Phase 1, with malware scanning as an optional extensible
+layer. See [`docs/18-upload-security.md`](docs/18-upload-security.md).
+
 ## Planned stack
 
 PHP 8.4 (runs on 8.3–8.5) · Laravel 13 · Livewire 4 · Alpine.js · Tailwind CSS · Filament 5 ·
