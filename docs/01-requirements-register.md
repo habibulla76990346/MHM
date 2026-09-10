@@ -1,0 +1,72 @@
+# Aziv AI — Requirements Register (Traceability)
+
+Source: *Aziv AI FINAL Master Blueprint — Admin Control / Laravel*, 8 pages, revision 11 September 2026.
+
+**Purpose of this file.** Blueprint Rule 2 says features must not be removed without explicit
+approval. This register lists **every** numbered section of the blueprint and maps it to the
+module and phase that delivers it. If a row has no phase, it has been dropped — no row is
+allowed to be empty.
+
+Status legend: `PLANNED` = in scope, scheduled. `PARTIAL` = in scope but limited by a real
+constraint (limit named in the Notes column). `INFRA` = not application-level; requires hosting
+or a provider dashboard (blueprint §28 acknowledges this class).
+
+| § | Blueprint requirement | Module | Phase | Status | Notes |
+|---|---|---|---|---|---|
+| 1 | Project vision: centralised multi-AI SaaS; auth → plan/credit → cache/context → routing → provider → response → usage/cost → storage | All | 1–9 | PLANNED | Flow is the spine of the architecture doc |
+| 2 | Stack: PHP 8.3+, latest stable Laravel, Blade+Livewire+Alpine, Tailwind, MySQL 8+, Redis, S3-compatible, no Node dependence in core app | Foundation | 0–1 | PLANNED | Node used at **build time only**; see risk R-02 |
+| 3 | Admin Panel as master control centre; labels, validation, safe defaults, permissions, audit logging, masked secrets | Admin | 2 | PLANNED | Cross-cutting; every admin write is audited |
+| 4 | Branding: primary/dark/light/compact/login/email logo, favicon, app icons, names, tagline, contact, social, footer, default avatar, per-page branding toggles, media library | Media + Settings | 2 | PLANNED | — |
+| 5 | Multi-theme + complete colour control; 8 built-ins; create/duplicate/rename/activate/delete; design tokens; ~17 colour roles; component-level controls; separate light/dark; custom CSS; preview + restore; radius/shadow/spacing/typography | Theming | 2 | PLANNED | Custom CSS sanitised + permission-gated |
+| 6 | UI/UX control: sidebar labels/visibility/order, dashboard widgets, landing sections, banners, announcements, pagination, table density, date/time, locale, timezone, currency, maintenance mode, feature flags | Content + Settings | 2 | PLANNED | — |
+| 7 | Homepage & content management: hero, features, benefits, providers, pricing, FAQ, banners w/ scheduling+priority, footer/legal links, SEO + social preview, contact content | Content | 2 | PLANNED | Rendered through a sanitising pipeline |
+| 8 | User & account management: search/filter, activate/suspend/verify/restrict, view subscription/credits/usage, change plan, adjust credits with reason, registration + verification + password policy, OAuth, session limits, idle timeout, rate limits | Identity | 1–2, 6 | PLANNED | Credit adjust lands in the ledger with a reason |
+| 9 | Roles & permissions: 5 suggested roles, custom roles, granular permissions across 11 domains, deny-by-default, support role must not reach credentials/finance, log role changes | Security | 1 | PLANNED | Deny-by-default enforced via policies |
+| 10 | Universal AI Provider Manager: add/edit/disable/test; 11 provider fields; official + generic OpenAI-compatible adapters; custom HTTP mappings; encrypted server-side credentials; multi-credential rotation; budgets, rate limits, fallback, maintenance status | AI | 3 | PLANNED | Rotation for redundancy only — see Rule 7 / risk R-05 |
+| 11 | Model catalog & auto-sync: no hard-coded latest model, provider discovery, manual add, 10 model fields, 5 statuses, enable/disable globally or per plan, Refresh Models + scheduled sync, sync logging | AI | 3 | PLANNED | Manual fallback where discovery is absent |
+| 12 | Providers: OpenAI + Gemini initially; Claude, DeepSeek, Mistral, Groq recommended; OpenRouter/HuggingFace optional; xAI, Cohere, Perplexity, Together, Replicate, Fireworks, Cerebras adapter-ready | AI | 4, 7 | PLANNED | Blueprint itself rejects "every API supported" claim |
+| 13 | Free + paid API management: account classification, 6 billing classifications, provider cost tracked separately from customer price, credit costs per model/capability, promotional allowances, respect free-tier quotas, never circumvent limits | Billing + AI | 3, 5, 6 | PLANNED | Cost vs price are two distinct columns |
+| 14 | Smart AI Router: 10 routing inputs, 8 routing modes, capability-aware fallback, retry w/ backoff, circuit breaker, log every decision | AI | 5 | PLANNED | Capability guard prevents text-only fallback on vision jobs |
+| 15 | Chat: new/history/search/rename/delete, streaming, stop, regenerate, copy, feedback, manual + auto model choice, context limits, admin persona/system prompt, max length, attachment + rate limits, retention rules | Chat | 4 | PLANNED | Streaming needs VPS — risk R-01 |
+| 16 | Image generation: text-to-image, provider/model choice, credits, history, status, prompt history, regeneration, admin controls, ready for edit/bg-removal/upscale | Media AI | 8 | PLANNED | Edit/upscale = adapter-ready, not built in v1 |
+| 17 | File analysis & knowledge base: upload→validate→store→extract→scan→RAG→respond, admin file rules, retention, storage limits, plan access, embeddings/vector module, knowledge bases w/ access + retrieval settings, RBAC on sensitive files | Files | 8 | PARTIAL | Vector store + malware scan need decisions D-03/D-08 |
+| 18 | Voice/audio/future video: STT → AI → TTS, admin controls providers/models/quotas/credits/availability, realtime as separate module, video adapter-ready | Audio | 8 | PARTIAL | Realtime voice + video explicitly deferred by blueprint |
+| 19 | Subscription & credit control: FREE/PRO/PREMIUM configurable, admin controls 11 plan dimensions, ledger records grants/deductions/refunds/adjustments w/ reason, promotional credits, expiry, optional rollover, idempotent webhooks | Billing | 6 | PLANNED | Idempotency enforced by unique webhook event id |
+| 20 | Payment & billing: purchase/upgrade/downgrade/renewal/cancel/history/records, gateway chosen by country+compliance, admin controls pricing/coupons/tax display/invoices, never store raw card data | Billing | 6 | PLANNED | Gateway is pluggable — decision D-01 |
+| 21 | Cost & profit analytics: daily/monthly/provider/model/plan cost, revenue, credit consumption, margin, budget alerts, threshold actions (alert / restrict model / reroute cheaper / disable provider) | Analytics | 5–6 | PLANNED | Threshold actions wire into the router |
+| 22 | Notifications: in-app + email, announcements/offers/maintenance/reminders/updates, templates w/ subject+content+status+audience, push-ready | Notifications | 6 | PLANNED | Push = interface ready, not shipped in v1 |
+| 23 | Security & audit: hashing, secure sessions/tokens, CSRF, validation, rate limiting, API protection, encrypted credentials, least privilege, optional MFA for admins, activity logs across 9 domains, backup/recovery, monitoring, pre-launch security testing | Security | 1, 9 | PLANNED | Hardening concentrated in Phase 9 |
+| 24 | Admin system settings: site status, maintenance, locale, timezone, currency, pagination, upload limits, retention, SMTP, notifications, support config, app URLs, storage driver, queue config, default routing mode + provider priority + model policy, global limits, kill switches, feature flags | Settings | 2, 5 | PLANNED | Queue/storage driver selection is app-level; provisioning is INFRA |
+| 25 | API/integration test console: admin-only, pick provider/model, controlled test request, status/latency/error class/usage/cost, never reveal full secret, connection-test + model-sync buttons | Admin + AI | 3 | PLANNED | Secrets shown masked (last 4 only) |
+| 26 | Database master modules: 6 groups of tables enumerated | Data | 1–8 | PLANNED | Expanded to ~62 tables in `04-database-architecture.md` |
+| 27 | Admin-control matrix: 10 control domains | Admin | 2–9 | PLANNED | Matrix reproduced in `06-admin-panel-architecture.md` |
+| 28 | Honest limits: infra changes need hosting access, provider credentials need provider dashboards, deep features need a coding session, panel must separate app-level from infra-level | Docs + Admin | All | PLANNED | Panel labels INFRA settings as read-only guidance |
+| 29 | Deployment & ownership: owner controls domain/hosting/DB/storage/provider accounts/gateway/repo; dev+staging+prod; env docs, migrations, deployment + API docs; move to VPS/cloud for concurrency/streaming/queues/large files | Ops | 0, 9 | PLANNED | Ownership checklist in `10-decisions-and-risks.md` |
+| 30 | Development order: 9 named phases, each tested before the next | Process | 1–9 | PLANNED | Kept verbatim; a Phase 0 prep step is added ahead of them |
+
+## Implementation rules (§31) — how each is enforced
+
+| Rule | Requirement | Enforcement mechanism |
+|---|---|---|
+| 1 | Laravel/PHP primary; no silent switch to Next.js/Node | Stack fixed in Phase 0; no Node runtime on the server; Node only compiles CSS/JS |
+| 2 | Blueprint is the baseline; no feature removal without approval | This register; any change needs a row edit and your sign-off |
+| 3 | Module-by-module; no huge untested codebase in one step | 10 phases, each with its own test gate and stop point |
+| 4 | Admin-configurable wherever practical | `system_settings` + typed settings service; hard-coded values are treated as defects |
+| 5 | No hard-coded permanent "latest model" list | Model catalog is DB-driven and sync-fed; code references capabilities, never model names |
+| 6 | Keys server-side, encrypted | `ai_provider_credentials` encrypted at rest; never serialised to any frontend payload |
+| 7 | Free tiers are not unlimited; do not bypass provider limits | Per-credential quota tracking; rotation is redundancy-only and documented as such |
+| 8 | Sensitive admin actions permission-checked + audit logged | Policy gate + `activity_logs` writer on every admin mutation |
+| 9 | After each module, run tests and report done/failed/remaining | Every phase ends with a written status report in that exact shape |
+| 10 | Backwards compatibility + migrations preserved | Additive migrations only; no destructive edits to shipped tables |
+
+## Final target flow (§32)
+
+```
+USER → AUTH → PLAN/CREDIT → CAPABILITY CHECK → AI ROUTER → PROVIDER ADAPTER
+     → AI PROVIDER → RESPONSE/STREAM → USAGE/COST → CREDIT LEDGER → STORAGE → USER
+
+ADMIN → BRANDING / THEMES / CONTENT / USERS / PROVIDERS / MODELS / ROUTING
+      / BILLING / CREDITS / FILES / ANALYTICS / SECURITY / SYSTEM SETTINGS
+```
+
+Every arrow above is a named component in `03-architecture.md`.

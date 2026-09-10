@@ -1,0 +1,325 @@
+===== PAGE 1 =====
+Aziv AI — Final Master Blueprint
+Page 1
+ AZIV AI
+ FINAL MASTER SOFTWARE BLUEPRINT
+ Laravel / PHP • Universal AI • Fully Admin-Controlled SaaS
+Prepared from the original Aziv AI Complete Software Blueprint, revised to make the application
+PHP/Laravel-hosting friendly and to maximize Admin Panel control, theme control, provider/model flexibility, and
+future scalability.
+Core principle: As many operational, branding, AI, billing, content, security and feature settings
+as reasonably possible must be configurable from the Admin Panel without routine code
+changes.
+Revision date: 11 September 2026
+
+===== PAGE 2 =====
+Aziv AI — Final Master Blueprint
+Page 2
+1. PROJECT VISION
+ • Aziv AI will be a centralized multi-AI SaaS platform where users can access multiple AI providers and capabilities
+ through one application.
+• The original blueprint's core flow remains: authentication → subscription/credit check → cache/context → AI
+ routing → provider → response → usage/cost logging → storage → user response.
+• The application will use PHP/Laravel as the primary backend/application framework for practical deployment on
+ Laravel/PHP hosting.
+• The system must be modular, secure, API-driven, scalable and heavily Admin-configurable.
+ 
+2. TECHNOLOGY STACK — FINAL
+ • Backend/Application: PHP 8.3+ where supported and the latest stable Laravel version compatible with the
+ selected hosting environment.
+• Frontend: Laravel Blade + Livewire + Alpine.js, with Tailwind CSS or an equivalent design-token system.
+ • Database: MySQL 8+ for broad hosting compatibility; PostgreSQL may be used for larger deployments.
+ • Cache/queues: Redis when available; database/file alternatives for basic hosting.
+ • Storage: local storage for MVP where appropriate, with S3-compatible object storage for scale.
+ • The architecture must avoid unnecessary dependence on Node.js/Next.js for the core application.
+ 
+3. ADMIN PANEL — MASTER CONTROL CENTER
+ • The Admin Panel is the operational control center of Aziv AI. Administrators should be able to configure the
+ platform without routine code changes.
+• All settings must have clear labels, validation, safe defaults, permission controls and audit logging.
+ • Sensitive settings must be masked and accessible only to authorized roles.
+ • Where a setting requires deployment-level infrastructure rather than application configuration, the Admin Panel
+ should clearly indicate that limitation rather than pretending it can control it.
+4. BRANDING & LOGO CONTROL
+ • Upload/change primary logo, dark/light logo, compact logo, login logo and email logo.
+ • Upload/change favicon and app icons.
+ • Change company/product name, short name, website title and tagline.
+ • Change support email, support phone, website URL and social/contact links.
+ • Change footer copyright text and legal/company information.
+ • Upload default user avatar and system placeholder assets.
+ • Enable/disable visible branding elements by page where practical.
+ • Provide media library with upload, replace, preview and safe deletion controls.
+ 
+5. MULTI-THEME & COMPLETE COLOR CONTROL
+ • Multiple selectable built-in themes, for example: Light, Dark, Midnight, Professional, Minimal, Glass, Ocean and
+ Custom.
+• Admin can create, duplicate, rename, activate/deactivate and delete custom themes.
+ • Each theme uses design tokens rather than hard-coded page colors.
+ • Admin controls: primary, secondary, accent, background, surface, card, border, text, muted text, success,
+ warning, danger, info, links, hover, active and focus colors.
+• Controls for sidebar, navbar, buttons, inputs, cards, tables, badges, modals, chat bubbles and code blocks.
+ • Separate light and dark palettes.
+ • Optional custom CSS field with strict permission and sanitization controls.
+ • Preview theme before publishing and restore the previous active theme.
+ • Allow per-brand configuration such as border radius, shadow intensity, spacing scale and typography choices.
+ 
+6. UI / UX CONTROL
+ • Admin can control sidebar menu labels, visibility and ordering where practical.
+ • Control dashboard widgets, landing-page sections, banners and announcements.
+ 
+===== PAGE 3 =====
+Aziv AI — Final Master Blueprint
+Page 3
+• Control pagination defaults, table density and date/time display settings.
+ • Control language/locale defaults and available UI languages.
+ • Control timezone and currency defaults.
+ • Control maintenance mode, maintenance message and maintenance page.
+ • Control user-facing feature visibility through feature flags.
+ 
+7. HOMEPAGE & CONTENT MANAGEMENT
+ • Hero title, subtitle, CTA labels and links.
+ • Feature sections, benefit sections, model/provider sections, pricing sections and FAQ.
+ • Banner/announcement creation, scheduling, priority and active status.
+ • Footer links, legal links, privacy and terms links.
+ • SEO title, description, keywords where applicable, social preview metadata and favicon.
+ • Contact/support content.
+ • All editable content should be validated and safely rendered.
+ 
+8. USER & ACCOUNT MANAGEMENT
+ • View/search/filter users and user status.
+ • Activate, suspend, verify or restrict accounts according to role permissions.
+ • View subscription, credits, usage summary and account metadata.
+ • Change plan and adjust credits with reason logging.
+ • Configure registration availability, email verification requirement and password policy.
+ • Configure optional Google/OAuth login when credentials are available.
+ • Configure user session limits, idle timeout and rate limits.
+ 
+9. ROLES & PERMISSIONS — GRANULAR
+ • Super Admin, Admin, Support Manager, Finance Manager and Content Manager remain suggested roles.
+ • Add custom roles from Admin Panel.
+ • Create granular permissions for users, providers, credentials, models, routing, billing, credits, content, themes,
+ analytics, security and logs.
+• Support deny-by-default for sensitive modules.
+ • A support role must not automatically gain access to API credentials or financial configuration.
+ • Record role and permission changes in activity logs.
+ 
+10. UNIVERSAL AI PROVIDER MANAGER
+ • Admin can add, edit, disable and test AI providers.
+ • Provider fields: name, slug, API base URL, API format, authentication method, credential reference, status,
+ priority, region, supported capabilities and health settings.
+• Support official/provider-specific adapters and a generic OpenAI-compatible adapter.
+ • Support custom HTTP/API mappings for compatible documented APIs.
+ • Provider credentials remain encrypted/server-side and never appear in frontend source.
+ • Multiple credentials can be stored for legitimate rotation/redundancy, subject to provider terms.
+ • Admin can set provider budgets, rate limits, fallback provider and maintenance status.
+ 
+11. AI MODEL CATALOG & AUTO-SYNC
+ • Do not hard-code a permanent 'latest model' into business logic.
+ • Where a provider exposes model discovery, synchronize its available models.
+ • Admin can manually add/edit models when automatic discovery is unavailable.
+ • Model fields: provider, model ID, display name, status, modality, context size, max output,
+ reasoning/tool/vision/audio/image capability flags and pricing metadata.
+• Statuses: Stable, Preview, Experimental, Deprecated and Disabled.
+ • Admin can enable/disable a model globally or by subscription plan.
+ • Provide 'Refresh Models' and scheduled model synchronization.
+ • Log synchronization results, failures and model changes.
+ 
+===== PAGE 4 =====
+Aziv AI — Final Master Blueprint
+Page 4
+12. PROVIDERS TO SUPPORT / EXTEND
+ • Initial architecture: OpenAI and Google Gemini.
+ • Recommended adapters: Anthropic Claude, DeepSeek, Mistral and Groq.
+ • Optional aggregators/providers: OpenRouter and Hugging Face Inference Providers.
+ • Future adapter-ready providers may include xAI, Cohere, Perplexity, Together AI, Replicate, Fireworks, Cerebras
+ and other approved APIs.
+• The system must not claim that every internet API is automatically supported. Instead, the Custom Provider and
+ adapter architecture should make future integrations practical.
+13. FREE + PAID API MANAGEMENT
+ • Provider/account classification: Free, Paid, Enterprise/Custom or Unknown.
+ • Model billing classification: Free, pay-per-token, pay-per-request, time-based, subscription-included or custom.
+ • Track actual provider cost separately from the price/credits charged to Aziv AI customers.
+ • Admin can configure credit costs per model/capability and promotional/free allowances.
+ • Free-tier usage must still respect provider quotas, rate limits and terms.
+ • Never use multiple keys to circumvent provider quotas, billing, rate limits or restrictions.
+ 
+14. SMART AI ROUTER
+ • Auto routing considers request type, user plan, available credits, model capability, provider health, latency,
+ cost, budget, priority and fallback rules.
+• Routing modes: Auto, Best Quality, Fastest, Lowest Cost, Free Only, Admin Preferred, Specific Provider and
+ Specific Model.
+• Capability-aware routing prevents a text-only fallback from being used for a vision/image/audio request.
+ • Transient errors may use controlled retry with exponential backoff.
+ • Repeated provider failures trigger a circuit-breaker/temporary unhealthy state.
+ • Every routing decision is logged for diagnostics and cost analytics.
+ 
+15. CHAT SYSTEM
+ • New chat, chat history, search, rename, delete, streaming, stop generation, regenerate, copy and feedback.
+ • Manual model selection and Auto mode.
+ • Conversation context management with configurable limits.
+ • Optional system prompt/persona configuration controlled by Admin.
+ • Admin-configurable maximum message length, attachment limits, rate limits and plan-specific usage rules.
+ • Conversation retention and deletion rules must respect privacy requirements.
+ 
+16. IMAGE GENERATION
+ • Text-to-image generation with provider/model selection.
+ • Image credits, generation history, status tracking, prompt history and regeneration.
+ • Admin controls allowed image providers/models, credit cost, limits, file size, retention and access.
+ • Architecture ready for image editing, background removal and upscaling.
+ 
+17. FILE ANALYSIS & KNOWLEDGE BASE
+ • Upload → validation → storage → extraction → optional malware/security scan → AI context/RAG → response.
+ • Admin controls allowed file types, maximum size, retention, storage limits and plan access.
+ • Optional embeddings/vector search module for knowledge bases.
+ • Admin can create knowledge bases, assign access and configure retrieval settings.
+ • Sensitive file access must follow role-based permissions and privacy rules.
+ 
+18. VOICE / AUDIO / FUTURE VIDEO
+ • Voice input → speech-to-text → Aziv AI → response → text-to-speech.
+ • Admin controls voice providers/models, quotas, credit costs and feature availability.
+ 
+===== PAGE 5 =====
+Aziv AI — Final Master Blueprint
+Page 5
+• Realtime voice can be added as a separate module.
+ • Video-ready provider adapter architecture may be introduced later without changing core user/billing
+ architecture.
+19. SUBSCRIPTION & CREDIT CONTROL
+ • FREE, PRO and PREMIUM plans remain fully configurable.
+ • Admin controls price, currency, billing cycle, messages, token/usage limits, image credits, file limits, storage,
+ models, providers and features.
+• Credit ledger records grants, deductions, refunds and manual adjustments with reason.
+ • Support promotional credits, expiry rules and optional rollover rules.
+ • Payment webhooks must be idempotent so one payment cannot create duplicate credits.
+ 
+20. PAYMENT & BILLING
+ • Subscription purchase, upgrade, downgrade, renewal, cancellation, billing history and payment records.
+ • Payment provider should be selected based on countries served, business structure, compliance, currencies and
+ available integrations.
+• Admin controls plan pricing, coupons/promotions, tax display settings where applicable and invoice settings.
+ • Never store raw payment card data in the application.
+ 
+21. COST & PROFIT ANALYTICS
+ • Daily/monthly/provider/model/user-plan estimated API cost.
+ • Customer revenue, subscription sales and credit consumption.
+ • Cost-versus-revenue and estimated margin indicators.
+ • Provider budget alerts and configurable thresholds.
+ • Admin can set action rules when a budget threshold is reached: alert, restrict model, route to lower-cost eligible
+ model or disable provider.
+22. NOTIFICATION SYSTEM
+ • In-app and email notifications.
+ • Admin can create announcements, offers, maintenance notices, subscription reminders and system updates.
+ • Configure notification templates, subject lines, content, status and target audience.
+ • Future-ready for push notifications.
+ 
+23. SECURITY & AUDIT CONTROL
+ • Password hashing, secure sessions/tokens, CSRF protection, validation, rate limiting and API protection.
+ • Encrypted provider credentials and least-privilege access.
+ • Optional MFA for privileged administrators.
+ • Activity logs for provider, credential, model, routing, subscription, payment, role, theme and user-status
+ changes.
+• Backup/recovery strategy, monitoring and alerting.
+ • Production security testing before launch.
+ 
+24. ADMIN SYSTEM SETTINGS
+ • Site status, maintenance mode, default locale, timezone, currency, pagination, upload limits and retention
+ settings.
+• Email/SMTP configuration, notification settings and support configuration.
+ • Application URLs, storage driver selection and queue configuration where supported.
+ • Default AI routing mode, default provider priority and default model policy.
+ • Global usage/rate limits and emergency kill switches for individual providers/features.
+ • Feature flags for staged releases.
+ 
+25. API / INTEGRATION TEST CONSOLE
+
+===== PAGE 6 =====
+Aziv AI — Final Master Blueprint
+Page 6
+• Admin-only test screen to select provider/model and send a controlled test request.
+ • Show request status, latency, provider error class, token/usage metadata and estimated cost where available.
+ • Never reveal the full secret credential.
+ • Provide connection-test buttons for provider credentials and model synchronization.
+ 
+26. DATABASE — MASTER MODULES
+ • users, user_profiles, subscriptions, subscription_plans, payments, payment_transactions, credit_ledger.
+ • ai_providers, ai_provider_credentials, ai_models, ai_model_capabilities, ai_model_prices, ai_model_sync_logs.
+ • chat_conversations, chat_messages, message_usage, api_usage_logs, routing_logs, provider_health_logs.
+ • files, file_chunks, vector/embedding references, image_generations, audio_jobs, notifications.
+ • themes, theme_tokens, media_assets, content_pages, banners, feature_flags, system_settings.
+ • admin_users, roles, permissions, role_permissions, activity_logs.
+ 
+27. ADMIN-CONTROL MATRIX
+ • Branding: logo, favicon, name, title, tagline, contact, social links.
+ • Design: themes, colors, typography, buttons, cards, sidebar, dark/light mode, radius, shadows.
+ • Content: homepage, banners, announcements, FAQs, footer, legal links.
+ • AI: providers, credentials, models, capabilities, routing, fallbacks, budgets, pricing, health.
+ • Users: status, plans, credits, limits, roles and permissions.
+ • Billing: plans, prices, coupons/promotions, payment configuration and invoices.
+ • Files/media: upload rules, storage, retention and knowledge bases.
+ • Analytics: user, AI, provider, cost, revenue and performance dashboards.
+ • Security: sessions, rate limits, MFA, logs, maintenance mode and emergency feature/provider switches.
+ • System: localization, timezone, currency, email, storage, queue, cache and operational settings.
+ 
+28. WHAT CANNOT HONESTLY BE PROMISED AS
+ADMIN-ONLY
+ • Some infrastructure changes require hosting/VPS/cloud access, deployment or environment-variable changes.
+ • Some provider credentials or account-level billing settings must be created on the provider's own dashboard.
+ • Major code-level features or unsupported provider protocols may still require a developer/AI coding session.
+ • The Admin Panel should expose every practical application-level setting while clearly separating
+ infrastructure-level settings.
+29. DEPLOYMENT & OWNERSHIP
+ • Production domain, hosting, database, storage, AI provider accounts, payment gateway accounts and
+ source-code repository should remain under the business owner's control.
+• Use development, staging and production environments.
+ • Maintain environment configuration documentation, database migrations, deployment documentation and
+ API/integration documentation.
+• For high concurrency, streaming, queues and large file processing, move from shared hosting to VPS/cloud
+ infrastructure as demand requires.
+30. DEVELOPMENT ORDER
+ • Phase 1: Laravel foundation, database, authentication, roles and design-token system.
+ • Phase 2: Admin Panel foundation + branding + themes + content management.
+ • Phase 3: Universal AI gateway + provider credentials + model catalog.
+ • Phase 4: OpenAI + Gemini + chat streaming/history.
+ • Phase 5: Smart routing + health + fallback + cost/usage logging.
+ • Phase 6: subscriptions + credits + payments.
+ • Phase 7: Claude + DeepSeek + Mistral + Groq + generic compatible/custom providers.
+ • Phase 8: files/RAG + image + voice.
+ • Phase 9: security hardening, testing, backups, monitoring and production deployment.
+ 
+===== PAGE 7 =====
+Aziv AI — Final Master Blueprint
+Page 7
+• Each phase must be tested before moving to the next.
+ 
+===== PAGE 8 =====
+Aziv AI — Final Master Blueprint
+Page 8
+31. FINAL IMPLEMENTATION RULES FOR THE AI CODING
+AGENT
+Rule 1: Use Laravel/PHP as the primary application stack. Do not silently switch the project to
+Next.js/Node.js.
+Rule 2: Treat this document and the original Aziv AI blueprint as the requirements baseline. Do
+not remove features without explicit approval.
+Rule 3: Build module-by-module. Do not generate a huge untested codebase in one step.
+Rule 4: Make application-level settings Admin-configurable wherever technically practical.
+Rule 5: Do not hard-code a permanent list of 'latest AI models'. Use provider model
+discovery/synchronization where available.
+Rule 6: API keys/secrets must remain server-side and encrypted/securely managed.
+Rule 7: Free APIs/free tiers must never be treated as unlimited, and provider limits/terms must
+not be bypassed.
+Rule 8: Every sensitive Admin action must be permission-checked and audit logged.
+Rule 9: After each module, run validation/tests and report exactly what was completed, what
+failed and what remains.
+Rule 10: Preserve backwards compatibility and database migrations when adding providers,
+models or themes.
+32. FINAL TARGET
+USER → AUTH → PLAN/CREDIT → CAPABILITY CHECK → AI ROUTER → PROVIDER ADAPTER → AI
+PROVIDER → RESPONSE/STREAM → USAGE/COST → CREDIT LEDGER → STORAGE → USER
+ADMIN → BRANDING / THEMES / CONTENT / USERS / PROVIDERS / MODELS / ROUTING / BILLING /
+CREDITS / FILES / ANALYTICS / SECURITY / SYSTEM SETTINGS
+The result should be a scalable Aziv AI SaaS in which the Admin Panel is the central control layer for branding,
+appearance, content, AI providers, model availability, routing, user access, subscriptions, credits, analytics and
+operational feature flags.
+Original blueprint reference: Aziv AI Complete Software Blueprint & Developer Requirement Specification, 14 pages. The original
+blueprint specifies the multi-provider architecture, user/admin modules, security, database modules, recommended technology
+direction, version roadmap and ownership requirements.
