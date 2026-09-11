@@ -68,6 +68,26 @@ export async function touchTargets(page, min = MIN_TAP) {
           if (lr.height >= min - 0.5 && lr.width >= min - 0.5) continue;
         }
       }
+
+      // A control may legitimately LOOK smaller than the minimum while
+      // accepting taps across it — a 16px checkbox or a 24px switch with an
+      // absolutely positioned transparent pseudo-element is the normal way to
+      // do that, and the element's own CSS box cannot show it.
+      //
+      // This is a better measurement of the question the rule actually asks
+      // (can a finger hit this?), not a relaxation of it: a bare undersized
+      // control with no expanded area still fails.
+      //
+      // Deliberately NOT elementFromPoint: that only reports what is currently
+      // inside the viewport, so every control below the fold would be counted
+      // as failing. Computed style works wherever the element sits.
+      const expanded = ['::before', '::after'].some((pseudo) => {
+        const ps = getComputedStyle(el, pseudo);
+        if (ps.content === 'none' || ps.position !== 'absolute') return false;
+        if (ps.pointerEvents === 'none' || ps.display === 'none') return false;
+        return parseFloat(ps.width) >= min - 0.5 && parseFloat(ps.height) >= min - 0.5;
+      });
+      if (expanded) continue;
       // Inline links inside flowing text are exempt — the rule targets controls.
       const isInlineTextLink = el.tagName === 'A' && getComputedStyle(el).display.startsWith('inline');
       if (isInlineTextLink) continue;

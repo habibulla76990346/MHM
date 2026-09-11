@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Diagnostics;
 
+use App\Domains\Branding\Services\BrandAssetPublisher;
 use Tests\TestCase;
 
 /**
@@ -109,7 +110,7 @@ class DeploymentSecurityTest extends TestCase
      */
     public function test_the_publisher_refuses_to_delete_outside_the_brand_directory(): void
     {
-        $publisher = new \App\Domains\Branding\Services\BrandAssetPublisher();
+        $publisher = new BrandAssetPublisher;
 
         $canary = public_path('robots.txt');
         $this->assertFileExists($canary, 'This test needs a file in the web root to try to delete.');

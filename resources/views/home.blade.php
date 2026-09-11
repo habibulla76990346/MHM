@@ -1,41 +1,34 @@
-<x-layouts.app :title="settings('branding.app_name')">
-    <header class="flex flex-col gap-6">
-        <div class="flex items-center gap-4">
-            {{-- The simplified vector mark, not the full artwork: at this size
-                 the master's fine ribbons merge into grey. It inherits its
-                 colour from the surrounding theme token via currentColor. --}}
+{{-- The homepage is CONTENT, not a template.
+     It is the `home` page seeded into content_pages, so an owner edits it in
+     Admin → Content like any other page. The hard-coded version this replaced
+     could only be changed by a developer, which is exactly what blueprint §7
+     exists to avoid.
+
+     If that page has been deleted or unpublished, a minimal welcome is shown
+     rather than a 404 — the front door of the product must always open. --}}
+@php
+    $page = app(\App\Domains\Content\Services\ContentService::class)->page('home');
+@endphp
+
+@if ($page)
+    @include('content.page', ['page' => $page])
+@else
+    <x-layouts.app :title="settings('branding.app_name')">
+        <div class="flex flex-col items-start gap-5" style="padding-block: var(--space-section);">
             <x-brand.mark :size="48" class="text-primary" />
-            <div>
-                <h1 class="font-semibold text-heading" style="font-size: var(--text-fluid-2xl); line-height:1.15;">
-                    {{ settings('branding.app_name') }}
-                </h1>
-                <p class="text-text-muted" style="font-size: var(--text-fluid-sm);">
-                    Multi-provider AI platform
-                </p>
+
+            <h1 class="font-semibold text-heading" style="font-size: var(--text-fluid-3xl); line-height: 1.1;">
+                {{ settings('branding.app_name') }}
+            </h1>
+
+            <p class="text-text-muted" style="font-size: var(--text-fluid-lg); max-width: var(--content-max);">
+                {{ settings('branding.tagline') }}
+            </p>
+
+            <div class="flex flex-wrap gap-3">
+                <x-ui.button :href="route('register')">{{ __('Get started') }}</x-ui.button>
+                <x-ui.button variant="secondary" :href="route('login')">{{ __('Sign in') }}</x-ui.button>
             </div>
         </div>
-
-        <div class="rounded-lg border border-border bg-surface p-5 shadow-sm">
-            <h2 class="mb-3 font-semibold text-heading" style="font-size: var(--text-fluid-lg);">
-                Phase&nbsp;0 — foundation
-            </h2>
-            <p class="mb-4 text-text-muted" style="max-width: var(--content-max);">
-                The application boots, connects to the database, compiles assets and runs its
-                test suite. Features begin in Phase&nbsp;1.
-            </p>
-            <dl class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                @foreach ([
-                    'Laravel'  => app()->version(),
-                    'PHP'      => PHP_VERSION,
-                    'Database' => config('database.default'),
-                    'Mode'     => \App\Domains\Diagnostics\Support\DeploymentMode::resolve()->label(),
-                ] as $label => $value)
-                    <div class="rounded-md border border-border bg-background p-3">
-                        <dt class="text-text-muted" style="font-size: 0.75rem; letter-spacing:.06em; text-transform:uppercase;">{{ $label }}</dt>
-                        <dd class="mt-1 font-medium text-text break-anywhere">{{ $value }}</dd>
-                    </div>
-                @endforeach
-            </dl>
-        </div>
-    </header>
-</x-layouts.app>
+    </x-layouts.app>
+@endif

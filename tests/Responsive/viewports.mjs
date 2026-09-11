@@ -22,6 +22,8 @@ export const SCREENS = [
   { name: 'login',            path: '/login' },
   { name: 'register',         path: '/register' },
   { name: 'forgot-password',  path: '/forgot-password' },
+  // A content page, rendered from every section type the seeder uses.
+  { name: 'content-page',     path: '/p/home' },
   { name: 'dashboard',        path: '/dashboard', auth: true },
   { name: 'account',          path: '/account',   auth: true },
   { name: 'library',          path: '/library',   auth: true },
@@ -32,6 +34,13 @@ export const SCREENS = [
   { name: 'admin-health',     path: '/admin/system-health', admin: true },
   { name: 'admin-appearance', path: '/admin/appearance',     admin: true },
   { name: 'admin-branding',   path: '/admin/branding',       admin: true },
+  { name: 'admin-pages',      path: '/admin/pages',          admin: true },
+  // Addressed by SLUG, not id: Page overrides getRouteKeyName for the public
+  // /p/{slug} route, and Filament resolves the admin record the same way.
+  { name: 'admin-page-edit',  path: '/admin/pages/home/edit', admin: true },
+  { name: 'admin-banners',    path: '/admin/banners',        admin: true },
+  { name: 'admin-faqs',       path: '/admin/faqs',           admin: true },
+  { name: 'admin-navigation', path: '/admin/navigation-items', admin: true },
 ];
 
 /** Credentials for the seeded responsive-test account. */

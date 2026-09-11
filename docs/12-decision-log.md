@@ -520,3 +520,71 @@ The containment D-13 promised is asserted, not assumed: `DeploymentSecurityTest`
 `public/brand/` and fails on anything that is not a real raster image, and separately proves the
 publisher cannot delete outside that directory. Both were verified by deliberately planting an
 uploaded-looking SVG and a PHP script named `.png` and watching the gate fail.
+
+---
+
+## Phase 2 content management — what was decided while building it
+
+### Pages are assembled from blocks, not written as HTML
+
+A rich-text field accepting arbitrary HTML would have been less work and is what most CMSs do. It
+was rejected for two reasons, the second of which is the one that actually matters:
+
+1. It would be the single place in Aziv AI where an owner could hard-code a colour, which defeats
+   the theme system the whole of D-07 exists to build.
+2. Owner Addendum A applies to "EVERY user-facing page". A page built from free HTML passes the
+   six-viewport gate only by luck, and the owner who broke it would have no way to know — the
+   failure would surface as a customer complaint, not a build failure.
+
+So `SectionType` declares a closed set of blocks with their fields. Each renders from tokens and is
+responsive by construction, and the editor builds itself from the same declaration, so the editor
+and the renderer cannot drift apart.
+
+### Pages live under `/p/`
+
+An administrator can create any slug they like. Without a prefix, a page called `login` would
+shadow the login route and lock everyone out of the product — a content edit causing an outage.
+The prefix makes that impossible rather than merely unlikely.
+
+### Scheduling is a timestamp, not a status
+
+`status = published` plus a future `published_at`. A separate "scheduled" status would allow a row
+that is both published and scheduled, and then two parts of the code would answer "is this live?"
+differently. The cached lookup re-checks the freshly loaded page as well, because a cache entry can
+outlive the schedule that made it valid.
+
+### Navigation drops what it cannot resolve
+
+An item pointing at a renamed route, a deleted page, an unpublished page or a `javascript:` URL is
+removed from the rendered menu rather than shown as a dead link. The admin list shows the same
+thing from the other side: a "Goes to" column showing where the link **actually** resolves, so a
+broken item is visible before a customer finds it.
+
+The bottom bar's four-item cap is enforced in the editor with an explanation, because it is a
+consequence of the 44px touch minimum at 320px — a fifth tab would fail the responsive gate, and
+refusing it in the editor is better than letting someone break the build.
+
+### Legal pages ship as drafts
+
+Terms, Privacy and Refund Policy are seeded with placeholder text and left **unpublished**.
+Placeholder legal text served as a live page is worse than no page at all, because it reads as
+though somebody wrote it.
+
+### The touch-target rule now measures the target, not the box
+
+Adding the content admin screens surfaced Filament's table chrome: 16px selection checkboxes and
+24px switches. Neither can simply be made 44px — both are drawn with `appearance: none`, so growing
+the box grows the visible control into something absurd, and neither has a `<label>` to measure
+instead.
+
+The fix is an absolutely positioned transparent pseudo-element: the control keeps its shape and the
+TARGET meets the minimum. The gate was changed to match — it now accepts a control whose
+pseudo-element declares a large enough area.
+
+This is a better measurement, not a relaxation: it asks the question the rule is actually about
+(can a finger hit this?) rather than a proxy for it, and a bare undersized control with no expanded
+area still fails. Proven by shrinking both hit areas to 4px and watching 24 checks fail.
+
+An earlier attempt used `elementFromPoint` to hit-test the corners. It was wrong: it only reports
+what is currently inside the viewport, so every control below the fold was counted as failing.
+Computed style works wherever the element sits.

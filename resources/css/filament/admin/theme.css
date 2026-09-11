@@ -245,3 +245,89 @@
   max-height: 140px;
   object-fit: contain;
 }
+
+/* --- Tables: Owner Addendum A, continued --------------------------------
+   Filament's table chrome carries the same desktop-density defaults its form
+   controls did: a 16px selection checkbox, a 20px sort button, 20px
+   breadcrumb links. All three are below the 44px minimum. */
+
+.fi-ta-header-cell-sort-btn,
+.fi-ta-empty-state-actions .fi-link {
+  min-height: var(--tap-min);
+}
+
+/* A breadcrumb's text can be shorter than the minimum in BOTH directions —
+   "FAQs" is about 32px wide — so it needs horizontal room as well as height. */
+.fi-breadcrumbs-item-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  justify-content: center;
+  padding-inline: 0.25rem;
+}
+
+/* The selection checkbox is the awkward one. It cannot simply be made 44px:
+   it is drawn with appearance:none plus a box-shadow ring, so growing the box
+   grows the visible tick to something absurd. It has no <label> either, so
+   there is no surrounding region that toggles it.
+
+   So the BOX stays 16px and the TARGET becomes 44px, via a transparent
+   pseudo-element centred on it. A tap anywhere in that square hits the
+   checkbox, which is what the rule is actually about — and the responsive gate
+   measures it by hit-testing the corners rather than by reading the CSS box,
+   so this is proven rather than asserted. */
+.fi-ta-selection-cell .fi-checkbox-input,
+.fi-ta-group-selection-cell .fi-checkbox-input {
+  position: relative;
+}
+
+.fi-ta-selection-cell .fi-checkbox-input::before,
+.fi-ta-group-selection-cell .fi-checkbox-input::before {
+  content: '';
+  position: absolute;
+  /* Centre a tap-minimum square on a box of any size. */
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: var(--tap-min);
+  block-size: var(--tap-min);
+  transform: translate(-50%, -50%);
+  /* Above the neighbouring cell's content, or the overhang is painted over
+     and the corners of the target stop being tappable. */
+  z-index: 1;
+}
+
+/* The cell must not clip the overhang, or the target is cropped back to the
+   checkbox. */
+.fi-ta-selection-cell,
+.fi-ta-group-selection-cell {
+  overflow: visible;
+}
+
+/* A switch is 44x24 by design, and making it 44px tall would turn a neat
+   control into a slab. Same treatment as the table checkbox: the control keeps
+   its shape, the TARGET meets the minimum. */
+.fi-toggle {
+  position: relative;
+}
+
+.fi-toggle::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: var(--tap-min);
+  block-size: var(--tap-min);
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+/* Filament styles its textarea through a parent selector rather than a class
+   of its own, so the earlier .fi-textarea rule never matched it. Below 16px,
+   iOS zooms the viewport when the field takes focus. */
+.fi-fo-field-wrp textarea,
+.fi-input-wrp textarea,
+textarea.fi-input {
+  font-size: max(16px, 1rem);
+  min-height: var(--tap-min);
+}

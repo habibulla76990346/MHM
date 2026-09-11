@@ -14,6 +14,15 @@ Route::view('/', 'home')->name('home');
 Route::get('manifest.webmanifest', \App\Http\Controllers\Branding\ManifestController::class)
     ->name('manifest');
 
+// Pages written in the Admin Panel. Prefixed with /p/ so an administrator can
+// never create a page whose slug shadows an application route — "login" as a
+// page slug would otherwise break signing in.
+Route::get('p/{slug}', [\App\Http\Controllers\Content\PageController::class, 'show'])
+    ->name('pages.show');
+
+Route::post('banners/{uuid}/dismiss', [\App\Http\Controllers\Content\PageController::class, 'dismissBanner'])
+    ->name('banners.dismiss');
+
 /* ---------------------------------------------------------------- guest -- */
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])->name('register');

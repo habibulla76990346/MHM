@@ -71,3 +71,115 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================================
+   CONTENT COMPONENTS — blueprint §7
+
+   Page sections, announcements, FAQ and the footer. Every value is a token,
+   so content follows the theme exactly like the rest of the interface, and
+   every interactive element meets the 44px minimum the responsive gate
+   enforces at all six viewports.
+   ========================================================================= */
+
+/* --- Announcement banner ------------------------------------------------- */
+.aziv-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem var(--space-gutter);
+  border-bottom: 1px solid var(--color-border);
+  /* Variants below set the pair; these are the neutral fallback. */
+  background: var(--color-info-bg);
+  color: var(--color-text);
+}
+
+.aziv-banner-info    { background: var(--color-info-bg); }
+.aziv-banner-success { background: var(--color-success-bg); }
+.aziv-banner-warning { background: var(--color-warning-bg); }
+.aziv-banner-danger  { background: var(--color-danger-bg); }
+
+.aziv-banner-cta,
+.aziv-banner-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  padding-inline: 0.75rem;
+  border-radius: var(--radius-md);
+  color: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.aziv-banner-cta { text-decoration: underline; }
+
+.aziv-banner-dismiss {
+  padding-inline: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.aziv-banner-cta:hover,
+.aziv-banner-dismiss:hover { background: var(--color-hover); }
+
+/* --- Steps --------------------------------------------------------------- */
+.aziv-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* --- FAQ ----------------------------------------------------------------- */
+/* <details>/<summary> rather than JavaScript: it works before Alpine loads and
+   is keyboard accessible without any code. The whole summary row is the touch
+   target, which is why the padding is expressed against --tap-min. */
+.aziv-faq-summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  padding: 0.75rem 1rem;
+  color: var(--color-heading);
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+
+.aziv-faq-summary::-webkit-details-marker { display: none; }
+
+.aziv-faq-summary::after {
+  content: '+';
+  margin-inline-start: auto;
+  padding-inline-start: 1rem;
+  color: var(--color-text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.aziv-faq[open] .aziv-faq-summary::after { content: '−'; }
+
+.aziv-faq-summary:hover { background: var(--color-hover); }
+
+/* --- Footer -------------------------------------------------------------- */
+.aziv-footer-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.aziv-footer-link:hover {
+  color: var(--color-link);
+  text-decoration: underline;
+}

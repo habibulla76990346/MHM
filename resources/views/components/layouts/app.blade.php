@@ -1,6 +1,7 @@
 @props([
     'title' => null,
     'wide' => false,
+    'page' => null,
 ])
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
@@ -11,7 +12,9 @@
          on notched devices — Owner Addendum A --}}
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ? $title.' · '.settings('branding.app_name') : settings('branding.app_name') }}</title>
+    {{-- Title, description, canonical and the social preview, all falling back
+         through the page, its content, and branding. --}}
+    <x-seo :page="$page" :title="$title" />
     {{-- Every one of these is administrator-replaceable (D-09), and every one
          falls back to the artwork that ships with Aziv AI. --}}
     <link rel="icon" href="{{ asset(brand('favicon')) }}">
@@ -44,6 +47,8 @@
         <div class="flex min-h-dvh w-full min-w-0 flex-col">
             <x-nav.topbar :title="$title" />
 
+            <x-content.banner />
+
             <main id="main" class="flex-1 w-full mx-auto"
                   style="max-width: {{ $wide ? '100%' : '1200px' }};
                          padding-inline: var(--space-gutter);
@@ -62,6 +67,8 @@
     <x-nav.bottom-bar />
     <x-nav.drawer />
 @else
+    <x-content.banner />
+
     <main id="main" class="mx-auto w-full"
           style="max-width: 1200px; padding-inline: var(--space-gutter); padding-block: var(--space-section);">
         @if (session('status'))
@@ -70,6 +77,10 @@
 
         {{ $slot }}
     </main>
+
+    {{-- Footer on the public side only: a signed-in customer has the sidebar
+         and bottom bar, and a footer would sit under the phone nav. --}}
+    <x-content.footer />
 @endauth
 
 </body>

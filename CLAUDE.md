@@ -80,14 +80,23 @@ Do not run `playwright install`.
 
 ## Where the build is
 
-Phases 0 and 1 complete. **Phase 2 in progress.** Done: the theme engine (token catalogue, OKLCH
-colour maths, palette derivation, the eight built-in themes, compilation into both the customer
-application and the Admin Panel from one shared token source), the Appearance editor (progressive
-disclosure, live preview, contrast report, preview/publish/restore, permission-gated custom CSS),
-and branding (replaceable artwork per D-13, the generated PWA manifest, and product naming sourced
-from settings rather than `.env`). Still to come in Phase 2: content management — pages, banners,
-FAQ, database-driven menus and SEO. Phase detail in `docs/09-development-phases.md`.
+**Phases 0, 1 and 2 complete.** Phase 2 delivered the theme engine (token catalogue, OKLCH colour
+maths, palette derivation, the eight built-in themes, compilation into both the customer
+application and the Admin Panel from one shared token source), the Appearance editor, branding
+(replaceable artwork per D-13 and the generated PWA manifest), and content management (pages built
+from a closed set of section types, scheduled announcements, FAQ, database-driven navigation,
+feature flags and SEO). **Phase 3 is next** — see `docs/09-development-phases.md`.
 
+
+### Content, in one paragraph
+
+Pages are assembled from `SectionType`'s closed set of blocks, never free HTML — that is what keeps
+page content inside the theme system and inside the responsive gate, since arbitrary markup could
+hard-code a colour and would pass six viewports only by luck. Pages live at `/p/{slug}` so an
+administrator can never create one that shadows an application route. Scheduling is a future
+`published_at`, not a third status, so there is one answer to "is this live?". Navigation is rows in
+`navigation_items`, and an item whose destination no longer resolves is dropped rather than
+rendered as a dead link.
 
 ### Branding, in one paragraph
 
