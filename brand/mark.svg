@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Aziv AI">
+  <title>Aziv AI</title>
+  <!--
+    Simplified Aziv AI mark (decision D-09).
+
+    The master artwork is built from fine alternating ribbons, which merge into
+    grey below roughly 48px. This is the reduction that survives small sizes:
+    the profile silhouette, with TWO bold ribbon cuts across the crown to carry
+    the identity of the original.
+
+    Two cuts, not three: at 16px a third cut merges with its neighbours and the
+    mark turns to mush. The gaps are deliberately wider than the artwork's, for
+    the same reason — this is a reduction, not a miniature.
+
+    Drawn as vector so it stays crisp at every size and takes its colour from
+    the surrounding theme token via currentColor.
+
+    Used for: favicon 16/32/48, collapsed sidebar, and anywhere the full
+    artwork would be illegible. The master artwork is untouched and is still
+    used at 64px and above.
+  -->
+  <defs>
+    <mask id="aziv-ribbons">
+      <rect width="64" height="64" fill="#fff"/>
+      <path d="M10 20 C24 9, 42 5, 60 8 L60 0 L8 0 L4 16 Z" fill="#000"/>
+      <path d="M15 34 C29 24, 46 20, 61 22 L61 13 C43 11, 27 16, 13 27 Z" fill="#000"/>
+    </mask>
+  </defs>
+
+  <!-- Head in profile, facing left. Brow, nose and chin are exaggerated so the
+       silhouette still reads as a face at 16px. -->
+  <path mask="url(#aziv-ribbons)" fill="currentColor" d="
+    M34 2
+    C47 2, 57 12, 58 26
+    C58 37, 54 46, 49 53
+    C46 57, 44 59, 44 62
+    L25 62
+    L25 54
+    C25 50, 22 48, 18 46
+    C14 44, 13 41, 15 38
+    C17 36, 20 35, 20 33
+    C20 31, 14 30, 11 27
+    L20 20
+    C16 17, 14 13, 17 9
+    C21 4, 27 2, 34 2
+    Z"/>
+</svg>
