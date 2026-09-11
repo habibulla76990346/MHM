@@ -53,7 +53,22 @@ Route::middleware('auth')->group(function () {
 
 /* ------------------------------------------------------- authenticated -- */
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::view('dashboard', 'dashboard')->name('dashboard');
+    // Chat IS the dashboard (decision D-11: Chat is the first destination).
+    Route::view('dashboard', 'chat')->name('dashboard');
+
+    // Streaming a reply (§15). GET so an EventSource can open it; the browser
+    // sends the session cookie, and the policy proves the message belongs to
+    // whoever is asking.
+    Route::get('chat/{message:uuid}/stream', \App\Http\Controllers\Chat\StreamController::class)
+        ->name('chat.stream');
+
+    // The non-streaming path (risk R-01). Same answer, one response — used
+    // when the owner has switched streaming off, or the stream never opened.
+    Route::post('chat/{message:uuid}/complete', [\App\Http\Controllers\Chat\StreamController::class, 'complete'])
+        ->name('chat.complete');
+
+    Route::post('chat/{message:uuid}/stop', [\App\Http\Controllers\Chat\StreamController::class, 'stop'])
+        ->name('chat.stop');
 
     // Destinations the navigation points at. Built out in later phases; they
     // exist now so the nav is never a dead link and the responsive gate has

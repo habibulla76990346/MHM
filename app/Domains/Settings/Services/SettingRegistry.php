@@ -229,6 +229,53 @@ class SettingRegistry
                 rules: ['nullable', 'string', 'max:32'],
             ),
 
+            // --- Chat (blueprint §15) ----------------------------------------
+            new SettingDefinition(
+                key: 'chat.max_message_length', type: 'int', default: 16000, group: 'chat',
+                label: 'Longest message a customer may send',
+                description: 'In characters. Very long messages cost more and are usually a paste accident.',
+                rules: ['integer', 'min:100', 'max:200000'],
+            ),
+            new SettingDefinition(
+                key: 'chat.context_message_limit', type: 'int', default: 20, group: 'chat',
+                label: 'Messages of history to send',
+                description: 'How much of the conversation the AI sees. Higher costs more on every message.',
+                rules: ['integer', 'min:2', 'max:200'],
+            ),
+            new SettingDefinition(
+                key: 'chat.context_token_budget', type: 'int', default: 8000, group: 'chat',
+                label: 'Token budget for history',
+                description: 'A hard ceiling on the history sent, whatever the message limit says. Protects against one enormous message.',
+                rules: ['integer', 'min:500', 'max:500000'],
+            ),
+            new SettingDefinition(
+                key: 'chat.max_output_tokens', type: 'int', default: 2048, group: 'chat',
+                label: 'Longest reply',
+                rules: ['integer', 'min:64', 'max:32000'],
+            ),
+            new SettingDefinition(
+                key: 'chat.max_attachments', type: 'int', default: 4, group: 'chat',
+                label: 'Attachments per message',
+                rules: ['integer', 'min:0', 'max:20'],
+            ),
+            new SettingDefinition(
+                key: 'chat.rate_limit_per_minute', type: 'int', default: 20, group: 'chat',
+                label: 'Messages per minute, per customer',
+                description: 'Protects your provider bill from a runaway script.',
+                rules: ['integer', 'min:1', 'max:600'],
+            ),
+            new SettingDefinition(
+                key: 'chat.streaming_enabled', type: 'bool', default: true, group: 'chat',
+                label: 'Stream replies word by word',
+                description: 'Switch off if your host buffers output — replies then arrive complete instead of live.',
+            ),
+            new SettingDefinition(
+                key: 'chat.retention_days', type: 'int', default: 0, group: 'chat',
+                label: 'Delete conversations after (days)',
+                description: '0 keeps them forever. Anything else permanently deletes older conversations.',
+                rules: ['integer', 'min:0', 'max:3650'],
+            ),
+
             // --- Uploads (Owner Addendum H) ----------------------------------
             new SettingDefinition(
                 key: 'uploads.max_size_kb', type: 'int', default: 10240, group: 'uploads',

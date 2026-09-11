@@ -100,8 +100,11 @@ class AiModel extends Model
      */
     public function scopeRoutable(Builder $query): Builder
     {
-        return $query->where('is_enabled', true)
-            ->whereNotIn('status', [self::STATUS_DEPRECATED, self::STATUS_DISABLED])
+        // Columns are QUALIFIED. `status` exists on ai_providers too, so an
+        // unqualified name breaks the moment a caller joins the two tables —
+        // which the model selector does to order by provider priority.
+        return $query->where('ai_models.is_enabled', true)
+            ->whereNotIn('ai_models.status', [self::STATUS_DEPRECATED, self::STATUS_DISABLED])
             ->whereHas('provider', fn (Builder $q) => $q->usable());
     }
 

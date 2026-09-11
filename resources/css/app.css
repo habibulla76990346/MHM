@@ -183,3 +183,440 @@
   color: var(--color-link);
   text-decoration: underline;
 }
+
+/* ============================================================================
+   CHAT — blueprint §15, Owner Addendum A
+
+   The layout is genuinely different per device rather than a shrunk desktop:
+   on a phone the conversation list is a bottom sheet and the thread owns the
+   screen; from 768px the list becomes a permanent column.
+
+   Heights are dvh, never vh. On iOS, vh counts the URL bar even when it is
+   showing, so a vh-based chat puts the composer under the browser chrome.
+   ========================================================================= */
+
+.aziv-chat {
+  display: flex;
+  flex-direction: column;
+  /* The shell fills what is left under the top bar. */
+  height: calc(100dvh - var(--topbar-height));
+  min-height: 0;
+  background: var(--color-background);
+}
+
+@media (min-width: 768px) {
+  .aziv-chat {
+    flex-direction: row;
+  }
+}
+
+/* --- conversation list ---------------------------------------------------
+   Phone: a bottom sheet that slides up. Desktop: a column that is simply
+   there. Same markup, different structure — not the same panel narrowed. */
+.aziv-chat-list {
+  position: fixed;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 40;
+  max-height: 80dvh;
+  transform: translateY(101%);
+  transition: transform 200ms ease;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  border-start-start-radius: var(--sheet-radius);
+  border-start-end-radius: var(--sheet-radius);
+  box-shadow: var(--shadow-lg);
+  /* Clear of the phone navigation bar and the home indicator. */
+  padding-bottom: calc(var(--nav-height-mobile) + var(--safe-bottom));
+}
+
+.aziv-chat-list.is-open {
+  transform: translateY(0);
+}
+
+.aziv-chat-list-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  max-height: 80dvh;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aziv-chat-list { transition: none; }
+}
+
+@media (min-width: 768px) {
+  .aziv-chat-list {
+    position: static;
+    transform: none;
+    width: 18rem;
+    max-height: none;
+    flex: none;
+    border: 0;
+    border-inline-end: 1px solid var(--color-border);
+    border-radius: 0;
+    box-shadow: none;
+    padding-bottom: 0;
+  }
+
+  .aziv-chat-list-inner { max-height: none; }
+}
+
+.aziv-sheet-grip {
+  width: 2.5rem;
+  height: 0.25rem;
+  margin: 0.5rem auto 0;
+  border-radius: var(--radius-full);
+  background: var(--color-border-strong);
+}
+
+.aziv-sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: var(--color-overlay);
+}
+
+.aziv-chat-new {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: var(--tap-min);
+  padding-inline: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.aziv-chat-new:hover { background: var(--color-hover); }
+
+.aziv-chat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: var(--radius-md);
+}
+
+.aziv-chat-item.is-active { background: var(--color-active); }
+.aziv-chat-item:hover { background: var(--color-hover); }
+
+.aziv-chat-item-open {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: var(--tap-min);
+  padding-inline: 0.75rem;
+  color: var(--color-text);
+  text-align: start;
+  font-size: 0.875rem;
+}
+
+.aziv-chat-item-time {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.aziv-chat-item-menu { position: relative; }
+
+.aziv-chat-item-menu > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.aziv-chat-item-menu > summary::-webkit-details-marker { display: none; }
+
+.aziv-chat-item-actions {
+  position: absolute;
+  inset-inline-end: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: 10rem;
+  padding: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-md);
+}
+
+.aziv-chat-item-actions button {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  padding-inline: 0.75rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  text-align: start;
+  font-size: 0.875rem;
+}
+
+.aziv-chat-item-actions button:hover { background: var(--color-hover); }
+
+.aziv-chat-archive-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--tap-min);
+  padding-inline: 0.875rem;
+  border-top: 1px solid var(--color-divider);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+/* --- thread --------------------------------------------------------------- */
+.aziv-chat-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.aziv-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem var(--space-gutter);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.aziv-chat-model {
+  flex: none;
+  max-width: 11rem;
+}
+
+.aziv-chat-thread {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+  padding: 1rem var(--space-gutter);
+  overflow-y: auto;
+  /* Keeps the reader's place when content is inserted above — the browser's
+     own half of the scroll-anchoring job. */
+  overflow-anchor: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.aziv-chat-anchor { height: 1px; flex: none; }
+
+.aziv-chat-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.aziv-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.aziv-msg-body {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  /* A long unbroken URL or a wide code block must never widen the page —
+     the no-horizontal-overflow rule applies here as everywhere. */
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  max-width: 100%;
+}
+
+.aziv-msg-user {
+  align-items: flex-end;
+}
+
+.aziv-msg-user .aziv-msg-body {
+  max-width: min(90%, 48ch);
+  background: var(--color-chat-bubble-user);
+  color: var(--color-chat-bubble-user-text);
+}
+
+.aziv-msg-ai .aziv-msg-body {
+  max-width: min(100%, var(--content-max));
+  background: var(--color-chat-bubble-assistant);
+  color: var(--color-chat-bubble-assistant-text);
+}
+
+.aziv-msg-error {
+  color: var(--color-danger);
+  font-size: 0.8125rem;
+}
+
+.aziv-msg-note {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.aziv-msg-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.aziv-msg-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  padding-inline: 0.625rem;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.aziv-msg-tool:hover { background: var(--color-hover); color: var(--color-text); }
+.aziv-msg-tool.is-on { background: var(--color-active); color: var(--color-text); }
+.aziv-msg-tool[data-copied] { color: var(--color-success); }
+
+.aziv-msg-model {
+  margin-inline-start: auto;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.aziv-jump-latest {
+  position: absolute;
+  inset-inline: 0;
+  margin-inline: auto;
+  width: fit-content;
+  transform: translateY(-3.5rem);
+  min-height: var(--tap-min);
+  padding-inline: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  box-shadow: var(--shadow-md);
+}
+
+.aziv-chat-error {
+  margin-inline: var(--space-gutter);
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-md);
+  background: var(--color-danger-bg);
+  color: var(--color-text);
+  font-size: 0.875rem;
+}
+
+/* --- composer -------------------------------------------------------------
+   --keyboard-inset is published by chat.js from visualViewport. Without it the
+   composer sits underneath an open mobile keyboard, which is the single most
+   common way a chat UI fails on a phone. */
+.aziv-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.625rem var(--space-gutter);
+  padding-bottom: calc(0.625rem + var(--safe-bottom) + var(--keyboard-inset, 0px));
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  transition: padding-bottom 120ms ease;
+}
+
+@media (max-width: 767px) {
+  /* Clear of the bottom navigation, but not when the keyboard has pushed it
+     out of the way. */
+  .aziv-composer {
+    margin-bottom: var(--nav-height-mobile);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aziv-composer { transition: none; }
+}
+
+.aziv-composer-input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap-min);
+  max-height: 200px;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-input-bg);
+  color: var(--color-input-text);
+  /* 16px minimum or iOS zooms the page when the field takes focus. */
+  font-size: max(16px, 1rem);
+  font-family: inherit;
+  line-height: 1.5;
+  resize: none;
+}
+
+.aziv-composer-input::placeholder { color: var(--color-input-placeholder); }
+
+.aziv-composer-actions { display: flex; flex: none; gap: 0.5rem; }
+
+.aziv-send,
+.aziv-stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  padding-inline: 1rem;
+  border-radius: var(--radius-lg);
+  font-weight: 500;
+}
+
+.aziv-send {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.aziv-stop {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+}
+
+.aziv-send:disabled { opacity: 0.6; }
+
+.aziv-field {
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  background: var(--color-input-bg);
+  color: var(--color-input-text);
+  font-size: max(16px, 1rem);
+}
+
+.aziv-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+}
+
+.aziv-icon-button:hover { background: var(--color-hover); }

@@ -1,3 +1,5 @@
+import registerChat from './chat';
+
 /**
  * Aziv AI — customer application behaviour.
  *
@@ -95,3 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initDrawer();
   initBottomBar();
 });
+
+// Chat behaviour registers itself as an Alpine component (Phase 4).
+registerChat();

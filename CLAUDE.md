@@ -61,6 +61,7 @@ brand/                   Master artwork (never modified) + derived variants
 php artisan test                 # PHPUnit
 npm run build                    # compile assets (no network needed)
 npm run test:responsive          # six-viewport gate (needs the app served)
+npm run test:chat                # chat behaviour gate: mobile keyboard, scroll anchoring
 php artisan aziv:diagnose        # what is wrong with this server, and whose problem it is
 php artisan aziv:diagnose --json # same, machine-readable
 ```
@@ -80,15 +81,18 @@ Do not run `playwright install`.
 
 ## Where the build is
 
-**Phases 0–3 complete.** Phase 2 delivered the theme engine, the Appearance editor, branding and
+**Phases 0–4 complete.** Phase 2 delivered the theme engine, the Appearance editor, branding and
 content management. Phase 3 delivered the universal AI gateway: adapter contracts and normalised
 DTOs, the provider registry, encrypted credentials with masked display, the model catalog with
 dated pricing, the sync service, the API test console (§25), and adapter-contributed provider
-diagnostics. **Phase 4 is next** — see `docs/09-development-phases.md`.
+diagnostics. Phase 4 delivered the OpenAI and Gemini adapters, chat with streaming and history,
+personas, context and rate limits, and the mobile chat UI. **Phase 5 is next** — smart routing,
+health, fallback and cost logging. See `docs/09-development-phases.md`.
 
-**Phase 3 was built and tested entirely against fixtures.** No real OpenAI or Gemini key has been
-used, because the plan has the owner supply those. Every adapter behaviour is proven against
-recorded shapes; the first real call happens when a key is added.
+**Phases 3 and 4 were built and tested entirely against fixtures.** No real OpenAI or Gemini key
+has been used — the plan has the owner supply those. Every adapter behaviour is proven against
+recorded shapes; the first real call happens when a key is entered at
+**Admin → AI → Providers → Add provider**.
 
 
 ### AI providers, in one paragraph
@@ -100,6 +104,18 @@ adding a provider is a row plus — for anything OpenAI-shaped, which is most of
 at all. A credential is `$hidden` and encrypted; `secret()` is the one way to read it back and has
 exactly two callers. A provider's raw error text never crosses the boundary: several APIs echo the
 failing request, and that request carried the key.
+
+### Chat, in one paragraph
+
+Livewire owns which conversation is open; `resources/js/chat.js` owns the live text, because a
+server round trip per token would be thousands of requests for one reply. `ChatService::beginTurn()`
+saves the customer's message BEFORE calling a provider and creates the assistant row immediately in
+`pending`, so a failure never loses what they typed and never leaves a conversation that silently
+stops. Stop, failure and completion all SETTLE that row. Regenerating creates a new row pointing at
+the one it replaces — both survive (§15). Streaming degrades to `/chat/{message}/complete` when the
+host buffers output (risk R-01). The streaming routes compare ownership DIRECTLY rather than through
+the Gate, because Spatie's `Gate::before` would otherwise let a Super Admin read a customer's
+conversation.
 
 ### Content, in one paragraph
 

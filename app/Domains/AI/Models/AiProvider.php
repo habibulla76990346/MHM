@@ -106,7 +106,10 @@ class AiProvider extends Model
      */
     public function scopeUsable(Builder $query): Builder
     {
-        return $query->where('status', self::STATUS_ACTIVE)->where('maintenance_mode', false);
+        // Qualified for the same reason AiModel::routable() is: ai_models also
+        // has a `status`, and these scopes are combined in one query.
+        return $query->where('ai_providers.status', self::STATUS_ACTIVE)
+            ->where('ai_providers.maintenance_mode', false);
     }
 
     public function isUsable(): bool

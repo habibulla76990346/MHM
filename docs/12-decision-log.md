@@ -683,3 +683,93 @@ owner's money on diagnostics.
   failure" instead of "add an API key".
 - **The model price repeater started with an empty required row**, so a model could not be created
   until someone invented a price. A model can exist before anyone knows what it costs.
+
+---
+
+## Phase 4 — OpenAI, Gemini, and chat
+
+### Gemini is why the adapter layer exists
+
+OpenAI and Gemini disagree about nearly everything: messages are `contents` with `parts`; the
+assistant's role is `model`; the system prompt is lifted out into `systemInstruction`; generation
+settings live under `generationConfig`; the key goes in the query string; the model identifier is
+part of the URL path rather than the body; streaming frames are shaped differently; and usage comes
+back under different field names again.
+
+Every one of those is contained inside `GeminiAdapter`. Nothing above `ProviderAdapter` changed to
+add it, which is the claim §12 makes and this is the first real test of it.
+
+Gemini also reports a rejected key as **HTTP 400** with a machine-readable reason, where most APIs
+use 401. Without handling that, an owner with an expired key would be told "the provider rejected
+the shape of the request" and would go looking at their settings instead of their key.
+
+### Streaming: SSE, and why the fallback is not an error path
+
+A reply is one-way, server to browser. SSE is plain HTTP — no extra service, no persistent worker,
+no open port — so it works wherever it works at all and needs nothing new on a VPS. A WebSocket
+would add infrastructure for a feature with no return channel.
+
+Risk R-01 says shared hosting buffers output and cuts long connections. So
+`/chat/{message}/complete` produces the same answer in one response, and the browser uses it when
+streaming is switched off OR when the stream fails to open. The platform degrades; it does not stop
+working. `X-Accel-Buffering: no` is set because Nginx buffers proxied responses by default, which
+defeats SSE entirely.
+
+### What "stop" has to do
+
+Stopping is a cache flag, not a signal: the streaming loop and the request that started it may be
+in different processes, and a flag is the one mechanism that works on every deployment mode without
+assuming Redis or a persistent worker.
+
+A stopped reply **keeps what arrived**. It was produced and paid for; discarding it would throw
+away work the customer already owns. And it is SETTLED — a message left in `streaming` forever is
+worse than one marked stopped.
+
+### Regeneration preserves history in two ways
+
+§15 requires the original answer to survive. It does, as a row — the replacement carries
+`regenerated_from_id`, and `visibleMessages()` filters the superseded one out rather than deleting
+it.
+
+Less obviously: the regeneration's CONTEXT must be the conversation as it stood *before* that
+answer, or the model is asked to improve on something it can already see. `ContextBuilder::build()`
+takes an `$upTo` cut-off for exactly this.
+
+### Context is the biggest lever on what a chat costs
+
+Every message resends the history, so an unbounded context gets more expensive with every turn
+until it hits the model's ceiling and fails. Three limits apply in order, because each catches
+something the others miss: a message count; a token budget (twenty short messages and twenty pasted
+documents are not the same amount of money); and the model's own context window, minus room for the
+reply — a context that exactly fills the window leaves the model nowhere to answer.
+
+The newest message always goes, even if it alone exceeds the budget. Dropping what the customer
+just typed would answer a question nobody asked; the provider's own limit refuses it, with a
+message that says so.
+
+### A security bug found by a test
+
+Spatie registers its own `Gate::before` granting a Super Admin every ability — the trap already
+recorded in `CLAUDE.md` from Phase 1. It meant `$this->authorize('stream', $message)` let an
+**administrator read a customer's conversation as it streamed**.
+
+Reading someone's chats is a support action with its own permission and its own audit trail, not a
+side effect of being an administrator. The streaming routes now compare ownership directly, which
+cannot be short-circuited by a Gate callback. The policy remains as the statement of intent.
+
+### The chat behaviour gate
+
+Two of Addendum A's chat requirements are about how the page BEHAVES, so the six-viewport gate
+cannot see them. `npm run test:chat` exercises both against the real page: the composer staying
+above a mobile keyboard (visualViewport is replaced before any page script runs, so the page sees
+what iOS actually gives it), and new text following the reader only while they are at the end.
+
+Proven by breaking both on purpose — removing the keyboard inset and forcing `pinned = true` — and
+watching three checks fail.
+
+### The Http::fake trap, twice more
+
+The trap recorded after Phase 3 bit two more times while writing Phase 4's tests: a re-faked
+endpoint silently kept returning the first stub's response, so "regenerate produces a different
+answer" and "a provider failure returns 502" both passed vacuously at first. Both test classes now
+register one stub that reads mutable state.

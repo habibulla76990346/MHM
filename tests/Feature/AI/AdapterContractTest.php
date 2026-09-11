@@ -3,6 +3,8 @@
 namespace Tests\Feature\AI;
 
 use App\Domains\AI\Adapters\CustomHttpAdapter;
+use App\Domains\AI\Adapters\GeminiAdapter;
+use App\Domains\AI\Adapters\OpenAiAdapter;
 use App\Domains\AI\Adapters\OpenAiCompatibleAdapter;
 use App\Domains\AI\Contracts\SupportsChat;
 use App\Domains\AI\Contracts\SupportsModelDiscovery;
@@ -57,13 +59,22 @@ class AdapterContractTest extends TestCase
 
     // -- the registry --------------------------------------------------------
 
-    public function test_the_registry_resolves_both_shipped_adapters(): void
+    public function test_the_registry_resolves_every_shipped_adapter(): void
     {
         $registry = app(ProviderRegistry::class);
 
-        $this->assertTrue($registry->has(OpenAiCompatibleAdapter::KEY));
-        $this->assertTrue($registry->has(CustomHttpAdapter::KEY));
-        $this->assertCount(2, $registry->keys());
+        foreach ([
+            OpenAiAdapter::KEY,
+            GeminiAdapter::KEY,
+            OpenAiCompatibleAdapter::KEY,
+            CustomHttpAdapter::KEY,
+        ] as $key) {
+            $this->assertTrue($registry->has($key), "{$key} is not registered.");
+        }
+
+        // Registration is the whole integration for a new adapter: nothing
+        // else in the application refers to a provider by name.
+        $this->assertCount(4, $registry->keys());
     }
 
     /**
