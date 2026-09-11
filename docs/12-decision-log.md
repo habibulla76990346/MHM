@@ -411,3 +411,66 @@ A theme is ~7 palette colours; the remaining tokens are derived. The derivation 
 AA on every checked text/background pair by construction — and it had to, because four of the
 eight built-in themes failed the link-contrast check as originally authored. The guarantee holds
 for administrator-authored palettes too, which is tested with a deliberately hostile one.
+
+### The Appearance editor: what D-07 actually costs
+
+D-07 asks for control of "the complete practical design system" and, in the same breath, to "keep
+the interface organized into categories so the Admin Panel remains easy to use". Taken literally
+the first gives 69 tokens x 2 scopes x 2 modes = 276 editable values on one screen, which is
+complete and unusable.
+
+The screen resolves it with two tiers rather than by dropping either half of the requirement:
+
+1. **Brand colours** — seven values, two modes. Changing them re-derives every other token, for
+   both scopes and both modes at once. Most owners will never open the second tier.
+2. **Everything else** — grouped, collapsed, searchable, with each value stating what it affects
+   ("the dimming behind a modal or drawer"), so it can be found without knowing its name.
+
+Built-ins refuse edits and offer Duplicate instead, which is what guarantees there is always a
+known-good theme to return to.
+
+### Two more defects, both silent
+
+- **Livewire reads a dot in `wire:model` as a nested array path.** `values.color.primary` wrote
+  `$values['color']['primary']`; the token was never touched and nothing reported an error. Token
+  values are now keyed dot-free. This is the same shape as the Laravel validation-key trap from
+  Phase 1 — the rule is now generalised in `CLAUDE.md`.
+- **`version + 1` never moved the version on a newly created theme.** `Theme::create()` leaves the
+  attribute NULL in memory while the database holds 1, so the arithmetic wrote 1 over 1. Because
+  the version is part of the compiled-CSS cache key, every edit to a freshly duplicated theme
+  would have been invisible until the cache was cleared by hand. Now `increment()`, which reads
+  the stored value.
+
+### Validation: exclude the dangerous, do not enumerate the valid
+
+`TokenValidator`'s first attempt parsed shadow CSS with a regex and rejected
+`0 1px 2px rgb(0 0 0 / 0.06)` — a value this application generates itself — because the leading
+`0` carries no unit. Enumerating every valid CSS grammar is not the job. Excluding what is
+dangerous is, and that list is much shorter: a character allowlist plus a colour-function
+allowlist, so `url()` and anything else that fetches from a third party cannot appear.
+
+---
+
+## Open — needs an owner decision
+
+### D-13 · How brand assets are served
+
+**Not yet decided. Blocks the media library.**
+
+Phase 1 established that uploads live on a private disk with no public URL, served through an
+authorised controller (Addendum H). Brand assets break that shape: a logo and favicon must be
+fetchable by anonymous visitors on the login page, and a PWA icon must be fetchable by the
+operating system with no session at all.
+
+Three options, each with a real cost:
+
+| | How | Cost |
+|---|---|---|
+| **A** | A public controller streams from the private disk | Nothing new in `public/`. But every logo request is a PHP request — on shared hosting, on every page, for every visitor |
+| **B** | Laravel's standard `public` disk plus `storage:link` | Standard and fast. Needs a symlink, which many cPanel accounts do not permit — and Addendum B says the product must not depend on that |
+| **C** | Derived assets are written to a versioned path under `public/brand/` when branding is saved | No PHP per request, no symlink, cacheable, works identically on both deployment modes. But the web root becomes writable at runtime, and the deployment security test has to keep proving only non-sensitive derived images ever land there |
+
+**Recommendation: C**, because it is the only one that satisfies Addendum B (no symlink, no
+provider-specific behaviour) and Addendum E (shared hosting differs in speed, never in capability)
+at the same time. The master artwork and every original upload stay on the private disk; only
+derived, deliberately-public images are written out, under a content hash so caching is safe.

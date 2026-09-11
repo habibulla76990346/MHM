@@ -78,11 +78,16 @@ Do not run `playwright install`.
 
 ## Where the build is
 
-Phases 0 and 1 complete. **Phase 2 in progress.** The theme engine is done: token catalogue,
-OKLCH colour maths, palette derivation, the eight built-in themes, and compilation into both the
-customer application and the Admin Panel from one shared token source (D-07). Still to come in
-Phase 2: the theme editor UI, the media library and branding assets, the PWA manifest, and content
-management. Phase detail in `docs/09-development-phases.md`.
+Phases 0 and 1 complete. **Phase 2 in progress.** Done: the theme engine (token catalogue, OKLCH
+colour maths, palette derivation, the eight built-in themes, compilation into both the customer
+application and the Admin Panel from one shared token source) and the Appearance editor
+(progressive disclosure, live preview, contrast report, preview/publish/restore, permission-gated
+custom CSS). Still to come in Phase 2: the media library and branding assets, the PWA manifest,
+and content management. Phase detail in `docs/09-development-phases.md`.
+
+**Open question before the media library:** brand assets must be fetchable by anonymous visitors,
+but the Phase 1 rule puts uploads on a private disk with no URL. Needs an owner decision — see the
+decision log.
 
 ### Useful commands added in Phase 1
 
@@ -93,10 +98,17 @@ php artisan aziv:test-user      # local account the responsive gate signs in as
 
 ### Traps worth remembering
 
-- **Settings validation must use a flat field name.** Laravel reads dots in a validation key as
-  nested-array access, so validating under `auth.password_min_length` passes every rule vacuously.
+- **Dots are structure, not text — in three different places.** Laravel reads a dot in a validation
+  key as nested-array access, so validating under `auth.password_min_length` passes every rule
+  vacuously. Livewire reads a dot in `wire:model` the same way, so binding `values.color.primary`
+  writes `$values['color']['primary']` and the real token is never touched — silently, with no
+  error. Both bit this project. Anywhere a token or setting key reaches a validation rule, a
+  `wire:model`, or a message bag, flatten the dot first.
 - **`Gate::after` cannot downgrade an allow** (`$result ??= $afterResult`), and Spatie registers
   its own `Gate::before`. Permission denials belong in `User::hasPermissionTo()`.
+- **A version column that gates a cache must be bumped with `increment()`.** A model created
+  without an explicit value holds NULL in memory while the database holds 1, so `version + 1`
+  writes 1 over 1 — the version never moves and the cached stylesheet is served forever.
 - **Only scalars and plain arrays go into the cache.** `Cache::remember()` on an Eloquent model or
   any rich object serialises it; on a real store (file, database, Redis) that payload outlives its
   class and returns as `__PHP_Incomplete_Class`, taking down every page that reads it. Tests run
