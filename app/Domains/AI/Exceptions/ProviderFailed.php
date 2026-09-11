@@ -1,0 +1,35 @@
+<?php
+
+namespace App\Domains\AI\Exceptions;
+
+use App\Domains\AI\Support\ErrorClass;
+use RuntimeException;
+
+/**
+ * A normalised provider failure.
+ *
+ * Carries a CLASS and an HTTP status, never the provider's own message. Some
+ * APIs echo the failing request back in their error text, and that request
+ * carried a credential — so the raw text is discarded at the boundary rather
+ * than filtered later.
+ */
+class ProviderFailed extends RuntimeException
+{
+    public function __construct(
+        public readonly string $errorClass,
+        public readonly ?int $httpStatus = null,
+        public readonly int $latencyMs = 0,
+    ) {
+        parent::__construct(ErrorClass::label($errorClass));
+    }
+
+    public function action(): string
+    {
+        return ErrorClass::action($this->errorClass);
+    }
+
+    public function isRetryable(): bool
+    {
+        return ErrorClass::isRetryable($this->errorClass);
+    }
+}

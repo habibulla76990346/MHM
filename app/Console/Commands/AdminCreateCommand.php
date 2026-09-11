@@ -8,8 +8,8 @@ use App\Domains\Security\Services\PermissionRegistry;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 
 /**
  * Creates the first administrator (delivery guide 11).

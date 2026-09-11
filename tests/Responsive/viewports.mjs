@@ -41,6 +41,9 @@ export const SCREENS = [
   { name: 'admin-banners',    path: '/admin/banners',        admin: true },
   { name: 'admin-faqs',       path: '/admin/faqs',           admin: true },
   { name: 'admin-navigation', path: '/admin/navigation-items', admin: true },
+  { name: 'admin-providers',  path: '/admin/ai-providers',    admin: true },
+  { name: 'admin-models',     path: '/admin/ai-models',       admin: true },
+  { name: 'admin-ai-console', path: '/admin/ai-test-console', admin: true },
 ];
 
 /** Credentials for the seeded responsive-test account. */

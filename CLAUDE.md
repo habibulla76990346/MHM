@@ -80,13 +80,26 @@ Do not run `playwright install`.
 
 ## Where the build is
 
-**Phases 0, 1 and 2 complete.** Phase 2 delivered the theme engine (token catalogue, OKLCH colour
-maths, palette derivation, the eight built-in themes, compilation into both the customer
-application and the Admin Panel from one shared token source), the Appearance editor, branding
-(replaceable artwork per D-13 and the generated PWA manifest), and content management (pages built
-from a closed set of section types, scheduled announcements, FAQ, database-driven navigation,
-feature flags and SEO). **Phase 3 is next** — see `docs/09-development-phases.md`.
+**Phases 0–3 complete.** Phase 2 delivered the theme engine, the Appearance editor, branding and
+content management. Phase 3 delivered the universal AI gateway: adapter contracts and normalised
+DTOs, the provider registry, encrypted credentials with masked display, the model catalog with
+dated pricing, the sync service, the API test console (§25), and adapter-contributed provider
+diagnostics. **Phase 4 is next** — see `docs/09-development-phases.md`.
 
+**Phase 3 was built and tested entirely against fixtures.** No real OpenAI or Gemini key has been
+used, because the plan has the owner supply those. Every adapter behaviour is proven against
+recorded shapes; the first real call happens when a key is added.
+
+
+### AI providers, in one paragraph
+
+Nothing above `app/Domains/AI/Contracts/ProviderAdapter.php` knows which company answered. The
+application asks for CAPABILITIES (`Capability::VISION`), the catalog says which models have them,
+and an adapter translates. `ProviderRegistry` is the only place a provider's shape is named, so
+adding a provider is a row plus — for anything OpenAI-shaped, which is most of the market — no code
+at all. A credential is `$hidden` and encrypted; `secret()` is the one way to read it back and has
+exactly two callers. A provider's raw error text never crosses the boundary: several APIs echo the
+failing request, and that request carried the key.
 
 ### Content, in one paragraph
 
@@ -132,6 +145,10 @@ php artisan aziv:test-user      # local account the responsive gate signs in as
   the `array` driver, which never serialises, so PHPUnit cannot catch it. Cache an id and re-query.
   This bit twice — the theme service and the System Health page. Both now have a regression test
   asserting the cached value is plain data.
+- **`Http::fake()` called twice for the same pattern does NOT replace the first stub.** Laravel
+  keeps the first match, so a test that re-fakes an endpoint to simulate a CHANGE silently keeps
+  the original response — and every "the model disappeared" assertion passes vacuously. Register
+  one stub whose closure reads mutable test state instead.
 - **A gate is worth only what it can catch.** Break it on purpose before trusting it. The
   hard-coded-colour gate silently checked two directory levels for a whole phase, because PHP's
   `glob('**')` does not recurse. Every design token lives in `resources/css/tokens.css`, imported

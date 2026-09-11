@@ -588,3 +588,98 @@ area still fails. Proven by shrinking both hit areas to 4px and watching 24 chec
 An earlier attempt used `elementFromPoint` to hit-test the corners. It was wrong: it only reports
 what is currently inside the viewport, so every control below the fold was counted as failing.
 Computed style works wherever the element sits.
+
+---
+
+## Phase 3 — the universal AI gateway
+
+### What was built against fixtures, and what that means
+
+The plan has the owner supply an OpenAI key and a Gemini key. Neither exists yet, so **every
+adapter behaviour in Phase 3 is proven against recorded response shapes**, not against a live API:
+request translation, reply normalisation, streaming fragments, model discovery, and each of the
+nine failure classes. What fixtures cannot prove is that a given provider's real API matches the
+shape recorded here. The test console exists precisely to answer that in one click the moment a
+key is added.
+
+### Credentials: four separate escapes, four separate controls
+
+A key can leak from the database, from a serialised model, from a rendered screen, or from an
+audit entry. Closing one says nothing about the others, so each has its own control and its own
+test:
+
+1. **At rest** — `credential` is an `encrypted` cast. The stored value is ciphertext.
+2. **In transit through the application** — the column is `$hidden`, so every `toArray()`,
+   `toJson()`, API resource and Livewire snapshot omits it structurally rather than by habit.
+3. **On screen** — `hint` holds the last four characters in plaintext, written on save. The Admin
+   Panel identifies a key from THAT, so listing keys never decrypts anything (§25). The edit form
+   shows an empty key field: pre-filling it would mean sending the secret to a browser.
+4. **In the audit trail** — entries record the label and the hint. An audit log that captures a
+   credential defeats the point of encrypting it, and is read by more people than the key is.
+
+`secret()` is the only way to read the value back, and has exactly two callers.
+
+### A provider's own error text never crosses the boundary
+
+Several APIs echo the failing request back in their error message — and that request carried the
+key. So the adapter layer discards the prose at the point of failure and keeps a normalised CLASS
+plus an HTTP status. Every class carries a remedy written for a non-developer ("The API key is
+wrong, expired or revoked. Create a new key in the provider's dashboard"), which is what Owner
+Addendum G asks for and what a raw provider message could never be.
+
+Classification reads only well-known machine-readable markers (`error.code`, `error.type`), never
+free text, for the same reason.
+
+### `{{credential}}`, because a header template is not encrypted
+
+`CustomHttpAdapter` lets an administrator describe an API from the panel. Its `headers_template` is
+an ordinary JSON column — it describes a shape, so it is not encrypted. An administrator who pasted
+a real key into it would be writing that key to the database in plaintext and into every backup.
+
+Authentication is therefore applied by `BaseAdapter` from the encrypted credential, and a template
+that needs the key somewhere unusual writes `{{credential}}`, substituted at call time. The stored
+template holds only the placeholder.
+
+Relatedly: a request template is **configuration written by a person, and is never evaluated**. It
+is walked and substituted literally, so `{{ phpinfo() }}` in a template arrives at the provider as
+those exact characters.
+
+### Rule 7, asserted against the source
+
+Multiple credentials are supported for genuine rotation and redundancy. Aziv AI does **not** cycle
+keys when one hits its quota: that behaviour has no purpose but evading the limit a provider set.
+
+A behaviour test can only show that cycling does not happen on the paths it exercises, so this is
+asserted by reading the source — no file in `app/Domains/AI` may combine quota/rate-limit handling
+with credential rotation. It fails loudly if someone later adds one believing it to be a helpful
+retry.
+
+### Provider diagnostics are contributed by the adapter, and cost money
+
+`AiProviderCheck` does not know how any provider signals trouble — it asks each adapter to report
+on itself. Centralising that would put provider-specific knowledge back above the adapter layer,
+which is what §12 exists to prevent.
+
+It is also marked `costsMoney()`, so it never runs unattended. A connectivity test is an
+authenticated call; running them across every provider every few minutes would quietly spend an
+owner's money on diagnostics.
+
+### Three catalog rules, each with a failure it prevents
+
+- **A newly discovered model arrives DISABLED.** Otherwise a provider's release schedule decides
+  what an owner's customers can spend money on, without the owner seeing it.
+- **A model that disappears is deprecated, never deleted.** Usage records, invoices and analytics
+  refer to it; deleting it would orphan that history and silently change past reports. A synced
+  model is not deletable from the panel either, for the same reason — and the next sync would
+  bring it back.
+- **A manually added model is never overwritten.** An administrator typed it in because the
+  provider does not list it; a sync must not undo that.
+
+### Two bugs found while testing
+
+- **A classified failure was being re-classified as "unknown".** `BaseAdapter::send()` caught
+  `\Throwable` around the request, which swallowed the `ProviderFailed` that `client()` raises for
+  a missing credential. An owner with no key would have been told "Aziv AI could not classify this
+  failure" instead of "add an API key".
+- **The model price repeater started with an empty required row**, so a model could not be created
+  until someone invented a price. A model can exist before anyone knows what it costs.

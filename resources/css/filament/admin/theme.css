@@ -331,3 +331,15 @@ textarea.fi-input {
   font-size: max(16px, 1rem);
   min-height: var(--tap-min);
 }
+
+/* --- AI test console ----------------------------------------------------- */
+.aziv-test-output {
+  display: block;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  background: var(--color-code-bg);
+  color: var(--color-code-text);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  white-space: pre-wrap;
+}
