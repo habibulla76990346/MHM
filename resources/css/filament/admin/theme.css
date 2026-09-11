@@ -216,3 +216,32 @@
   font-size: 0.8125rem;
   overflow-x: auto;
 }
+
+/* --- Branding previews ---------------------------------------------------
+   A chequerboard behind the artwork, so a logo with a transparent background
+   can be judged against both light and dark without switching theme. */
+.aziv-asset-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 180px;
+  max-width: 100%;
+  min-height: 84px;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  background-image:
+    linear-gradient(45deg, var(--color-hover) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--color-hover) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--color-hover) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--color-hover) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+.aziv-asset-preview img {
+  max-width: 100%;
+  max-height: 140px;
+  object-fit: contain;
+}

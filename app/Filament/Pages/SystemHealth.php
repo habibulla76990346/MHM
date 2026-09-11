@@ -10,6 +10,7 @@ use App\Domains\Diagnostics\Support\Status;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 
@@ -128,7 +129,7 @@ class SystemHealth extends Page
 
     public function ranAt(): string
     {
-        return \Illuminate\Support\Carbon::parse($this->run()['ran_at'])->diffForHumans();
+        return Carbon::parse($this->run()['ran_at'])->diffForHumans();
     }
 
     public function deploymentMode(): string

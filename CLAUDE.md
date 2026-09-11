@@ -21,7 +21,9 @@ These have tests behind them. Breaking one fails the build.
    theme system. → `SmokeTest::test_no_blade_template_hard_codes_a_colour`
 2. **No horizontal overflow, 44px touch targets, 16px inputs.** Checked at six viewports on every
    screen. A screen failing at any width fails the phase. → `npm run test:responsive`
-3. **Nothing sensitive inside `public/`.** → `DeploymentSecurityTest`
+3. **Nothing sensitive inside `public/`.** The one thing written there at runtime is a derived
+   brand image — raster only, named by content hash, never an uploaded SVG (D-13). The original
+   upload always stays on the private disk. → `DeploymentSecurityTest`
 4. **No credential value reaches the diagnostics layer.** Checks ask "is this valid?" and get a
    boolean. `CheckResult` scrubs at construction, so no output path can leak.
    → `CheckResultTest`, `RedactorTest`
@@ -80,14 +82,20 @@ Do not run `playwright install`.
 
 Phases 0 and 1 complete. **Phase 2 in progress.** Done: the theme engine (token catalogue, OKLCH
 colour maths, palette derivation, the eight built-in themes, compilation into both the customer
-application and the Admin Panel from one shared token source) and the Appearance editor
-(progressive disclosure, live preview, contrast report, preview/publish/restore, permission-gated
-custom CSS). Still to come in Phase 2: the media library and branding assets, the PWA manifest,
-and content management. Phase detail in `docs/09-development-phases.md`.
+application and the Admin Panel from one shared token source), the Appearance editor (progressive
+disclosure, live preview, contrast report, preview/publish/restore, permission-gated custom CSS),
+and branding (replaceable artwork per D-13, the generated PWA manifest, and product naming sourced
+from settings rather than `.env`). Still to come in Phase 2: content management — pages, banners,
+FAQ, database-driven menus and SEO. Phase detail in `docs/09-development-phases.md`.
 
-**Open question before the media library:** brand assets must be fetchable by anonymous visitors,
-but the Phase 1 rule puts uploads on a private disk with no URL. Needs an owner decision — see the
-decision log.
+
+### Branding, in one paragraph
+
+`brand('logo_light')` gives a web-root-relative path and always falls back to the artwork that
+ships with the product, so no template needs to guard for an administrator who has never uploaded
+anything. An upload goes onto the **private** disk through the ordinary Phase 1 pipeline first;
+only then is a derived raster copy written to `public/brand/<purpose>-<checksum8>.<ext>`. Never
+publish an uploaded SVG. The master artwork in `brand/` is never modified and never deleted.
 
 ### Useful commands added in Phase 1
 

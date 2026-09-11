@@ -61,6 +61,7 @@ class ActivityLogger
         foreach ($data as $key => $value) {
             if (is_array($value)) {
                 $data[$key] = $this->redact($value);
+
                 continue;
             }
 

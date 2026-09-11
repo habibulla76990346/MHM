@@ -12,10 +12,15 @@ namespace App\Domains\Security\Services;
 class PermissionRegistry
 {
     public const SUPER_ADMIN = 'Super Admin';
+
     public const ADMIN = 'Admin';
+
     public const SUPPORT_MANAGER = 'Support Manager';
+
     public const FINANCE_MANAGER = 'Finance Manager';
+
     public const CONTENT_MANAGER = 'Content Manager';
+
     public const CUSTOMER = 'Customer';
 
     /**
@@ -75,6 +80,12 @@ class PermissionRegistry
             'themes' => [
                 'themes.view', 'themes.manage', 'themes.custom_css',
             ],
+            // Separate from themes: replacing the logo writes a file into the
+            // web root (owner decision D-13), which is a different kind of
+            // trust from choosing a colour.
+            'branding' => [
+                'branding.view', 'branding.manage',
+            ],
             'analytics' => [
                 'analytics.view', 'analytics.costs.view', 'analytics.revenue.view',
             ],
@@ -118,6 +129,7 @@ class PermissionRegistry
                 'billing.view', 'billing.manage', 'billing.gateways.manage',
                 'content.view', 'content.manage', 'content.publish',
                 'themes.view', 'themes.manage',
+                'branding.view', 'branding.manage',
                 'analytics.view', 'analytics.costs.view', 'analytics.revenue.view',
             ],
 
@@ -149,6 +161,7 @@ class PermissionRegistry
                 'settings.view',
                 'content.view', 'content.manage', 'content.publish',
                 'themes.view', 'themes.manage',
+                'branding.view', 'branding.manage',
                 'files.view', 'files.upload',
             ],
 

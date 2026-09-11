@@ -8,9 +8,7 @@
        aria-label="{{ __('Main navigation') }}">
     <div class="flex items-center gap-3 border-b border-border px-3 lg:px-4"
          style="height: var(--topbar-height);">
-        <span class="text-primary shrink-0" style="width:28px;height:28px;">
-            {!! file_get_contents(public_path('brand/mark.svg')) !!}
-        </span>
+        <x-brand.mark :size="28" class="text-primary" />
         <span class="hidden lg:block truncate font-semibold text-heading">{{ settings('branding.app_name') }}</span>
     </div>
 

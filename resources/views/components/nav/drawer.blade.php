@@ -12,9 +12,7 @@
         <div class="flex items-center justify-between gap-3 border-b border-border px-4"
              style="height: var(--topbar-height);">
             <div class="flex min-w-0 items-center gap-3">
-                <span class="text-primary shrink-0" style="width:26px;height:26px;">
-                    {!! file_get_contents(public_path('brand/mark.svg')) !!}
-                </span>
+                <x-brand.mark :size="26" class="text-primary" />
                 <span class="truncate font-semibold text-heading">{{ settings('branding.app_name') }}</span>
             </div>
             <button type="button" data-drawer-close

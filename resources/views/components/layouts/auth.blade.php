@@ -2,9 +2,7 @@
 <x-layouts.app :title="$title">
     <div class="mx-auto flex w-full max-w-md flex-col gap-6" style="padding-block: clamp(1rem, 6vh, 4rem);">
         <div class="flex flex-col items-center gap-3 text-center">
-            <span class="text-primary" style="width:56px;height:56px;">
-                {!! file_get_contents(public_path('brand/mark.svg')) !!}
-            </span>
+            <x-brand.mark :size="56" class="text-primary" />
             <div>
                 <h1 class="font-semibold text-heading" style="font-size: var(--text-fluid-2xl); line-height:1.15;">
                     {{ $heading }}

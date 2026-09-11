@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
 
+// The PWA manifest is generated, not a static file: every value in it is
+// administrator-controlled branding (owner decisions D-09 and D-10).
+Route::get('manifest.webmanifest', \App\Http\Controllers\Branding\ManifestController::class)
+    ->name('manifest');
+
 /* ---------------------------------------------------------------- guest -- */
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])->name('register');

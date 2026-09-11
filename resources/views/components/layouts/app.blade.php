@@ -12,9 +12,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ? $title.' · '.settings('branding.app_name') : settings('branding.app_name') }}</title>
-    <link rel="icon" href="{{ asset('brand/favicon-32.png') }}" sizes="32x32">
-    <link rel="icon" href="{{ asset('brand/favicon-16.png') }}" sizes="16x16">
-    <link rel="apple-touch-icon" href="{{ asset('brand/app-icon-180.png') }}">
+    {{-- Every one of these is administrator-replaceable (D-09), and every one
+         falls back to the artwork that ships with Aziv AI. --}}
+    <link rel="icon" href="{{ asset(brand('favicon')) }}">
+    <link rel="apple-touch-icon" href="{{ asset(brand('app_icon')) }}">
+    <link rel="manifest" href="{{ route('manifest') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     {{-- AFTER the stylesheet: the compiled block redefines the same custom

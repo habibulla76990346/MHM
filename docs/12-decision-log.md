@@ -451,11 +451,10 @@ allowlist, so `url()` and anything else that fetches from a third party cannot a
 
 ---
 
-## Open — needs an owner decision
+## D-13 · How brand assets are served — ✅ **APPROVED BY OWNER: option C**
 
-### D-13 · How brand assets are served
-
-**Not yet decided. Blocks the media library.**
+**Decided.** Derived, deliberately-public images are written to a versioned path under
+`public/brand/`. Every original upload — and the master artwork — stays on the private disk.
 
 Phase 1 established that uploads live on a private disk with no public URL, served through an
 authorised controller (Addendum H). Brand assets break that shape: a logo and favicon must be
@@ -470,7 +469,54 @@ Three options, each with a real cost:
 | **B** | Laravel's standard `public` disk plus `storage:link` | Standard and fast. Needs a symlink, which many cPanel accounts do not permit — and Addendum B says the product must not depend on that |
 | **C** | Derived assets are written to a versioned path under `public/brand/` when branding is saved | No PHP per request, no symlink, cacheable, works identically on both deployment modes. But the web root becomes writable at runtime, and the deployment security test has to keep proving only non-sensitive derived images ever land there |
 
-**Recommendation: C**, because it is the only one that satisfies Addendum B (no symlink, no
+**Owner chose C.** It is the only option that satisfies Addendum B (no symlink, no
 provider-specific behaviour) and Addendum E (shared hosting differs in speed, never in capability)
-at the same time. The master artwork and every original upload stay on the private disk; only
-derived, deliberately-public images are written out, under a content hash so caching is safe.
+at the same time.
+
+### What C obliges the implementation to do
+
+The web root becoming writable is the cost of this choice, so the controls that contain it are
+part of the decision, not an implementation detail:
+
+1. **The private disk stays the record of truth.** Uploads go through the Phase 1 pipeline
+   (`FileStorage` → `UploadValidator` → scanner) exactly as any other upload, with all nine
+   Addendum H controls. Publishing is a second, separate step that copies bytes out.
+2. **Only raster images are ever published.** PNG, JPEG, WebP and ICO. Never SVG from an upload —
+   SVG is a document format that can carry script, and it would be served same-origin. The
+   `mark.svg` that ships with the product is ours and is committed, not published at runtime.
+3. **A quarantined or unscanned-and-rejected file is never published.**
+4. **The published name is derived, never the client's.** `<purpose>-<first 8 of the sha256>.<ext>`
+   — so the name is a content hash, caching is safe forever, and no part of a client filename
+   reaches the filesystem.
+5. **Publishing replaces, and the old file is removed**, so the web root does not accumulate.
+6. **`DeploymentSecurityTest` proves the containment**: everything under `public/brand/` must be a
+   raster image or the committed `mark.svg`, and nothing else may appear in the web root.
+
+A host whose `public/` is not writable degrades to the shipped default branding and says so in
+System Health — capability preserved, exactly as Addendum G requires.
+
+### D-13 as built
+
+`media_assets` was dropped. It had been created earlier in Phase 2, before a close look at the
+Phase 1 `files` table — which already carries checksum, dimensions, purpose and owner, and is the
+only path through `UploadValidator` and the scanner. A second media table would have been a second
+place for upload security to be got wrong, and the first time the two drifted the weaker one would
+have been the one an administrator used. Brand assets are `files` rows with a `brand_*` purpose.
+
+Two defects found while wiring branding into the templates:
+
+- **Two of the shipped defaults were not in the web root.** `app-icon-maskable-512.png` and
+  `mark-compact-dark.png` existed in `brand/` but had never been copied to `public/brand/`, so the
+  generated manifest advertised an icon that 404s. A default that does not resolve is worse than
+  no default, because every other fallback guarantee rests on it. There is now a test asserting
+  every shipped default exists, and the manifest test fetches every icon it advertises.
+- **The homepage took the product name from `config('app.name')`**, so renaming the product in the
+  Admin Panel changed the browser tab and not the page. Branding is data, never environment.
+
+`branding.view` and `branding.manage` are separate from the theme permissions. Choosing a colour
+and writing a file into the web root are different kinds of trust, and Support holds neither.
+
+The containment D-13 promised is asserted, not assumed: `DeploymentSecurityTest` now walks
+`public/brand/` and fails on anything that is not a real raster image, and separately proves the
+publisher cannot delete outside that directory. Both were verified by deliberately planting an
+uploaded-looking SVG and a PHP script named `.png` and watching the gate fail.

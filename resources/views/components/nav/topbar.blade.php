@@ -13,9 +13,7 @@
         <x-ui.icon name="menu" class="size-6" />
     </button>
 
-    <span class="md:hidden text-primary shrink-0" style="width:26px;height:26px;">
-        {!! file_get_contents(public_path('brand/mark.svg')) !!}
-    </span>
+    <x-brand.mark :size="26" class="md:hidden text-primary" />
 
     <h1 class="min-w-0 flex-1 truncate font-semibold text-heading" style="font-size: var(--text-fluid-lg);">
         {{ $title ?? settings('branding.app_name') }}

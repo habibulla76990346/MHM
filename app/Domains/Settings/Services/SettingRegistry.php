@@ -131,6 +131,42 @@ class SettingRegistry
                 label: 'Support email', isPublic: true,
                 rules: ['nullable', 'email', 'max:190'],
             ),
+            new SettingDefinition(
+                key: 'branding.footer_text', type: 'string', default: null, group: 'branding',
+                label: 'Footer line', isPublic: true,
+                description: 'Shown at the foot of customer pages. Leave empty for a plain copyright line.',
+                rules: ['nullable', 'string', 'max:300'],
+            ),
+
+            // --- Brand assets (owner decisions D-09 and D-13) ----------------
+            // Each holds a web-root-relative path written by BrandAssetPublisher,
+            // or null to use the artwork that ships with Aziv AI. Never a URL:
+            // a full URL here would let branding point at a third party.
+            new SettingDefinition(
+                key: 'branding.asset_logo_light', type: 'string', default: null, group: 'branding',
+                label: 'Logo for light backgrounds', isPublic: true,
+                rules: ['nullable', 'string', 'max:190', 'starts_with:brand/'],
+            ),
+            new SettingDefinition(
+                key: 'branding.asset_logo_dark', type: 'string', default: null, group: 'branding',
+                label: 'Logo for dark backgrounds', isPublic: true,
+                rules: ['nullable', 'string', 'max:190', 'starts_with:brand/'],
+            ),
+            new SettingDefinition(
+                key: 'branding.asset_mark', type: 'string', default: null, group: 'branding',
+                label: 'Compact mark', isPublic: true,
+                rules: ['nullable', 'string', 'max:190', 'starts_with:brand/'],
+            ),
+            new SettingDefinition(
+                key: 'branding.asset_favicon', type: 'string', default: null, group: 'branding',
+                label: 'Favicon', isPublic: true,
+                rules: ['nullable', 'string', 'max:190', 'starts_with:brand/'],
+            ),
+            new SettingDefinition(
+                key: 'branding.asset_app_icon', type: 'string', default: null, group: 'branding',
+                label: 'App icon', isPublic: true,
+                rules: ['nullable', 'string', 'max:190', 'starts_with:brand/'],
+            ),
 
             // --- System (blueprint §24) --------------------------------------
             new SettingDefinition(

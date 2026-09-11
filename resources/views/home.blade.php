@@ -1,15 +1,13 @@
-<x-layouts.app :title="config('app.name')">
+<x-layouts.app :title="settings('branding.app_name')">
     <header class="flex flex-col gap-6">
         <div class="flex items-center gap-4">
             {{-- The simplified vector mark, not the full artwork: at this size
                  the master's fine ribbons merge into grey. It inherits its
                  colour from the surrounding theme token via currentColor. --}}
-            <span class="text-primary" style="display:block;width:48px;height:48px;flex:none;">
-                {!! file_get_contents(public_path('brand/mark.svg')) !!}
-            </span>
+            <x-brand.mark :size="48" class="text-primary" />
             <div>
                 <h1 class="font-semibold text-heading" style="font-size: var(--text-fluid-2xl); line-height:1.15;">
-                    {{ config('app.name') }}
+                    {{ settings('branding.app_name') }}
                 </h1>
                 <p class="text-text-muted" style="font-size: var(--text-fluid-sm);">
                     Multi-provider AI platform
