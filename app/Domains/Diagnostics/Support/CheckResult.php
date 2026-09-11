@@ -64,4 +64,39 @@ final class CheckResult implements Arrayable
             'checked_at' => now()->toIso8601String(),
         ];
     }
+
+    /**
+     * Rebuild from the array form.
+     *
+     * Diagnostics results are cached between views, and a cache store
+     * serialises whatever it is handed. A serialised OBJECT outlives the class
+     * that wrote it: after a deploy that touches this class — or on any store
+     * that cannot resolve it at unserialize time — it returns as
+     * __PHP_Incomplete_Class and the System Health page dies with a fatal type
+     * error. That is the one page an administrator needs most when something
+     * is wrong, so what gets cached is a plain array and this puts it back
+     * together.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            key: (string) ($data['key'] ?? ''),
+            title: (string) ($data['title'] ?? ''),
+            category: Category::from($data['category']),
+            status: Status::from($data['status']),
+            severity: Severity::from($data['severity']),
+            responsibility: Responsibility::from($data['responsibility']),
+            // Already scrubbed when the original was constructed; Redactor is
+            // idempotent, so passing it through again changes nothing.
+            technicalReason: (string) ($data['technical_reason'] ?? ''),
+            recommendedAction: (string) ($data['recommended_action'] ?? ''),
+            adminAction: (string) ($data['admin_action'] ?? ''),
+            requiresHostingSupport: (bool) ($data['requires_hosting_support'] ?? false),
+            supportWording: (string) ($data['support_wording'] ?? ''),
+            logReference: $data['log_reference'] ?? null,
+            durationMs: (float) ($data['duration_ms'] ?? 0.0),
+        );
+    }
 }

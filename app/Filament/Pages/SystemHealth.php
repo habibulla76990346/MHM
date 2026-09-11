@@ -26,7 +26,7 @@ use Livewire\Attributes\Computed;
  */
 class SystemHealth extends Page
 {
-    private const CACHE_KEY = 'aziv:diagnostics:last_run';
+    public const CACHE_KEY = 'aziv:diagnostics:last_run';
 
     private const CACHE_MINUTES = 10;
 
@@ -85,9 +85,23 @@ class SystemHealth extends Page
     #[Computed]
     public function run(): array
     {
+        // What goes INTO the cache is plain arrays, never CheckResult objects.
+        // A cached object is a serialised object, and a serialised object
+        // outlives the class definition that wrote it: on any store that
+        // cannot resolve the class at unserialize time it returns as
+        // __PHP_Incomplete_Class and this page dies with a fatal type error —
+        // the one page an administrator opens when something is already wrong.
+        // The test suite runs the array driver, which never serialises, so
+        // this is invisible to PHPUnit and shows up only on a real server.
         if ($this->freshRun) {
-            $results = app(CheckRegistry::class)->run(automaticOnly: false);
-            $payload = ['results' => $results, 'ran_at' => now()->toIso8601String()];
+            $payload = [
+                'results' => array_map(
+                    fn (CheckResult $r) => $r->toArray(),
+                    app(CheckRegistry::class)->run(automaticOnly: false),
+                ),
+                'ran_at' => now()->toIso8601String(),
+            ];
+
             Cache::put(self::CACHE_KEY, $payload, now()->addMinutes(self::CACHE_MINUTES));
 
             return $payload;
@@ -96,7 +110,10 @@ class SystemHealth extends Page
         return Cache::remember(self::CACHE_KEY, now()->addMinutes(self::CACHE_MINUTES), function () {
             return [
                 // Only the free, side-effect-free subset runs unattended.
-                'results' => app(CheckRegistry::class)->run(automaticOnly: true),
+                'results' => array_map(
+                    fn (CheckResult $r) => $r->toArray(),
+                    app(CheckRegistry::class)->run(automaticOnly: true),
+                ),
                 'ran_at' => now()->toIso8601String(),
             ];
         });
@@ -106,7 +123,7 @@ class SystemHealth extends Page
     #[Computed]
     public function results(): array
     {
-        return $this->run()['results'];
+        return array_map(CheckResult::fromArray(...), $this->run()['results']);
     }
 
     public function ranAt(): string

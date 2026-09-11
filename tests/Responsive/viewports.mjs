@@ -10,19 +10,36 @@ export const VIEWPORTS = [
 ];
 
 // Screens under test. Grows every phase as features land.
-// Screens behind authentication are signed in first via `auth`.
+//
+// `auth` signs in as the customer account; `admin` signs in as an
+// administrator through the Admin Panel's own login form.
+//
+// Owner Addendum A applies to "EVERY user-facing page ... and the COMPLETE
+// Admin Panel". Until Phase 2 the gate covered only customer screens, so the
+// half of the requirement about the Admin Panel was asserted by nobody.
 export const SCREENS = [
-  { name: 'home',            path: '/' },
-  { name: 'login',           path: '/login' },
-  { name: 'register',        path: '/register' },
-  { name: 'forgot-password', path: '/forgot-password' },
-  { name: 'dashboard',       path: '/dashboard', auth: true },
-  { name: 'account',         path: '/account',   auth: true },
-  { name: 'library',         path: '/library',   auth: true },
+  { name: 'home',             path: '/' },
+  { name: 'login',            path: '/login' },
+  { name: 'register',         path: '/register' },
+  { name: 'forgot-password',  path: '/forgot-password' },
+  { name: 'dashboard',        path: '/dashboard', auth: true },
+  { name: 'account',          path: '/account',   auth: true },
+  { name: 'library',          path: '/library',   auth: true },
+
+  // --- Admin Panel ---------------------------------------------------------
+  { name: 'admin-login',      path: '/admin/login' },
+  { name: 'admin-dashboard',  path: '/admin',               admin: true },
+  { name: 'admin-health',     path: '/admin/system-health', admin: true },
 ];
 
 /** Credentials for the seeded responsive-test account. */
 export const TEST_USER = {
   email: process.env.RESPONSIVE_TEST_EMAIL || 'responsive@aziv.test',
   password: process.env.RESPONSIVE_TEST_PASSWORD || 'Responsive-Test-2026',
+};
+
+/** The seeded administrator the Admin Panel screens are checked as. */
+export const TEST_ADMIN = {
+  email: process.env.RESPONSIVE_TEST_ADMIN_EMAIL || 'responsive-admin@aziv.test',
+  password: process.env.RESPONSIVE_TEST_ADMIN_PASSWORD || 'Responsive-Test-2026',
 };

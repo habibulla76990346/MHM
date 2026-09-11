@@ -1,0 +1,72 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+/* The SAME token source the customer application imports (owner decision
+   D-07). The Admin Panel is not a second theme system with its own palette;
+   it is the same tokens under the `admin` scope, which is why a branding
+   change reaches both panels without a template-specific override. */
+@import '../../tokens.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+/* ============================================================================
+   OWNER ADDENDUM A — applied to the Admin Panel
+
+   "This applies to ... the COMPLETE Admin Panel", and "Do not simply shrink
+   the desktop UI."
+
+   Filament ships a desktop-density default: 36px controls, 32px icon buttons,
+   14px input text and a 20px checkbox row. Every one of those is below the
+   floor the responsive gate enforces on the customer application, and a 14px
+   input makes iOS zoom the page on focus.
+
+   These rules are deliberately UNLAYERED so they win over Filament's own
+   utilities, and every value is a token — so the density an administrator
+   chooses reaches the Admin Panel too, instead of being frozen here.
+
+   The trade is real and intended: a 44px control is taller than a 36px one, so
+   dense admin tables get taller on desktop. Owner Addendum A asks for touch
+   usability across the complete Admin Panel, not for desktop density preserved
+   at the cost of it.
+   ========================================================================= */
+
+/* Text fields, selects and textareas. 16px is not a style choice: below it,
+   iOS zooms the viewport when the field takes focus, and the page is then
+   scrolled sideways with no way back. */
+.fi-input,
+.fi-select-input,
+.fi-textarea {
+  min-height: var(--tap-min);
+  font-size: max(16px, 1rem);
+}
+
+/* Buttons, including the icon-only ones in input affixes and section headers. */
+.fi-btn,
+.fi-icon-btn,
+.fi-user-menu-trigger,
+.fi-sidebar-item-btn,
+.fi-topbar-start > a,
+.fi-link {
+  min-height: var(--tap-min);
+}
+
+.fi-icon-btn,
+.fi-user-menu-trigger {
+  min-width: var(--tap-min);
+}
+
+/* A checkbox is 16px by design and should stay that size visually. What has to
+   meet the minimum is the LABEL, because clicking anywhere in it toggles the
+   box — which is exactly how the responsive gate measures it. */
+.fi-fo-field-label:has(.fi-checkbox-input),
+.fi-fo-field-label:has(.fi-radio-input) {
+  min-height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  gap: var(--tap-gap);
+}
+
+/* The required-mark asterisk renders at 10.5px, under the 12px floor. */
+.fi-fo-field-label-required-mark {
+  font-size: var(--text-fluid-sm);
+}

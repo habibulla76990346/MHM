@@ -78,9 +78,11 @@ Do not run `playwright install`.
 
 ## Where the build is
 
-Phases 0 and 1 complete. Phase 2 next: Admin Panel foundation, branding, the full theme engine
-(including the admin panel itself, per D-07), and content management.
-Phase detail in `docs/09-development-phases.md`.
+Phases 0 and 1 complete. **Phase 2 in progress.** The theme engine is done: token catalogue,
+OKLCH colour maths, palette derivation, the eight built-in themes, and compilation into both the
+customer application and the Admin Panel from one shared token source (D-07). Still to come in
+Phase 2: the theme editor UI, the media library and branding assets, the PWA manifest, and content
+management. Phase detail in `docs/09-development-phases.md`.
 
 ### Useful commands added in Phase 1
 
@@ -89,9 +91,19 @@ php artisan aziv:admin:create   # create an administrator (never seeded)
 php artisan aziv:test-user      # local account the responsive gate signs in as
 ```
 
-### Two traps worth remembering
+### Traps worth remembering
 
 - **Settings validation must use a flat field name.** Laravel reads dots in a validation key as
   nested-array access, so validating under `auth.password_min_length` passes every rule vacuously.
 - **`Gate::after` cannot downgrade an allow** (`$result ??= $afterResult`), and Spatie registers
   its own `Gate::before`. Permission denials belong in `User::hasPermissionTo()`.
+- **Only scalars and plain arrays go into the cache.** `Cache::remember()` on an Eloquent model or
+  any rich object serialises it; on a real store (file, database, Redis) that payload outlives its
+  class and returns as `__PHP_Incomplete_Class`, taking down every page that reads it. Tests run
+  the `array` driver, which never serialises, so PHPUnit cannot catch it. Cache an id and re-query.
+  This bit twice — the theme service and the System Health page. Both now have a regression test
+  asserting the cached value is plain data.
+- **A gate is worth only what it can catch.** Break it on purpose before trusting it. The
+  hard-coded-colour gate silently checked two directory levels for a whole phase, because PHP's
+  `glob('**')` does not recurse. Every design token lives in `resources/css/tokens.css`, imported
+  by both `app.css` and the Filament theme — one copy, so the two panels cannot drift.

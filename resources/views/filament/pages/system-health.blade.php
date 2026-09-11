@@ -16,7 +16,7 @@
         ] as [$label, $count, $colour])
             <x-filament::section compact>
                 <div class="flex items-baseline justify-between gap-3">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">{{ $label }}</span>
+                    <span class="text-sm text-text-muted">{{ $label }}</span>
                     <x-filament::badge :color="$colour" size="lg">{{ $count }}</x-filament::badge>
                 </div>
             </x-filament::section>
@@ -25,16 +25,16 @@
 
     <x-filament::section compact>
         <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span class="text-gray-500 dark:text-gray-400">
-                Environment: <strong class="text-gray-950 dark:text-white">{{ $this->deploymentMode() }}</strong>
+            <span class="text-text-muted">
+                Environment: <strong class="text-heading">{{ $this->deploymentMode() }}</strong>
             </span>
-            <span class="text-gray-500 dark:text-gray-400">Last checked {{ $this->ranAt() }}</span>
+            <span class="text-text-muted">Last checked {{ $this->ranAt() }}</span>
         </div>
     </x-filament::section>
 
     @foreach ($this->grouped() as $category => $results)
         <x-filament::section :heading="$category" collapsible>
-            <div class="divide-y divide-gray-100 dark:divide-white/10">
+            <div class="divide-y divide-divider">
                 @foreach ($results as $result)
                     @php
                         $tone = match ($result->status) {
@@ -50,7 +50,7 @@
                         <div class="flex flex-wrap items-center gap-2">
                             <x-filament::badge :color="$tone">{{ ucfirst($result->status->value) }}</x-filament::badge>
 
-                            <span class="font-medium text-gray-950 dark:text-white">{{ $result->title }}</span>
+                            <span class="font-medium text-heading">{{ $result->title }}</span>
 
                             @if ($result->severity !== Severity::Informational)
                                 <x-filament::badge
@@ -62,7 +62,7 @@
                                     size="sm">{{ $this->severityLabel($result->severity) }}</x-filament::badge>
                             @endif
 
-                            <span class="text-xs text-gray-500 dark:text-gray-400">
+                            <span class="text-xs text-text-muted">
                                 {{ $result->responsibility->label() }}
                             </span>
                         </div>
@@ -70,19 +70,19 @@
                         {{-- Field 4: exact technical reason, already scrubbed of
                              anything secret-shaped at construction. --}}
                         @if ($result->technicalReason !== '')
-                            <p class="text-sm text-gray-600 dark:text-gray-300">{{ $result->technicalReason }}</p>
+                            <p class="text-sm text-text">{{ $result->technicalReason }}</p>
                         @endif
 
                         {{-- Field 6: plain language, actionable by a non-developer --}}
                         @if ($result->recommendedAction !== '')
-                            <p class="text-sm text-gray-950 dark:text-white">{{ $result->recommendedAction }}</p>
+                            <p class="text-sm text-heading">{{ $result->recommendedAction }}</p>
                         @endif
 
                         {{-- Field 7: the specific thing to change --}}
                         @if ($result->adminAction !== '')
                             <p class="text-sm">
-                                <span class="font-medium text-gray-950 dark:text-white">Do this:</span>
-                                <span class="text-gray-600 dark:text-gray-300">{{ $result->adminAction }}</span>
+                                <span class="font-medium text-heading">Do this:</span>
+                                <span class="text-text">{{ $result->adminAction }}</span>
                             </p>
                         @endif
 
@@ -90,16 +90,16 @@
                              wording to send them. Safe to forward — no
                              credential can reach this text. --}}
                         @if ($result->requiresHostingSupport && $result->supportWording !== '')
-                            <div class="rounded-lg bg-gray-50 p-3 text-sm dark:bg-white/5">
-                                <p class="mb-1 font-medium text-gray-950 dark:text-white">
+                            <div class="rounded-lg bg-surface-raised p-3 text-sm">
+                                <p class="mb-1 font-medium text-heading">
                                     Send this to your hosting provider:
                                 </p>
-                                <p class="text-gray-600 dark:text-gray-300">“{{ $result->supportWording }}”</p>
+                                <p class="text-text">“{{ $result->supportWording }}”</p>
                             </div>
                         @endif
 
                         {{-- Fields 9 & 11 --}}
-                        <p class="text-xs text-gray-400 dark:text-gray-500">
+                        <p class="text-xs text-text-muted">
                             {{ $result->key }}
                             @if ($result->durationMs > 0) · {{ (int) $result->durationMs }}ms @endif
                             @if ($result->logReference) · log {{ $result->logReference }} @endif

@@ -16,8 +16,9 @@ use Illuminate\Console\Command;
 class TestUserCommand extends Command
 {
     protected $signature = 'aziv:test-user
-                            {--email=responsive@aziv.test}
-                            {--password=Responsive-Test-2026}';
+                            {--email=}
+                            {--password=Responsive-Test-2026}
+                            {--admin : Create the Admin Panel account the gate checks admin screens as}';
 
     protected $description = 'Create or reset the local account used by the responsive test gate';
 
@@ -29,11 +30,14 @@ class TestUserCommand extends Command
             return self::FAILURE;
         }
 
-        $email = $this->option('email');
+        $isAdmin = (bool) $this->option('admin');
+
+        $email = $this->option('email')
+            ?: ($isAdmin ? 'responsive-admin@aziv.test' : 'responsive@aziv.test');
 
         $user = User::withTrashed()->firstOrNew(['email' => $email]);
         $user->fill([
-            'name' => 'Responsive Test',
+            'name' => $isAdmin ? 'Responsive Test Admin' : 'Responsive Test',
             'password' => $this->option('password'),
             'status' => User::STATUS_ACTIVE,
         ]);
@@ -43,8 +47,10 @@ class TestUserCommand extends Command
 
         UserProfile::firstOrCreate(['user_id' => $user->getKey()]);
 
-        if (! $user->hasRole(PermissionRegistry::CUSTOMER)) {
-            $user->assignRole(PermissionRegistry::CUSTOMER);
+        $role = $isAdmin ? PermissionRegistry::SUPER_ADMIN : PermissionRegistry::CUSTOMER;
+
+        if (! $user->hasRole($role)) {
+            $user->assignRole($role);
         }
 
         $this->info('Test account ready: '.$email);

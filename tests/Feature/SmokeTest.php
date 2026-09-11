@@ -32,10 +32,22 @@ class SmokeTest extends TestCase
         $offenders = [];
         $pattern = '/(?:bg|text|border|ring|from|to|via)-(?:red|blue|green|yellow|purple|pink|indigo|gray|grey|slate|zinc|neutral|stone|orange|amber|lime|emerald|teal|cyan|sky|violet|fuchsia|rose)-\d{2,3}|#[0-9a-fA-F]{3,8}\b/';
 
-        foreach (glob(resource_path('views').'/**/*.blade.php') + glob(resource_path('views').'/*.blade.php') as $file) {
-            $contents = file_get_contents($file);
+        // RecursiveDirectoryIterator, not glob('**'): PHP's glob does not
+        // recurse, so '**' matches exactly one directory level. Every template
+        // nested deeper than that — which is most of them — went unchecked, and
+        // a gate that cannot fail is not a gate.
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(resource_path('views'), \FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if (! str_ends_with($file->getFilename(), '.blade.php')) {
+                continue;
+            }
+
+            $contents = file_get_contents($file->getPathname());
             if (preg_match_all($pattern, $contents, $m)) {
-                $offenders[str_replace(base_path().'/', '', $file)] = array_unique($m[0]);
+                $offenders[str_replace(base_path().'/', '', $file->getPathname())] = array_unique($m[0]);
             }
         }
 

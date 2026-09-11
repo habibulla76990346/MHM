@@ -97,10 +97,18 @@ export async function readableText(page, min = MIN_FONT) {
 
 export async function inputsDoNotZoomOnIos(page) {
   const bad = await page.evaluate(() => {
+    // Safari on iOS zooms the viewport when a field that accepts TYPED TEXT
+    // takes focus below 16px. Controls with no text entry — checkbox, radio,
+    // button, file, colour, range — never trigger it, so measuring their
+    // font-size reports a problem that cannot happen. Narrowing to the types
+    // that actually zoom is a correction, not a relaxation: every field a user
+    // can type into is still measured.
+    const NON_TEXT = ['checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'color', 'range', 'image'];
     const out = [];
     for (const el of document.querySelectorAll('input:not([type=hidden]), select, textarea')) {
+      if (el.tagName === 'INPUT' && NON_TEXT.includes(el.type)) continue;
       const fs = parseFloat(getComputedStyle(el).fontSize);
-      if (fs && fs < 16) out.push(`${el.tagName.toLowerCase()} ${fs}px`);
+      if (fs && fs < 16) out.push(`${el.tagName.toLowerCase()}[${el.type || el.tagName.toLowerCase()}] ${fs}px`);
     }
     return out.slice(0, 6);
   });

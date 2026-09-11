@@ -10,7 +10,7 @@
  * Exits non-zero on any failure so CI treats it as a build break.
  */
 import { chromium } from 'playwright';
-import { VIEWPORTS, SCREENS, TEST_USER } from './viewports.mjs';
+import { VIEWPORTS, SCREENS, TEST_USER, TEST_ADMIN } from './viewports.mjs';
 import * as C from './checks.mjs';
 
 const BASE = process.argv[2] || process.env.APP_URL || 'http://127.0.0.1:8000';
@@ -35,11 +35,11 @@ const browser = await chromium.launch(EXEC ? { executablePath: EXEC } : {});
  * Signing in once and reusing the storage state keeps the gate fast: without
  * it, every screen at every viewport would repeat a full login.
  */
-async function authenticate() {
+async function authenticate(loginPath, user, emailSelector, passwordSelector) {
   const page = await browser.newPage();
-  await page.goto(BASE + '/login', { waitUntil: 'networkidle' });
-  await page.fill('#email-field', TEST_USER.email);
-  await page.fill('#password-field', TEST_USER.password);
+  await page.goto(BASE + loginPath, { waitUntil: 'networkidle' });
+  await page.fill(emailSelector, user.email);
+  await page.fill(passwordSelector, user.password);
   await Promise.all([
     page.waitForURL((u) => !u.pathname.endsWith('/login'), { timeout: 15000 }),
     page.click('button[type=submit]'),
@@ -49,17 +49,36 @@ async function authenticate() {
   return state;
 }
 
-const needsAuth = SCREENS.some((s) => s.auth);
-let storageState;
-if (needsAuth) {
+async function signIn(kind, run, hint) {
   try {
-    storageState = await authenticate();
+    return await run();
   } catch (e) {
-    console.log(RED(`Could not sign in as ${TEST_USER.email}: ${e.message}`));
-    console.log(DIM('Run: php artisan aziv:test-user'));
+    console.log(RED(`Could not sign in for ${kind} screens: ${e.message}`));
+    console.log(DIM(hint));
     await browser.close();
     process.exit(1);
   }
+}
+
+let storageState;
+let adminState;
+
+if (SCREENS.some((s) => s.auth)) {
+  storageState = await signIn(
+    'customer',
+    () => authenticate('/login', TEST_USER, '#email-field', '#password-field'),
+    'Run: php artisan aziv:test-user',
+  );
+}
+
+if (SCREENS.some((s) => s.admin)) {
+  // Filament renders its own login form, so the field selectors differ from
+  // the customer one.
+  adminState = await signIn(
+    'admin',
+    () => authenticate('/admin/login', TEST_ADMIN, 'input[id$="email"]', 'input[type="password"]'),
+    'Run: php artisan aziv:test-user --admin',
+  );
 }
 
 for (const screen of SCREENS) {
@@ -67,7 +86,7 @@ for (const screen of SCREENS) {
   for (const vp of VIEWPORTS) {
     const page = await browser.newPage({
       viewport: { width: vp.width, height: vp.height },
-      ...(screen.auth ? { storageState } : {}),
+      ...(screen.admin ? { storageState: adminState } : screen.auth ? { storageState } : {}),
     });
     let line = `  ${vp.name.padEnd(9)} ${DIM(vp.class.padEnd(8))}`;
     try {

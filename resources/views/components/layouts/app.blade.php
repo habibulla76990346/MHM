@@ -10,14 +10,18 @@
     {{-- viewport-fit=cover is required for env(safe-area-inset-*) to resolve
          on notched devices — Owner Addendum A --}}
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#0b1120">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ? $title.' · '.settings('branding.app_name') : settings('branding.app_name') }}</title>
     <link rel="icon" href="{{ asset('brand/favicon-32.png') }}" sizes="32x32">
     <link rel="icon" href="{{ asset('brand/favicon-16.png') }}" sizes="16x16">
     <link rel="apple-touch-icon" href="{{ asset('brand/app-icon-180.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    {{-- Phase 2 injects the active theme's compiled token block here. --}}
+
+    {{-- AFTER the stylesheet: the compiled block redefines the same custom
+         properties tokens.css declares, and later wins. Nothing here is
+         template-specific — the Admin Panel includes the identical component
+         with scope="admin" (owner decision D-07). --}}
+    <x-theme.styles scope="customer" />
 </head>
 <body class="min-h-dvh bg-background text-text antialiased">
 

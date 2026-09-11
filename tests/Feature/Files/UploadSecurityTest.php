@@ -189,9 +189,16 @@ class UploadSecurityTest extends TestCase
     {
         $file = $this->storage()->store(UploadedFile::fake()->image('doc.png'), $this->user);
 
+        $url = route('files.show', $file);
+
         $this->assertSame('uuid', (new File())->getRouteKeyName());
-        $this->assertStringContainsString($file->uuid, route('files.show', $file));
-        $this->assertStringNotContainsString('/'.$file->id, route('files.show', $file));
+        $this->assertStringContainsString($file->uuid, $url);
+
+        // Compare the final PATH SEGMENT, not a substring. A UUID beginning
+        // with the same digit as the id ('/7' inside '/76f9…') made the
+        // substring form fail roughly one run in sixteen — a test that fails on
+        // the luck of the draw teaches everyone to re-run rather than look.
+        $this->assertSame($file->uuid, basename(parse_url($url, PHP_URL_PATH)));
     }
 
     /**

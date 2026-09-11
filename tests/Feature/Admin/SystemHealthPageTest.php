@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Domains\Diagnostics\Support\CheckResult;
 use App\Domains\Security\Services\PermissionRegistry;
+use App\Filament\Pages\SystemHealth;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -82,5 +84,39 @@ class SystemHealthPageTest extends TestCase
                     'A credential appeared in the System Health page.');
             }
         }
+    }
+
+    /**
+     * REGRESSION. Caching CheckResult objects serialises them, and a
+     * serialised object outlives the class definition that wrote it: on a
+     * store that cannot resolve the class at unserialize time it comes back as
+     * __PHP_Incomplete_Class and this page dies with a fatal type error.
+     *
+     * PHPUnit runs the array cache driver, which stores by reference and never
+     * serialises, so an ordinary "the page loads" assertion cannot see this.
+     * Asserting the cached payload is plain data can, on any driver.
+     */
+    public function test_diagnostics_are_cached_as_plain_data_not_as_objects(): void
+    {
+        $this->actingAs($this->userWithRole(PermissionRegistry::SUPER_ADMIN))
+            ->get('/admin/system-health')
+            ->assertOk();
+
+        $payload = \Illuminate\Support\Facades\Cache::get(SystemHealth::CACHE_KEY);
+
+        $this->assertIsArray($payload);
+        $this->assertNotEmpty($payload['results']);
+
+        foreach ($payload['results'] as $result) {
+            $this->assertIsArray($result, 'A CheckResult object reached the cache.');
+        }
+
+        // The round trip a real cache store performs must be lossless.
+        $this->assertEquals($payload, unserialize(serialize($payload)));
+
+        // And the array form must rebuild into the real thing.
+        $rebuilt = CheckResult::fromArray($payload['results'][0]);
+        $this->assertSame($payload['results'][0]['key'], $rebuilt->key);
+        $this->assertSame($payload['results'][0]['status'], $rebuilt->status->value);
     }
 }

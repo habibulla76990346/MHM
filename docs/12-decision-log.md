@@ -349,3 +349,65 @@ The owner confirmed these stay as proposed **for now**. Silence is still not app
 | Owner decision | **D-09 CHANGED** — official Aziv AI artwork used as initial branding; no placeholder |
 | Owner decision | **D-09 RESOLVED** — both variants built and committed; master preserved; 16px favicon flagged as needing a designed mark |
 | Owner Addendum G | System health & diagnostics — two deployment modes, self-detecting environment, 11-field findings, secret-free reporting. **Resolved E-2 … E-8; no blockers remain** |
+| Owner instruction | **Phase 1 implemented and committed** — identity, roles and permissions, settings, audit, upload security, app shell |
+| Owner instruction | **Phase 2 started** — full theme engine first, with the Admin Panel on the same token system (D-07) |
+
+---
+
+## Findings from Phase 2 implementation
+
+Recorded because each one changes something previously believed to be true.
+
+### The hard-coded-colour gate was only checking two directory levels
+
+`SmokeTest::test_no_blade_template_hard_codes_a_colour` globbed `views/**/*.blade.php`. PHP's
+`glob()` does not recurse — `**` matches exactly one directory level — so every template nested
+deeper, which is most of them, went unchecked. Replaced with a recursive iterator. It immediately
+found hard-coded Tailwind greys in the Admin Panel's System Health page, i.e. the exact D-07
+violation it exists to prevent.
+
+**Rule this confirms:** a gate is only worth what it can catch. Each of the four checked rules
+is now exercised against a deliberate fault before it is trusted.
+
+### The responsive gate covered no Admin Panel screen
+
+Owner Addendum A says the requirement applies to "EVERY user-facing page ... and the COMPLETE
+Admin Panel". The gate checked seven customer screens and zero admin screens, so half the
+requirement was asserted by nobody. The Admin Panel now has three screens in the gate, and it
+failed all three on the first run: Filament ships 36px controls, 32px icon buttons, 14px input
+text and a 20px checkbox row. Fixed in the admin theme, in tokens, not per template.
+
+### Caching an Eloquent model breaks the site on a real server
+
+`Cache::rememberForever()` on a model serialises the whole object. On any serialising store —
+file, database, Redis — that payload outlives the class definition that wrote it and returns as
+`__PHP_Incomplete_Class`, taking down every page including login. The test suite runs the `array`
+driver, which stores by reference and never serialises, so PHPUnit cannot see it.
+
+Found twice: in the theme service, and in the Phase 1 diagnostics page, where it broke System
+Health — the one screen an administrator opens when something is already wrong.
+
+**Rule going forward:** only scalars and plain arrays go into the cache. Both sites now have a
+regression test asserting the cached value is plain data, which holds on any driver.
+
+### Custom CSS sanitisation stripped the scheme but left the URL
+
+`url(https://evil.test/a.png)` became `evil.test/a.png)` — invalid CSS that a browser would
+discard, which is a parser doing security work by accident. Rewritten default-deny: only relative
+URLs survive, everything else becomes `none`.
+
+### Two colour-maths defects that would have shipped as "looks slightly off"
+
+- Clamping RGB channels for an out-of-gamut colour rotates the hue, so a request for an orange
+  warning came back brown (70° → 60°). Now chroma is reduced until the colour fits, and the hue
+  arrives intact.
+- An achromatic colour has no hue, and the conversion reports it as 0° — which is red. Mixing
+  white toward a blue-grey therefore travelled through pink and produced a warm grey. Now the
+  powerless-hue rule from CSS Color 4 applies: a neutral adopts the other end's hue.
+
+### Themes are derived, not authored
+
+A theme is ~7 palette colours; the remaining tokens are derived. The derivation guarantees WCAG
+AA on every checked text/background pair by construction — and it had to, because four of the
+eight built-in themes failed the link-contrast check as originally authored. The guarantee holds
+for administrator-authored palettes too, which is tested with a deliberately hostile one.

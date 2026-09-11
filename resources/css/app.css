@@ -3,217 +3,7 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../../app/Filament/**/*.php';
-
-/* ============================================================================
-   AZIV AI — DESIGN TOKENS
-   ----------------------------------------------------------------------------
-   Every value below is a DEFAULT. At runtime the active theme injects a
-   <style> block redefining these same custom properties on :root, so the
-   whole interface re-skins without touching a single template.
-
-   RULE (see docs/08-theme-branding-system.md §9):
-   No colour, radius, shadow, spacing value or font may be hard-coded in any
-   Blade template, Livewire component or CSS file. Always reference a token.
-   ========================================================================= */
-
-@theme {
-  /* --- Breakpoints: 6 steps, 3 device classes ---------------------------
-     xs   0–479    mobile      (base, no prefix)
-     sm   480–767  mobile
-     md   768–1023 tablet   <- structural switch: nav, sheets, cards
-     lg   1024+    desktop  <- structural switch: sidebar, multi-column
-     xl   1280+    desktop
-     2xl  1536+    desktop                                               */
-  --breakpoint-sm: 480px;
-  --breakpoint-md: 768px;
-  --breakpoint-lg: 1024px;
-  --breakpoint-xl: 1280px;
-  --breakpoint-2xl: 1536px;
-
-  /* --- Brand ---------------------------------------------------------- */
-  --color-primary: #1f2937;
-  --color-primary-hover: #111827;
-  --color-primary-active: #030712;
-  --color-secondary: #4b5563;
-  --color-accent: #6366f1;
-
-  /* --- Surfaces ------------------------------------------------------- */
-  --color-background: #f8fafc;
-  --color-surface: #ffffff;
-  --color-surface-raised: #ffffff;
-  --color-card: #ffffff;
-  --color-overlay: rgb(15 23 42 / 0.55);
-
-  /* --- Lines ---------------------------------------------------------- */
-  --color-border: #e2e8f0;
-  --color-border-strong: #cbd5e1;
-  --color-divider: #eef2f6;
-
-  /* --- Text ----------------------------------------------------------- */
-  --color-text: #0f172a;
-  --color-text-muted: #64748b;
-  --color-text-inverse: #f8fafc;
-  --color-heading: #0f172a;
-
-  /* --- State ---------------------------------------------------------- */
-  --color-success: #15803d;
-  --color-success-bg: #dcfce7;
-  --color-warning: #b45309;
-  --color-warning-bg: #fef3c7;
-  --color-danger: #b91c1c;
-  --color-danger-bg: #fee2e2;
-  --color-info: #0369a1;
-  --color-info-bg: #e0f2fe;
-
-  /* --- Interactive ---------------------------------------------------- */
-  --color-link: #4338ca;
-  --color-link-hover: #3730a3;
-  --color-hover: #f1f5f9;
-  --color-active: #e2e8f0;
-  --color-focus-ring: #6366f1;
-  --color-disabled: #94a3b8;
-
-  /* --- Shape ---------------------------------------------------------- */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-full: 9999px;
-
-  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
-  --shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.08);
-  --shadow-lg: 0 12px 32px -8px rgb(15 23 42 / 0.14);
-
-  /* --- Typography ----------------------------------------------------- */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-}
-
-/* --- Dark palette --------------------------------------------------------
-   Only the tokens that differ. Structured for all three viewer states:
-   explicit dark, explicit light, and the un-stamped system default.      */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --color-primary: #e2e8f0;
-    --color-primary-hover: #f1f5f9;
-    --color-primary-active: #ffffff;
-    --color-secondary: #94a3b8;
-    --color-accent: #818cf8;
-
-    --color-background: #0b1120;
-    --color-surface: #111827;
-    --color-surface-raised: #1a2234;
-    --color-card: #111827;
-    --color-overlay: rgb(2 6 23 / 0.7);
-
-    --color-border: #1e293b;
-    --color-border-strong: #334155;
-    --color-divider: #172033;
-
-    --color-text: #e8edf5;
-    --color-text-muted: #94a3b8;
-    --color-text-inverse: #0f172a;
-    --color-heading: #f1f5f9;
-
-    --color-success: #4ade80;
-    --color-success-bg: #052e16;
-    --color-warning: #fbbf24;
-    --color-warning-bg: #3b2506;
-    --color-danger: #f87171;
-    --color-danger-bg: #3d1213;
-    --color-info: #38bdf8;
-    --color-info-bg: #082f49;
-
-    --color-link: #a5b4fc;
-    --color-link-hover: #c7d2fe;
-    --color-hover: #172033;
-    --color-active: #1e293b;
-    --color-focus-ring: #818cf8;
-    --color-disabled: #475569;
-
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-    --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
-    --shadow-lg: 0 12px 32px -8px rgb(0 0 0 / 0.65);
-  }
-}
-
-:root[data-theme='dark'] {
-  --color-primary: #e2e8f0;
-  --color-primary-hover: #f1f5f9;
-  --color-primary-active: #ffffff;
-  --color-secondary: #94a3b8;
-  --color-accent: #818cf8;
-
-  --color-background: #0b1120;
-  --color-surface: #111827;
-  --color-surface-raised: #1a2234;
-  --color-card: #111827;
-  --color-overlay: rgb(2 6 23 / 0.7);
-
-  --color-border: #1e293b;
-  --color-border-strong: #334155;
-  --color-divider: #172033;
-
-  --color-text: #e8edf5;
-  --color-text-muted: #94a3b8;
-  --color-text-inverse: #0f172a;
-  --color-heading: #f1f5f9;
-
-  --color-success: #4ade80;
-  --color-success-bg: #052e16;
-  --color-warning: #fbbf24;
-  --color-warning-bg: #3b2506;
-  --color-danger: #f87171;
-  --color-danger-bg: #3d1213;
-  --color-info: #38bdf8;
-  --color-info-bg: #082f49;
-
-  --color-link: #a5b4fc;
-  --color-link-hover: #c7d2fe;
-  --color-hover: #172033;
-  --color-active: #1e293b;
-  --color-focus-ring: #818cf8;
-  --color-disabled: #475569;
-
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
-  --shadow-lg: 0 12px 32px -8px rgb(0 0 0 / 0.65);
-}
-
-/* ============================================================================
-   DEVICE TOKENS — Owner Addendum A
-   Touch targets, safe areas and the measurements the mobile chat composer
-   and bottom navigation depend on.
-   ========================================================================= */
-:root {
-  /* 44px is the minimum tappable size (Apple HIG / WCAG 2.5.5). Below this,
-     taps miss. Asserted automatically by the responsive test harness. */
-  --tap-min: 44px;
-  --tap-gap: 8px;
-
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
-
-  --nav-height-mobile: 56px;
-  --topbar-height: 56px;
-  --composer-height: 0px; /* set live by the chat composer */
-  --sheet-radius: 1rem;
-  --content-max: 72ch;
-
-  /* Fluid type: scales continuously rather than jumping at breakpoints */
-  --text-fluid-sm: clamp(0.875rem, 0.85rem + 0.15vw, 0.9375rem);
-  --text-fluid-base: clamp(1rem, 0.95rem + 0.25vw, 1.0625rem);
-  --text-fluid-lg: clamp(1.125rem, 1.05rem + 0.4vw, 1.25rem);
-  --text-fluid-xl: clamp(1.25rem, 1.1rem + 0.7vw, 1.5rem);
-  --text-fluid-2xl: clamp(1.5rem, 1.3rem + 1vw, 2rem);
-  --text-fluid-3xl: clamp(1.875rem, 1.5rem + 1.8vw, 2.75rem);
-
-  /* Fluid spacing */
-  --space-gutter: clamp(1rem, 4vw, 2rem);
-  --space-section: clamp(2rem, 5vw, 4rem);
-}
+@import './tokens.css';
 
 /* ============================================================================
    BASE
@@ -228,7 +18,18 @@
     color: var(--color-text);
     font-family: var(--font-sans);
     font-size: var(--text-fluid-base);
+    font-weight: var(--font-body-weight);
     line-height: 1.6;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--color-heading);
+    font-weight: var(--font-heading-weight);
   }
 
   /* Every interactive element meets the touch minimum. */

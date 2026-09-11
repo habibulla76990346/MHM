@@ -185,6 +185,14 @@ class SettingRegistry
                 rules: ['string', 'in:system,light,dark'],
             ),
 
+            // --- Theme (owner decision D-07) ---------------------------------
+            new SettingDefinition(
+                key: 'theme.previous_theme_id', type: 'string', default: null, group: 'theme',
+                label: 'Previously published theme',
+                description: 'Set automatically when a theme is published, so one click restores what was live before. Not edited by hand.',
+                rules: ['nullable', 'string', 'max:32'],
+            ),
+
             // --- Uploads (Owner Addendum H) ----------------------------------
             new SettingDefinition(
                 key: 'uploads.max_size_kb', type: 'int', default: 10240, group: 'uploads',
