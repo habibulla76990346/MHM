@@ -1,11 +1,12 @@
 <x-layouts.app :title="config('app.name')">
     <header class="flex flex-col gap-6">
         <div class="flex items-center gap-4">
-            <picture>
-                <source srcset="{{ asset('brand/logo-dark-bg.png') }}" media="(prefers-color-scheme: dark)">
-                <img src="{{ asset('brand/logo-light-bg.png') }}" alt="{{ config('app.name') }}"
-                     class="h-12 w-auto" width="48" height="48">
-            </picture>
+            {{-- The simplified vector mark, not the full artwork: at this size
+                 the master's fine ribbons merge into grey. It inherits its
+                 colour from the surrounding theme token via currentColor. --}}
+            <span class="text-primary" style="display:block;width:48px;height:48px;flex:none;">
+                {!! file_get_contents(public_path('brand/mark.svg')) !!}
+            </span>
             <div>
                 <h1 class="font-semibold text-heading" style="font-size: var(--text-fluid-2xl); line-height:1.15;">
                     {{ config('app.name') }}
@@ -29,7 +30,7 @@
                     'Laravel'  => app()->version(),
                     'PHP'      => PHP_VERSION,
                     'Database' => config('database.default'),
-                    'Mode'     => config('aziv.deployment_mode'),
+                    'Mode'     => \App\Domains\Diagnostics\Support\DeploymentMode::resolve()->label(),
                 ] as $label => $value)
                     <div class="rounded-md border border-border bg-background p-3">
                         <dt class="text-text-muted" style="font-size: 0.75rem; letter-spacing:.06em; text-transform:uppercase;">{{ $label }}</dt>
