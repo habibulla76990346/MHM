@@ -81,19 +81,51 @@ Do not run `playwright install`.
 
 ## Where the build is
 
-**Phases 0–4 complete.** Phase 2 delivered the theme engine, the Appearance editor, branding and
-content management. Phase 3 delivered the universal AI gateway: adapter contracts and normalised
-DTOs, the provider registry, encrypted credentials with masked display, the model catalog with
-dated pricing, the sync service, the API test console (§25), and adapter-contributed provider
-diagnostics. Phase 4 delivered the OpenAI and Gemini adapters, chat with streaming and history,
-personas, context and rate limits, and the mobile chat UI. **Phase 5 is next** — smart routing,
-health, fallback and cost logging. See `docs/09-development-phases.md`.
+**Phases 0–5 complete.** Phase 3 delivered the universal AI gateway; Phase 4 the OpenAI and Gemini
+adapters, chat with streaming and history, personas, context and rate limits, and the mobile chat
+UI. Phase 5 delivered the router: all eight routing modes, scoring from real traffic, retry with
+jitter honouring `Retry-After`, the circuit breaker with admin reset, capability-guarded fallback,
+routing logs carrying every candidate and its rejection, dated cost and exchange-rate recording,
+provider budgets, the nightly rollup, and two admin screens — Usage and Costs, Routing and Health.
+**Phase 6 is next** — subscriptions, credits, tax and payments. See `docs/09-development-phases.md`.
 
-**Phases 3 and 4 were built and tested entirely against fixtures.** No real OpenAI or Gemini key
-has been used — the plan has the owner supply those. Every adapter behaviour is proven against
-recorded shapes; the first real call happens when a key is entered at
-**Admin → AI → Providers → Add provider**.
+**Everything from Phase 3 onward was built and tested entirely against fixtures.** No real OpenAI
+or Gemini key has been used — the plan has the owner supply those. Every adapter behaviour and
+every routing decision is proven against recorded shapes; the first real call happens when a key is
+entered at **Admin → AI → Providers → Add provider**.
 
+### Where the owner enters what the cost screens need
+
+Nothing is required to run. To make the figures read true:
+
+- **API keys** — Admin → AI Providers → *(a provider)* → Credentials. Never in chat, never in a file.
+- **Prices** — Admin → AI Models → *(a model)* → Prices: provider cost and credit price per unit,
+  with an effective-from date. An unpriced model records a visible zero rather than a guess.
+- **Budgets** — Admin → AI Providers → *(a provider)* → Budgets. "Warn" keeps serving and tells
+  you; "block" stops spending until the next period.
+- **Reporting currency, the optional rate feed, and routing defaults** — Admin → Routing and Health
+  → Defaults.
+
+
+### Routing, in one paragraph
+
+Nothing decides which model answers except `AiRouter`, and it decides in six stages: what the
+REQUEST needs (`Capability::VISION`, never a model name), which models survive the hard filters,
+how the survivors score under this conversation's mode, the attempt with retries, the substitute
+when that fails, and the record. A substitution re-runs the whole pipeline with the same
+requirement, which is what makes "a vision request never falls back to a model that cannot see"
+true by construction rather than by a check someone could forget. Every candidate and every
+rejection reaches `routing_logs`, so "why did this go to the expensive model?" has an answer six
+months later. Health and latency come from real customer traffic, never synthetic pings, and a
+provider nobody has used yet scores as healthy — no evidence is not bad evidence.
+
+### Cost, in one paragraph
+
+A call is costed at the price that applied WHEN IT HAPPENED and the figure is stored, so editing a
+price never rewrites the profitability of history. Provider cost stays in the provider's own
+currency with that currency beside it; the conversion into the owner's currency happens in the
+nightly rollup at the rate that applied on that day, and is stored too. A missing rate records a
+visible zero and the screen names the currency — a zero can be found and corrected, a guess cannot.
 
 ### AI providers, in one paragraph
 
@@ -165,6 +197,14 @@ php artisan aziv:test-user      # local account the responsive gate signs in as
   keeps the first match, so a test that re-fakes an endpoint to simulate a CHANGE silently keeps
   the original response — and every "the model disappeared" assertion passes vacuously. Register
   one stub whose closure reads mutable test state instead.
+- **A method name can collide with Eloquent's own and take the whole application down.**
+  `ExchangeRate::on()` clashed with `Model::on($connection)`; an incompatible signature is a fatal
+  error at class load, not a failed query. Check the base class before naming a static helper.
+- **`upsert()` then `increment()` counts the first write twice.** The upsert seeds the row with the
+  value, and the increment adds it again. Insert at zero and let the increment be the one place a
+  number is added.
+- **The six-viewport gate only measures what is VISIBLE.** A form inside a section that is
+  collapsed by default is a form nothing checks. Leave it expanded, or the gate is decorative.
 - **A gate is worth only what it can catch.** Break it on purpose before trusting it. The
   hard-coded-colour gate silently checked two directory levels for a whole phase, because PHP's
   `glob('**')` does not recurse. Every design token lives in `resources/css/tokens.css`, imported

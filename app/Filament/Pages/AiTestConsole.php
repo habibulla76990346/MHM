@@ -8,8 +8,8 @@ use App\Domains\AI\DTO\ChatRequest;
 use App\Domains\AI\Exceptions\ProviderFailed;
 use App\Domains\AI\Models\AiModel;
 use App\Domains\AI\Models\AiProvider;
-use App\Domains\AI\Models\ProviderCircuitState;
 use App\Domains\AI\Models\ProviderHealthLog;
+use App\Domains\AI\Routing\CircuitBreaker;
 use App\Domains\AI\Services\ModelSyncService;
 use App\Domains\AI\Services\ProviderRegistry;
 use App\Domains\AI\Support\ErrorClass;
@@ -264,12 +264,14 @@ class AiTestConsole extends Page
             return;
         }
 
-        ProviderCircuitState::updateOrCreate(
-            ['provider_id' => $provider->getKey()],
-            ['state' => 'closed', 'failure_count' => 0, 'forced_open' => false, 'opened_at' => null],
-        );
+        // Through CircuitBreaker, never straight at the mirror row: the live
+        // state lives in the cache, and clearing only the database copy would
+        // report success while the provider stayed out of rotation.
+        $before = app(CircuitBreaker::class)->state($provider);
 
-        app(ActivityLogger::class)->log('provider.circuit_reset', $provider, null, ['state' => 'closed']);
+        app(CircuitBreaker::class)->reset($provider);
+
+        app(ActivityLogger::class)->log('provider.circuit_reset', $provider, $before, ['state' => 'closed']);
 
         Notification::make()->title('Circuit breaker reset')->success()->send();
     }

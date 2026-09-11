@@ -6,6 +6,7 @@ use App\Domains\AI\Contracts\ProviderAdapter;
 use App\Domains\AI\Exceptions\ProviderFailed;
 use App\Domains\AI\Models\AiProvider;
 use App\Domains\AI\Models\AiProviderCredential;
+use App\Domains\AI\Routing\RetryPolicy;
 use App\Domains\AI\Support\ErrorClass;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -120,7 +121,14 @@ abstract class BaseAdapter implements ProviderAdapter
         $latency = $this->elapsed($startedAt);
 
         if ($response->failed()) {
-            throw new ProviderFailed($this->classify($response), $response->status(), $latency);
+            throw new ProviderFailed(
+                $this->classify($response),
+                $response->status(),
+                $latency,
+                // A header, not prose: safe to keep, and the only thing that
+                // makes a back-off match what the provider actually wants.
+                app(RetryPolicy::class)->retryAfterFrom($response->header('Retry-After')),
+            );
         }
 
         return [$response, $latency];

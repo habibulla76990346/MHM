@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\AiProviders\Tables;
 
 use App\Domains\AI\Models\AiProvider;
-use App\Domains\AI\Models\ProviderCircuitState;
+use App\Domains\AI\Routing\CircuitBreaker;
 use App\Domains\AI\Services\ModelSyncService;
 use App\Domains\AI\Services\ProviderRegistry;
 use App\Domains\Security\Services\ActivityLogger;
@@ -120,23 +120,46 @@ class AiProvidersTable
                             ->send();
                     }),
 
+                // The breaker's live state is the CACHE — the database row is
+                // a mirror for display. Resetting the row alone would look
+                // like it worked and change nothing, so both of these go
+                // through CircuitBreaker, which owns both copies.
                 Action::make('reset_circuit')
-                    ->label('Reset circuit breaker')
+                    ->label('Put back in rotation')
                     ->icon('heroicon-o-bolt')
                     ->requiresConfirmation()
+                    ->modalDescription(fn (AiProvider $record) => app(CircuitBreaker::class)->describe($record))
                     ->visible(fn (AiProvider $record) => auth()->user()?->can('providers.manage')
-                        && $record->circuit?->isOpen())
+                        && app(CircuitBreaker::class)->isOpen($record))
                     ->action(function (AiProvider $record) {
-                        $before = $record->circuit?->only(['state', 'failure_count', 'forced_open']);
+                        $before = app(CircuitBreaker::class)->state($record);
 
-                        ProviderCircuitState::updateOrCreate(
-                            ['provider_id' => $record->getKey()],
-                            ['state' => ProviderCircuitState::CLOSED, 'failure_count' => 0, 'forced_open' => false, 'opened_at' => null],
-                        );
+                        app(CircuitBreaker::class)->reset($record);
 
                         app(ActivityLogger::class)->log('provider.circuit_reset', $record, $before, ['state' => 'closed']);
 
                         Notification::make()->title('Back in rotation')->success()->send();
+                    }),
+
+                // §24's emergency control: take a provider out of rotation
+                // without disabling it, so its configuration, credentials and
+                // models survive being switched off for an hour.
+                Action::make('force_open_circuit')
+                    ->label('Take out of rotation')
+                    ->icon('heroicon-o-hand-raised')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalDescription('Requests stop going to this provider immediately. Nothing is deleted, and its models stay configured.')
+                    ->visible(fn (AiProvider $record) => auth()->user()?->can('providers.manage')
+                        && ! app(CircuitBreaker::class)->isOpen($record))
+                    ->action(function (AiProvider $record) {
+                        $before = app(CircuitBreaker::class)->state($record);
+
+                        app(CircuitBreaker::class)->forceOpen($record);
+
+                        app(ActivityLogger::class)->log('provider.circuit_forced_open', $record, $before, ['state' => 'open']);
+
+                        Notification::make()->title('Out of rotation')->success()->send();
                     }),
 
                 EditAction::make(),

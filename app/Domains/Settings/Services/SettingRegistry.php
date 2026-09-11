@@ -276,6 +276,74 @@ class SettingRegistry
                 rules: ['integer', 'min:0', 'max:3650'],
             ),
 
+            // --- Routing and health (blueprint §14, §24) ---------------------
+            new SettingDefinition(
+                key: 'routing.default_mode', type: 'string', default: 'auto', group: 'routing',
+                label: 'How Aziv AI chooses a model',
+                description: 'Applies to every conversation that has not chosen for itself.',
+                rules: ['string', 'in:auto,best_quality,fastest,lowest_cost,free_only,admin_preferred,specific_provider,specific_model'],
+            ),
+            new SettingDefinition(
+                key: 'routing.max_fallback_depth', type: 'int', default: 2, group: 'routing',
+                label: 'How many other providers to try',
+                description: 'After a provider fails, how many alternatives to attempt before giving up. 0 disables fallback.',
+                rules: ['integer', 'min:0', 'max:5'],
+            ),
+            new SettingDefinition(
+                key: 'routing.max_retries', type: 'int', default: 2, group: 'routing',
+                label: 'Retries per provider',
+                description: 'Only failures worth retrying are retried — a rejected key never is.',
+                rules: ['integer', 'min:0', 'max:5'],
+            ),
+            new SettingDefinition(
+                key: 'routing.retry_base_ms', type: 'int', default: 400, group: 'routing',
+                label: 'First retry delay (ms)',
+                description: 'Doubles each attempt, with a random jitter so many requests do not retry in lockstep.',
+                rules: ['integer', 'min:50', 'max:10000'],
+            ),
+            new SettingDefinition(
+                key: 'routing.circuit_failure_threshold', type: 'int', default: 5, group: 'routing',
+                label: 'Failures before a provider is taken out',
+                rules: ['integer', 'min:1', 'max:50'],
+            ),
+            new SettingDefinition(
+                key: 'routing.circuit_cooldown_seconds', type: 'int', default: 60, group: 'routing',
+                label: 'Rest period before retrying a failed provider (seconds)',
+                description: 'Doubles each time it fails again, up to the maximum below.',
+                rules: ['integer', 'min:5', 'max:3600'],
+            ),
+            new SettingDefinition(
+                key: 'routing.circuit_max_cooldown_seconds', type: 'int', default: 900, group: 'routing',
+                label: 'Longest rest period (seconds)',
+                rules: ['integer', 'min:30', 'max:86400'],
+            ),
+            new SettingDefinition(
+                key: 'routing.health_window_hours', type: 'int', default: 24, group: 'routing',
+                label: 'Health is measured over the last (hours)',
+                description: 'Latency and success rates come from real customer traffic in this window, not synthetic pings.',
+                rules: ['integer', 'min:1', 'max:720'],
+            ),
+
+            // --- Costing (blueprint §13, §21) --------------------------------
+            new SettingDefinition(
+                key: 'billing.base_currency', type: 'string', default: 'INR', group: 'billing',
+                label: 'Your reporting currency', isPublic: true,
+                description: 'Provider costs are recorded in the currency the provider bills in, and converted to this for reporting.',
+                rules: ['string', 'size:3'],
+            ),
+            new SettingDefinition(
+                key: 'billing.exchange_rate_source', type: 'string', default: '', group: 'billing',
+                label: 'Exchange rate feed (optional)',
+                description: 'A URL returning {"rates": {"USD": 0.012, ...}}. Use {base} where your own currency code goes. Leave empty to enter rates by hand.',
+                rules: ['nullable', 'string', 'max:255'],
+            ),
+            new SettingDefinition(
+                key: 'billing.usage_retention_days', type: 'int', default: 730, group: 'billing',
+                label: 'Keep detailed usage records for (days)',
+                description: 'Daily totals are kept regardless, so long-range reporting survives.',
+                rules: ['integer', 'min:30', 'max:3650'],
+            ),
+
             // --- Uploads (Owner Addendum H) ----------------------------------
             new SettingDefinition(
                 key: 'uploads.max_size_kb', type: 'int', default: 10240, group: 'uploads',

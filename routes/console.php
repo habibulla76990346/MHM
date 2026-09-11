@@ -1,5 +1,7 @@
 <?php
 
+use App\Domains\AI\Jobs\AggregateDailyUsageJob;
+use App\Domains\AI\Jobs\RefreshExchangeRatesJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -18,5 +20,29 @@ Artisan::command('inspire', function () {
  */
 Schedule::command('aziv:models:sync')
     ->weeklyOn(1, '03:00')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/**
+ * The nightly cost rollup (§21).
+ *
+ * Runs just after midnight for the day that has just ended, so the figures an
+ * owner sees in the morning are complete. Queued, like every long operation,
+ * so shared hosting differs in speed and never in capability.
+ */
+Schedule::job(new AggregateDailyUsageJob)
+    ->dailyAt('00:20')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/**
+ * Exchange rates, before the rollup that uses them (§13).
+ *
+ * Earlier in the night on purpose: a summary written with yesterday's rate
+ * cannot be silently corrected later, because the whole point of freezing the
+ * conversion is that the number never moves.
+ */
+Schedule::job(new RefreshExchangeRatesJob)
+    ->dailyAt('00:05')
     ->withoutOverlapping()
     ->onOneServer();

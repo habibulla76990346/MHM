@@ -773,3 +773,90 @@ The trap recorded after Phase 3 bit two more times while writing Phase 4's tests
 endpoint silently kept returning the first stub's response, so "regenerate produces a different
 answer" and "a provider failure returns 502" both passed vacuously at first. Both test classes now
 register one stub that reads mutable state.
+
+---
+
+## Phase 5 — smart routing, health, fallback and cost
+
+### The router decides; it does not call providers
+
+Six stages, each doing one thing: resolve what the request needs → filter every model against hard
+conditions → score the survivors by what the mode cares about → attempt with retries → substitute
+on failure → record. The decision is separated from the attempt, so the same logic will serve
+images and voice in Phase 8 without being rewritten, and a routing decision can be tested without a
+network.
+
+### The capability guard lives in the pipeline, not in the fallback
+
+The failure §14 names is a vision request falling back to a text-only model: it does not error, it
+answers wrongly. That is guaranteed here by construction — a fallback re-runs the WHOLE pipeline
+with the same requirement, so the substitute passes the same filter the first choice did. Keeping a
+pre-built list and popping from it is how that guarantee gets lost, because the list would have
+been built before anyone knew what would fail.
+
+### Every rejection is recorded, not just the winner
+
+`CandidateBuilder` deliberately does not use the `routable()` scope: a model excluded by a query
+would vanish from the log with no reason attached. Every model is assessed, and "why was this model
+not used?" — the question the routing log exists to answer — has a recorded answer for each one.
+
+### Retry and substitute answer different questions
+
+A retry is for a blip on a provider that is otherwise fine; a substitution is for a provider that is
+not. Trying a different provider for a 429 would spread one impatient request across every provider
+an owner has. So retries stay on the same provider, only for transient classes, with full jitter —
+"base plus a little random" leaves a thundering herd still clustered — and a provider's own
+`Retry-After` always wins over our arithmetic.
+
+### The circuit breaker lives in the cache; the database is a mirror
+
+The router reads it on every request, so the check must cost nothing. The mirror is what the Admin
+Panel displays and what an owner resets, and writing it is best-effort: a breaker that could take
+the site down by failing to write a log row would be worse than the outage it exists to handle.
+Every admin control now goes through `CircuitBreaker`, because clearing only the mirror row would
+report success and change nothing.
+
+A rejected key does not open the circuit. A configuration mistake is not a provider being down, and
+taking a healthy provider out of rotation over one would hide the real fix.
+
+### No evidence is not bad evidence
+
+A provider nobody has used yet scores as healthy and neutral on speed. Scoring it as if it had
+failed would make every newly added provider permanently unreachable — a product that could never
+be extended. For the same reason an unpriced model scores neutrally on cost rather than as free:
+"free" would win Lowest Cost every time, which is how an owner unknowingly serves their most
+expensive model for nothing.
+
+### Cost is frozen twice: at the price, and at the rate
+
+Provider cost is computed at the price that applied when the call happened, and stored. It is then
+converted into the owner's currency at the rate that applied on that DAY, and that figure is stored
+too. Either half left to read time would rewrite last quarter's margin — once when a price is
+edited, once every time the rupee moves.
+
+A missing rate records a visible zero rather than an invented figure, and the screen says which
+currency is missing. A zero that can be found and corrected is better than a guess that cannot.
+
+### What a customer is told is not what the log records
+
+The routing log keeps the exact rejection for the owner. A customer hears only what they can act
+on: "temporarily unavailable" when every provider is out of rotation, "start a new chat" when the
+conversation outgrew every context window, and otherwise that an administrator needs to enable a
+model. "The model is disabled" is an administrator's sentence, not an answer to somebody trying to
+chat.
+
+### Fallback stops at the first fragment of a stream
+
+Once a customer has seen text, switching models would splice two different answers together in one
+bubble. A provider that dies on connect — the common case, and the one fallback exists for — stays
+invisible to them; one that dies mid-answer settles the partial reply as failed.
+
+### Two bugs the Phase 5 tests found in earlier code
+
+`ExchangeRate::on()` collided with Eloquent's own `Model::on($connection)`. Redeclaring it with a
+different signature is a **fatal error at class load** — the whole application stops, not just the
+report. It is now `rateOn()`.
+
+`CredentialUsageCounter::record()` seeded the row with the call's own figures and then incremented
+it, counting the first call of every hour twice. It now inserts at zero, so the increment is the one
+place a number is added.

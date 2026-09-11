@@ -32,12 +32,16 @@ class CredentialUsageCounter extends Model
     {
         $window = now()->startOfHour();
 
+        // Inserted at ZERO, then incremented. Seeding the row with the call's
+        // own figures and incrementing afterwards counts the first call of
+        // every hour twice — the row exists either way, so the increment below
+        // is the one place a number is added.
         static::query()->upsert(
             [[
                 'credential_id' => $credentialId,
                 'window_start' => $window,
-                'request_count' => 1,
-                'token_count' => $tokens,
+                'request_count' => 0,
+                'token_count' => 0,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]],

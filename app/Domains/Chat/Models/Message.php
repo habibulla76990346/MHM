@@ -4,6 +4,7 @@ namespace App\Domains\Chat\Models;
 
 use App\Domains\AI\Models\AiModel;
 use App\Domains\AI\Models\AiProvider;
+use App\Domains\AI\Models\RoutingLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -32,7 +33,8 @@ class Message extends Model
 
     protected $fillable = [
         'uuid', 'conversation_id', 'role', 'content', 'status', 'provider_id',
-        'model_id', 'parent_message_id', 'regenerated_from_id', 'error_class',
+        'model_id', 'routing_log_id', 'fallback_depth', 'parent_message_id',
+        'regenerated_from_id', 'error_class',
         'input_tokens', 'output_tokens', 'latency_ms', 'finished_at',
     ];
 
@@ -64,6 +66,17 @@ class Message extends Model
     public function provider(): BelongsTo
     {
         return $this->belongsTo(AiProvider::class, 'provider_id');
+    }
+
+    /** The decision that put this answer on the model it came from (§14). */
+    public function routingLog(): BelongsTo
+    {
+        return $this->belongsTo(RoutingLog::class, 'routing_log_id');
+    }
+
+    public function usage(): HasOne
+    {
+        return $this->hasOne(MessageUsage::class, 'message_id');
     }
 
     public function attachments(): HasMany

@@ -2,6 +2,7 @@
 
 namespace App\Domains\AI\Models;
 
+use App\Domains\AI\Routing\CircuitBreaker;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -131,7 +132,11 @@ class AiProvider extends Model
         return match (true) {
             $this->status !== self::STATUS_ACTIVE => 'Disabled',
             $this->maintenance_mode => 'In maintenance',
-            $this->circuit?->isOpen() => 'Circuit open',
+            // The live breaker, not the mirror row: the mirror is written
+            // best-effort and can lag, and a provider shown as healthy while
+            // the router is skipping it is the one thing this label must
+            // never say.
+            app(CircuitBreaker::class)->isOpen($this) => 'Circuit open',
             ! $this->credentials()->where('status', 'active')->exists() => 'No key',
             default => 'Active',
         };

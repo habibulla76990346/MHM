@@ -28,6 +28,24 @@ class ChatRefused extends RuntimeException
         return new self(__('No available model can read images. Remove the attachment, or ask an administrator to enable a model that supports images.'));
     }
 
+    /**
+     * Every model that could have answered is temporarily out of rotation —
+     * a provider is failing, in maintenance, or over its spending cap.
+     *
+     * Distinct from noModel() because the remedy is different: this one
+     * resolves itself, and telling a customer to fetch an administrator would
+     * be wrong.
+     */
+    public static function temporarilyUnavailable(): self
+    {
+        return new self(__('The AI service is temporarily unavailable. Please try again in a few minutes.'));
+    }
+
+    public static function conversationTooLong(): self
+    {
+        return new self(__('This conversation has grown too long for the available models. Start a new chat to continue.'));
+    }
+
     public static function tooLong(int $limit): self
     {
         return new self(__('That message is too long. The limit is :limit characters.', ['limit' => number_format($limit)]));
