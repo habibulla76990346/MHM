@@ -45,7 +45,29 @@ export async function touchTargets(page, min = MIN_TAP) {
     for (const el of document.querySelectorAll(sel)) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue;          // hidden
-      if (getComputedStyle(el).display === 'contents') continue;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'contents') continue;
+      // Screen-reader-only elements (skip links) are 1x1 with a clip by
+      // design and only become real targets on focus. They are not touch
+      // targets, so exempting them is a correction, not a relaxation —
+      // anything actually visible is still measured.
+      const srOnly =
+        (cs.clipPath && cs.clipPath !== 'none') ||
+        (cs.clip && cs.clip !== 'auto') ||
+        (r.width <= 1 && r.height <= 1);
+      if (srOnly) continue;
+      // A checkbox or radio inside — or bound to — a label that itself meets
+      // the minimum is genuinely a 44px target: clicking anywhere in the
+      // label activates the input. Measure the label, not the box.
+      if (el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio')) {
+        const label =
+          el.closest('label') ||
+          (el.id ? document.querySelector(`label[for="${CSS.escape(el.id)}"]`) : null);
+        if (label) {
+          const lr = label.getBoundingClientRect();
+          if (lr.height >= min - 0.5 && lr.width >= min - 0.5) continue;
+        }
+      }
       // Inline links inside flowing text are exempt — the rule targets controls.
       const isInlineTextLink = el.tagName === 'A' && getComputedStyle(el).display.startsWith('inline');
       if (isInlineTextLink) continue;

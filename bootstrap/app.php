@@ -15,7 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Domains\Diagnostics\Console\DiagnoseCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->web(append: [
+            App\Http\Middleware\EnsureNotInMaintenance::class,
+            App\Http\Middleware\EnforceSessionPolicy::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

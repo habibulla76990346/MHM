@@ -10,7 +10,7 @@
  * Exits non-zero on any failure so CI treats it as a build break.
  */
 import { chromium } from 'playwright';
-import { VIEWPORTS, SCREENS } from './viewports.mjs';
+import { VIEWPORTS, SCREENS, TEST_USER } from './viewports.mjs';
 import * as C from './checks.mjs';
 
 const BASE = process.argv[2] || process.env.APP_URL || 'http://127.0.0.1:8000';
@@ -31,10 +31,44 @@ const DIM = s => `\x1b[2m${s}\x1b[0m`;
 const failures = [];
 const browser = await chromium.launch(EXEC ? { executablePath: EXEC } : {});
 
+/**
+ * Signing in once and reusing the storage state keeps the gate fast: without
+ * it, every screen at every viewport would repeat a full login.
+ */
+async function authenticate() {
+  const page = await browser.newPage();
+  await page.goto(BASE + '/login', { waitUntil: 'networkidle' });
+  await page.fill('#email-field', TEST_USER.email);
+  await page.fill('#password-field', TEST_USER.password);
+  await Promise.all([
+    page.waitForURL((u) => !u.pathname.endsWith('/login'), { timeout: 15000 }),
+    page.click('button[type=submit]'),
+  ]);
+  const state = await page.context().storageState();
+  await page.close();
+  return state;
+}
+
+const needsAuth = SCREENS.some((s) => s.auth);
+let storageState;
+if (needsAuth) {
+  try {
+    storageState = await authenticate();
+  } catch (e) {
+    console.log(RED(`Could not sign in as ${TEST_USER.email}: ${e.message}`));
+    console.log(DIM('Run: php artisan aziv:test-user'));
+    await browser.close();
+    process.exit(1);
+  }
+}
+
 for (const screen of SCREENS) {
   console.log(`\n${screen.name}  ${DIM(BASE + screen.path)}`);
   for (const vp of VIEWPORTS) {
-    const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+    const page = await browser.newPage({
+      viewport: { width: vp.width, height: vp.height },
+      ...(screen.auth ? { storageState } : {}),
+    });
     let line = `  ${vp.name.padEnd(9)} ${DIM(vp.class.padEnd(8))}`;
     try {
       const res = await page.goto(BASE + screen.path, { waitUntil: 'networkidle', timeout: 20000 });

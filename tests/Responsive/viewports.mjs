@@ -10,6 +10,19 @@ export const VIEWPORTS = [
 ];
 
 // Screens under test. Grows every phase as features land.
+// Screens behind authentication are signed in first via `auth`.
 export const SCREENS = [
-  { name: 'home', path: '/' },
+  { name: 'home',            path: '/' },
+  { name: 'login',           path: '/login' },
+  { name: 'register',        path: '/register' },
+  { name: 'forgot-password', path: '/forgot-password' },
+  { name: 'dashboard',       path: '/dashboard', auth: true },
+  { name: 'account',         path: '/account',   auth: true },
+  { name: 'library',         path: '/library',   auth: true },
 ];
+
+/** Credentials for the seeded responsive-test account. */
+export const TEST_USER = {
+  email: process.env.RESPONSIVE_TEST_EMAIL || 'responsive@aziv.test',
+  password: process.env.RESPONSIVE_TEST_PASSWORD || 'Responsive-Test-2026',
+};

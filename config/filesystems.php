@@ -30,6 +30,18 @@ return [
 
     'disks' => [
 
+        /*
+         * User uploads. NOT the 'public' disk and NOT behind storage:link —
+         * files here have no URL at all and are served only through an
+         * authorising controller (Owner Addendum H, US-6).
+         */
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'serve' => false,
+            'throw' => false,
+        ],
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),

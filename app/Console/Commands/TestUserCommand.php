@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Domains\Identity\Models\UserProfile;
+use App\Domains\Security\Services\PermissionRegistry;
+use App\Models\User;
+use Illuminate\Console\Command;
+
+/**
+ * Creates the account the responsive gate signs in as.
+ *
+ * Development only: it refuses to run in production, so this can never become
+ * a known-password account on a live site.
+ */
+class TestUserCommand extends Command
+{
+    protected $signature = 'aziv:test-user
+                            {--email=responsive@aziv.test}
+                            {--password=Responsive-Test-2026}';
+
+    protected $description = 'Create or reset the local account used by the responsive test gate';
+
+    public function handle(): int
+    {
+        if (app()->environment('production')) {
+            $this->error('Refusing to create a known-password account in production.');
+
+            return self::FAILURE;
+        }
+
+        $email = $this->option('email');
+
+        $user = User::withTrashed()->firstOrNew(['email' => $email]);
+        $user->fill([
+            'name' => 'Responsive Test',
+            'password' => $this->option('password'),
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $user->deleted_at = null;
+        $user->email_verified_at = now();
+        $user->save();
+
+        UserProfile::firstOrCreate(['user_id' => $user->getKey()]);
+
+        if (! $user->hasRole(PermissionRegistry::CUSTOMER)) {
+            $user->assignRole(PermissionRegistry::CUSTOMER);
+        }
+
+        $this->info('Test account ready: '.$email);
+
+        return self::SUCCESS;
+    }
+}

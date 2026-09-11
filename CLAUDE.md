@@ -78,6 +78,20 @@ Do not run `playwright install`.
 
 ## Where the build is
 
-Phase 0 complete. Phase 1 next: identity, roles and permissions with deny-by-default, the settings
-service, audit logging, upload security, and the app shell with all three navigation models.
+Phases 0 and 1 complete. Phase 2 next: Admin Panel foundation, branding, the full theme engine
+(including the admin panel itself, per D-07), and content management.
 Phase detail in `docs/09-development-phases.md`.
+
+### Useful commands added in Phase 1
+
+```sh
+php artisan aziv:admin:create   # create an administrator (never seeded)
+php artisan aziv:test-user      # local account the responsive gate signs in as
+```
+
+### Two traps worth remembering
+
+- **Settings validation must use a flat field name.** Laravel reads dots in a validation key as
+  nested-array access, so validating under `auth.password_min_length` passes every rule vacuously.
+- **`Gate::after` cannot downgrade an allow** (`$result ??= $afterResult`), and Spatie registers
+  its own `Gate::before`. Permission denials belong in `User::hasPermissionTo()`.
