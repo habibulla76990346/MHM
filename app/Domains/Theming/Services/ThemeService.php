@@ -3,10 +3,16 @@
 namespace App\Domains\Theming\Services;
 
 use App\Domains\Theming\Models\Theme;
+use App\Domains\Theming\Models\ThemeToken;
 use App\Domains\Theming\Support\ColorRamp;
+use App\Domains\Theming\Support\ThemePalette;
 use App\Domains\Theming\Support\TokenCatalogue;
+use App\Domains\Theming\Support\TokenValidator;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Compiles a theme into CSS custom properties and serves it to both panels.
@@ -144,8 +150,14 @@ class ThemeService
             'is_active' => true,
             'published_at' => now(),
             'updated_by' => $actorId,
-            'version' => $theme->version + 1,
         ])->save();
+
+        // increment(), never `version + 1`: a model created without an explicit
+        // version has NULL in memory while the database holds 1, so the
+        // arithmetic writes 1 over 1 — the version never moves, and the
+        // compiled-CSS cache key never changes, so the old stylesheet is served
+        // forever. increment() reads the stored value and updates the instance.
+        $theme->increment('version');
 
         if ($previous && ! $previous->is($theme)) {
             settings()->set('theme.previous_theme_id', (string) $previous->getKey(), $actorId);
@@ -212,6 +224,176 @@ class ThemeService
 
             return $css;
         })) ?? '';
+    }
+
+    /**
+     * Persist edited token values for one scope and mode.
+     *
+     * Returns the before/after pair for the audit trail: every admin write
+     * authorises, validates and audits, or it does not ship.
+     *
+     * @param  array<string, string>  $values  token_key => value
+     * @return array{before: array<string,string>, after: array<string,string>}
+     *
+     * @throws ValidationException when any value is not a safe shape for its type
+     */
+    public function saveTokens(Theme $theme, string $scope, string $mode, array $values, ?int $actorId = null): array
+    {
+        $errors = TokenValidator::validate($values);
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages(
+                // Dots in a Laravel message key read as nested-array access, so
+                // token keys are flattened for the error bag. (Same trap the
+                // settings service hit — see CLAUDE.md.)
+                collect($errors)->mapWithKeys(fn ($m, $k) => ['values.'.str_replace('.', '_', $k) => $m])->all(),
+            );
+        }
+
+        $before = $theme->tokenMap($scope, $mode);
+        $changed = [];
+
+        DB::transaction(function () use ($theme, $scope, $mode, $values, $before, &$changed) {
+            foreach ($values as $key => $value) {
+                $value = trim((string) $value);
+
+                if (($before[$key] ?? null) === $value) {
+                    continue;
+                }
+
+                $theme->tokens()->updateOrCreate(
+                    ['scope' => $scope, 'mode' => $mode, 'token_key' => $key],
+                    ['token_value' => $value, 'token_group' => TokenCatalogue::tokens()[$key]['group']],
+                );
+
+                $changed[$key] = $value;
+            }
+
+            if ($changed !== []) {
+                // The compiled-CSS cache key carries the version, so bumping it
+                // is what makes the change visible. Forgetting this would serve
+                // the old stylesheet until the cache was cleared by hand.
+                $theme->increment('version');
+            }
+        });
+
+        $this->flush();
+
+        return [
+            'before' => array_intersect_key($before, $changed),
+            'after' => $changed,
+        ];
+    }
+
+    /**
+     * Re-derive every token in the theme from a palette.
+     *
+     * This is the editor's main affordance: change seven colours, get a
+     * coherent theme. It overwrites BOTH scopes and BOTH modes, because a
+     * palette that applied to only one of them is how the Admin Panel drifts
+     * away from the customer application.
+     *
+     * @param  array{light: array<string,string>, dark: array<string,string>}  $palettes
+     */
+    public function applyPalette(Theme $theme, array $palettes, ?int $actorId = null): void
+    {
+        DB::transaction(function () use ($theme, $palettes, $actorId) {
+            foreach ([TokenCatalogue::SCOPE_CUSTOMER, TokenCatalogue::SCOPE_ADMIN] as $scope) {
+                foreach ([TokenCatalogue::MODE_LIGHT, TokenCatalogue::MODE_DARK] as $mode) {
+                    foreach (ThemePalette::derive($palettes[$mode] ?? [], $scope, $mode) as $key => $value) {
+                        $theme->tokens()->updateOrCreate(
+                            ['scope' => $scope, 'mode' => $mode, 'token_key' => $key],
+                            ['token_value' => $value, 'token_group' => TokenCatalogue::tokens()[$key]['group']],
+                        );
+                    }
+                }
+            }
+
+            $theme->forceFill(['updated_by' => $actorId])->save();
+            $theme->increment('version');
+        });
+
+        $this->flush();
+    }
+
+    /**
+     * Copy a theme so a built-in can be used as a starting point.
+     * Built-ins are never editable in place — that is what guarantees there is
+     * always a known-good theme to return to.
+     */
+    public function duplicate(Theme $theme, string $name, ?int $actorId = null): Theme
+    {
+        return DB::transaction(function () use ($theme, $name, $actorId) {
+            $copy = Theme::create([
+                'name' => $name,
+                'slug' => $this->uniqueSlug($name),
+                'description' => 'Copied from '.$theme->name.'.',
+                'is_builtin' => false,
+                'is_active' => false,
+                'supports_dark' => $theme->supports_dark,
+                'base_theme_id' => $theme->getKey(),
+                'custom_css' => $theme->custom_css,
+                'version' => 1,
+                'updated_by' => $actorId,
+            ]);
+
+            $now = now();
+
+            $rows = $theme->tokens()->get()->map(fn (ThemeToken $t) => [
+                'theme_id' => $copy->getKey(),
+                'scope' => $t->scope,
+                'mode' => $t->mode,
+                'token_group' => $t->token_group,
+                'token_key' => $t->token_key,
+                'token_value' => $t->token_value,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->all();
+
+            foreach (array_chunk($rows, 500) as $chunk) {
+                DB::table('theme_tokens')->insert($chunk);
+            }
+
+            return $copy;
+        });
+    }
+
+    /**
+     * Custom CSS, sanitised on the way in.
+     *
+     * Storing the raw value and sanitising only at render would leave the
+     * dangerous text sitting in the database, one careless `{!! !!}` away from
+     * being used. What is stored is what will be served.
+     *
+     * @return array<int, string> what was removed, so the administrator is told
+     */
+    public function saveCustomCss(Theme $theme, ?string $css, ?int $actorId = null): array
+    {
+        $removed = $this->sanitiser->report($css);
+
+        $theme->forceFill([
+            'custom_css' => $this->sanitiser->sanitise($css),
+            'updated_by' => $actorId,
+        ])->save();
+
+        $theme->increment('version');
+
+        $this->flush();
+
+        return $removed;
+    }
+
+    private function uniqueSlug(string $name): string
+    {
+        $base = Str::slug($name) ?: 'theme';
+        $slug = $base;
+        $n = 2;
+
+        while (Theme::where('slug', $slug)->exists()) {
+            $slug = $base.'-'.$n++;
+        }
+
+        return $slug;
     }
 
     /**

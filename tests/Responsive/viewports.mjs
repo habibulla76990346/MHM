@@ -30,6 +30,7 @@ export const SCREENS = [
   { name: 'admin-login',      path: '/admin/login' },
   { name: 'admin-dashboard',  path: '/admin',               admin: true },
   { name: 'admin-health',     path: '/admin/system-health', admin: true },
+  { name: 'admin-appearance', path: '/admin/appearance',     admin: true },
 ];
 
 /** Credentials for the seeded responsive-test account. */

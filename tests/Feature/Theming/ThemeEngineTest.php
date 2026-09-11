@@ -10,6 +10,7 @@ use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\ThemesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class ThemeEngineTest extends TestCase
@@ -221,5 +222,58 @@ class ThemeEngineTest extends TestCase
         $this->assertSame('', app(ThemeService::class)->compiledCss());
         $this->assertSame([], app(ThemeService::class)->filamentColors());
         $this->assertSame('#f8fafc', app(ThemeService::class)->themeColor('light'));
+    }
+
+    /**
+     * REGRESSION. Every write bumps the version, and the version is part of
+     * the compiled-CSS cache key — so a write that fails to bump it serves the
+     * old stylesheet forever.
+     *
+     * The failure mode was subtle: a theme created without an explicit version
+     * has NULL in memory while the database holds 1, so `version + 1` wrote 1
+     * over 1 and nothing moved. Duplicating first is what exposes it, because
+     * that is the only way to get an editable theme.
+     */
+    public function test_every_write_moves_the_version_on_a_freshly_duplicated_theme(): void
+    {
+        $themes = $this->themes();
+        $copy = $themes->duplicate(Theme::where('slug', 'ocean')->first(), 'Copy');
+
+        $seen = [$copy->version];
+
+        $themes->saveTokens($copy, TokenCatalogue::SCOPE_CUSTOMER, TokenCatalogue::MODE_LIGHT, ['color.primary' => '#123456']);
+        $seen[] = $copy->fresh()->version;
+
+        $themes->applyPalette($copy->fresh(), ['light' => ['primary' => '#654321'], 'dark' => ['primary' => '#abcdef']]);
+        $seen[] = $copy->fresh()->version;
+
+        $themes->saveCustomCss($copy->fresh(), '.hero{padding:1rem}');
+        $seen[] = $copy->fresh()->version;
+
+        $this->assertSame([1, 2, 3, 4], $seen, 'A write did not move the version, so its CSS would be served stale.');
+
+        // And the compiled output actually changes with it.
+        $themes->publish($copy->fresh());
+        $themes->flush();
+
+        $this->assertStringContainsString('--color-primary:#654321', app(ThemeService::class)->compiledCss());
+    }
+
+    public function test_saving_an_unsafe_token_value_is_rejected_before_it_is_stored(): void
+    {
+        $copy = $this->themes()->duplicate(Theme::where('slug', 'ocean')->first(), 'Copy');
+        $before = $copy->tokenMap(TokenCatalogue::SCOPE_CUSTOMER, TokenCatalogue::MODE_LIGHT);
+
+        $this->expectException(ValidationException::class);
+
+        try {
+            $this->themes()->saveTokens($copy, TokenCatalogue::SCOPE_CUSTOMER, TokenCatalogue::MODE_LIGHT, [
+                'shadow.md' => '0 2px 4px url(https://evil.test/a.png)',
+            ]);
+        } finally {
+            // Nothing partial was written.
+            $this->assertSame($before, $copy->fresh()->tokenMap(TokenCatalogue::SCOPE_CUSTOMER, TokenCatalogue::MODE_LIGHT));
+            $this->assertSame(1, $copy->fresh()->version);
+        }
     }
 }
