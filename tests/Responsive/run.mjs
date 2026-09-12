@@ -114,31 +114,55 @@ if (SCREENS.some((s) => s.admin)) {
  * the gate quietly stopped checking the one screen Addendum A names by name.
  */
 async function resolvePlaceholders(screens) {
-  if (!screens.some((s) => s.path.includes('__PLAN__'))) return screens;
+  const wanted = [
+    // Checkout needs a plan that is actually on sale.
+    { token: '__PLAN__', from: '/pricing', selector: 'a[href*="/checkout/"]',
+      hint: 'Run: php artisan aziv:test-fixtures', what: 'a plan on sale' },
+    // The renewal page is behind a SIGNED url, so it cannot be written down.
+    // It is found the way a customer finds it — the link on their billing
+    // page — which also proves that link is there.
+    { token: '__RENEWAL__', from: '/billing', selector: 'a[href*="/renew/"]', keepQuery: true,
+      hint: 'Run: php artisan aziv:test-user && php artisan aziv:test-fixtures', what: 'a renewal to pay' },
+  ].filter((p) => screens.some((s) => s.path.includes(p.token)));
+
+  if (!wanted.length) return screens;
 
   const page = await browser.newPage({ storageState });
-  let planPath = null;
+  const resolved = {};
 
-  try {
-    await page.goto(BASE + '/pricing', { waitUntil: 'networkidle' });
-    planPath = await page.evaluate(() => {
-      const link = [...document.querySelectorAll('a[href*="/checkout/"]')][0];
-      return link ? new URL(link.href).pathname : null;
-    });
-  } catch {
-    planPath = null;
+  for (const spec of wanted) {
+    let found = null;
+    try {
+      await page.goto(BASE + spec.from, { waitUntil: 'networkidle' });
+      found = await page.evaluate(([selector, keepQuery]) => {
+        const link = document.querySelector(selector);
+        if (!link) return null;
+        const url = new URL(link.href);
+        return keepQuery ? url.pathname + url.search : url.pathname;
+      }, [spec.selector, !!spec.keepQuery]);
+    } catch {
+      found = null;
+    }
+
+    if (!found) {
+      // A placeholder that cannot be resolved FAILS. Skipping it would mean
+      // the gate quietly stopped checking a screen that is in the list.
+      console.log(RED(`Could not find ${spec.what}, so that screen cannot be checked.`));
+      console.log(DIM(spec.hint));
+      await page.close();
+      await browser.close();
+      process.exit(1);
+    }
+
+    resolved[spec.token] = found;
   }
 
   await page.close();
 
-  if (!planPath) {
-    console.log(RED('Could not find a plan on sale, so checkout cannot be checked.'));
-    console.log(DIM('Run: php artisan aziv:test-fixtures'));
-    await browser.close();
-    process.exit(1);
-  }
-
-  return screens.map((s) => (s.path.includes('__PLAN__') ? { ...s, path: planPath } : s));
+  return screens.map((s) => {
+    const token = Object.keys(resolved).find((t) => s.path.includes(t));
+    return token ? { ...s, path: resolved[token] } : s;
+  });
 }
 
 const RESOLVED = await resolvePlaceholders(SCREENS);

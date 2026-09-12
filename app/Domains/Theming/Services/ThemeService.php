@@ -417,6 +417,81 @@ class ThemeService
         return $mode === TokenCatalogue::MODE_DARK ? '#0b1120' : '#f8fafc';
     }
 
+    /**
+     * The palette an email is painted with.
+     *
+     * EMAIL CANNOT USE THE STYLESHEET. Clients strip `<link>`, most ignore
+     * custom properties, and Gmail removes `<style>` blocks outright — so the
+     * only thing that survives is a colour written into the element. This
+     * resolves the owner's tokens to plain values once, and the mail template
+     * places them inline.
+     *
+     * That is what keeps a white-label owner's email looking like their
+     * platform instead of ours, and it is why no mail template contains a
+     * colour of its own (Rule 1).
+     *
+     * Light mode only: an email is read in whatever the client decides, and a
+     * light palette is the one that survives being shown on either.
+     *
+     * PLAIN ARRAY, cached as such. Caching anything richer here would put a
+     * serialised object into a real cache store, and it would come back as
+     * `__PHP_Incomplete_Class` on the day someone read their email.
+     *
+     * @return array<string, string> token short name => hex
+     */
+    public function emailPalette(): array
+    {
+        $theme = $this->active();
+
+        // The same values compiled into tokens.css, so an owner who has never
+        // opened the theme editor still gets a coherent email.
+        $defaults = [
+            'primary' => '#1f2937',
+            'text_inverse' => '#f8fafc',
+            'background' => '#f8fafc',
+            'surface' => '#ffffff',
+            'text' => '#0f172a',
+            'muted' => '#64748b',
+            'border' => '#e2e8f0',
+        ];
+
+        if (! $theme) {
+            return $defaults;
+        }
+
+        return Cache::rememberForever(
+            self::CACHE_PREFIX.'email:'.$theme->getKey().':v'.$theme->version,
+            function () use ($theme, $defaults) {
+                $tokens = $theme->tokenMap(TokenCatalogue::SCOPE_CUSTOMER, TokenCatalogue::MODE_LIGHT);
+
+                $sources = [
+                    'primary' => 'color.primary',
+                    'text_inverse' => 'color.text-inverse',
+                    'background' => 'color.background',
+                    'surface' => 'color.surface',
+                    'text' => 'color.text',
+                    'muted' => 'color.text-muted',
+                    'border' => 'color.border',
+                ];
+
+                $palette = [];
+
+                foreach ($sources as $name => $token) {
+                    $value = $tokens[$token] ?? null;
+
+                    // A token that is not a hex value cannot be inlined into
+                    // an email, so the shipped default stands in rather than
+                    // the client deciding for itself.
+                    $palette[$name] = is_string($value) && ColorRamp::isHex($value)
+                        ? '#'.ltrim($value, '#')
+                        : $defaults[$name];
+                }
+
+                return $palette;
+            },
+        );
+    }
+
     /** @return array<string, array<int, string>> Filament colour ramps for this theme */
     public function filamentColors(): array
     {

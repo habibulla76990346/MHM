@@ -54,7 +54,7 @@ changes, "who changed it, when, from what, to what" must all be answerable.
 | `payment_transactions` | Every gateway state change | payment_id, **gateway_id**, **gateway_transaction_id**, type, amount, status, gateway_reference, raw_payload (json) |
 | `refunds` | **Refund records (Addendum D)** | uuid, payment_id, gateway_id, gateway_refund_id, amount, currency, status, reason, requested_by, processed_at |
 | `payment_webhook_events` | **Idempotency guard (§19)** | **gateway_id**, event_id, **unique(gateway_id, event_id)**, event_type, raw_payload, signature_valid, processed_at, result, attempts |
-| `invoices` | Invoice records (§20). **Immutable once `issued_at` is set** | uuid, user_id, number, subtotal, tax_total, total, currency, exchange_rate_used, base_total, status, issued_at, pdf_media_id, **snapshotted at issue:** supplier_legal_name, supplier_address, supplier_tax_number, customer_name, customer_address, customer_country, customer_tax_number, place_of_supply, service_code, pricing_mode, is_export |
+| `invoices` | Invoice records (§20). **Immutable once `issued_at` is set.** `renewal_period_start` + a UNIQUE index on (subscription_id, renewal_period_start) is what makes a period invoiced exactly once (Addendum D §3) | uuid, user_id, subscription_id, renewal_period_start, number, subtotal, tax_total, total, currency, exchange_rate_used, base_total, status, issued_at, pdf_media_id, **snapshotted at issue:** supplier_legal_name, supplier_address, supplier_tax_number, customer_name, customer_address, customer_country, customer_tax_number, place_of_supply, service_code, pricing_mode, is_export |
 | `tax_settings` | **Business tax identity (Addendum F)** | legal_name, address_lines, city, state, postal_code, country, tax_registration_number, registration_type, default_place_of_supply, service_code, tax_enabled, pricing_mode, rounding_mode |
 | `tax_jurisdictions` | Where rules apply | uuid, name, country, state, is_domestic, priority, is_active |
 | `tax_rates` | **Admin-defined rates** | uuid, jurisdiction_id, name, code, rate_percent, component_type, applies_to, **effective_from**, **effective_until**, is_active |
@@ -298,9 +298,9 @@ and dark modes. Full detail in `08-theme-branding-system.md`.
 | Table | Purpose | Key columns |
 |---|---|---|
 | `notifications` | Laravel in-app notifications (§22) | id (uuid), type, notifiable, data (json), read_at |
-| `notification_templates` | Editable templates (§22) | key, channel, subject, body, variables (json), is_active |
-| `announcements` | Broadcast messages (§22) | uuid, title, body, audience, starts_at, ends_at, is_active |
-| `notification_deliveries` | Delivery audit (§22) | template_key, user_id, channel, status, sent_at, error |
+| `notification_templates` | Editable templates (§22) — a row is an OVERRIDE; wording ships in `NotificationEvent` | event_key, channel, subject, body, variables (json), is_active |
+| `announcements` | Broadcast messages (§22). Built as MESSAGES, not banners: `banners` already owns the on-page strip | uuid, title, body, level, audience, audience_plan_id, status, send_email, send_at, sent_at, recipient_count |
+| `notification_deliveries` | Delivery audit (§22). Holds THAT it was sent, never WHAT — the error column is scrubbed on write | event_key, user_id, channel, status, reference_type, reference_id, sent_at, failed_at, error |
 | `diagnostic_runs` | **One diagnostics execution (Addendum G)** | uuid, trigger, started_at, finished_at, deployment_mode, overall_status, counts by severity, run_by |
 | `diagnostic_results` | One check outcome | run_id, check_key, title, category, status, severity, technical_reason (**sanitised**), responsibility, recommended_action, admin_action, requires_hosting_support, log_reference, duration_ms, checked_at |
 | `diagnostic_baselines` | Detect drift — "when did this start failing?" | check_key, last_status, last_severity, changed_at, consecutive_failures |

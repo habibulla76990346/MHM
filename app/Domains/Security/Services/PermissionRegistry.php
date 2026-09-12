@@ -89,6 +89,13 @@ class PermissionRegistry
             'analytics' => [
                 'analytics.view', 'analytics.costs.view', 'analytics.revenue.view',
             ],
+            // §22. Editing what customers are told is a different authority
+            // from deciding a price, so it is its own group rather than a
+            // corner of billing.
+            'notifications' => [
+                'notifications.view', 'notifications.templates.manage',
+                'announcements.manage', 'announcements.broadcast',
+            ],
         ];
     }
 
@@ -127,6 +134,8 @@ class PermissionRegistry
                 'models.view', 'models.manage', 'models.sync',
                 'routing.view', 'routing.manage',
                 'billing.view', 'billing.manage', 'billing.gateways.manage',
+                'notifications.view', 'notifications.templates.manage',
+                'announcements.manage', 'announcements.broadcast',
                 'content.view', 'content.manage', 'content.publish',
                 'themes.view', 'themes.manage',
                 'branding.view', 'branding.manage',
@@ -145,6 +154,10 @@ class PermissionRegistry
                 'providers.view',
                 'models.view',
                 'billing.view',          // read-only: see a customer's plan
+                // Enough to answer "did they get the renewal email?" — and
+                // the delivery log holds no message bodies, so answering it
+                // does not mean reading a customer's mail.
+                'notifications.view',
                 'analytics.view',
             ],
 
@@ -154,11 +167,14 @@ class PermissionRegistry
                 'settings.view',
                 'billing.view', 'billing.manage', 'billing.refund',
                 'billing.gateways.manage', 'billing.tax.manage',
+                'notifications.view',
                 'analytics.view', 'analytics.costs.view', 'analytics.revenue.view',
             ],
 
             self::CONTENT_MANAGER => [
                 'settings.view',
+                'notifications.view', 'notifications.templates.manage',
+                'announcements.manage', 'announcements.broadcast',
                 'content.view', 'content.manage', 'content.publish',
                 'themes.view', 'themes.manage',
                 'branding.view', 'branding.manage',

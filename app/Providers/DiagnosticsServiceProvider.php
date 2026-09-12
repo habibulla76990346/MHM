@@ -28,6 +28,7 @@ class DiagnosticsServiceProvider extends ServiceProvider
         // Payments read configuration only — they never call a gateway, so
         // they are safe to run unattended. Connectivity is tested from the
         // gateway screen, by someone who meant to.
+        Checks\MailDeliveryCheck::class,
         Checks\PaymentGatewayCheck::class,
         Checks\TaxConfigurationCheck::class,
     ];

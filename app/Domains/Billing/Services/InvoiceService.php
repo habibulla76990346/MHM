@@ -37,13 +37,24 @@ class InvoiceService
      * Start a draft.
      *
      * @param  array<int, array{description: string, quantity?: float, unit_amount: float, discount_amount?: float, service_code?: string}>  $lines
+     * @param  \DateTimeInterface|null  $renewalPeriodStart  the period this invoice renews, for the once-only guard
      */
-    public function draft(User $user, string $currency, array $lines, ?int $subscriptionId = null): Invoice
-    {
-        return DB::transaction(function () use ($user, $currency, $lines, $subscriptionId) {
+    public function draft(
+        User $user,
+        string $currency,
+        array $lines,
+        ?int $subscriptionId = null,
+        ?\DateTimeInterface $renewalPeriodStart = null,
+    ): Invoice {
+        return DB::transaction(function () use ($user, $currency, $lines, $subscriptionId, $renewalPeriodStart) {
             $invoice = Invoice::create([
                 'user_id' => $user->getKey(),
                 'subscription_id' => $subscriptionId,
+                // Stamped here and nowhere else. Together with the unique
+                // index on (subscription, renewal period) this is what makes
+                // "one invoice per period" a fact the database enforces
+                // rather than a check two processes can both pass.
+                'renewal_period_start' => $renewalPeriodStart,
                 'status' => Invoice::STATUS_DRAFT,
                 'currency' => strtoupper($currency),
             ]);

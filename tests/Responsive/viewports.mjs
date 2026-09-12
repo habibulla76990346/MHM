@@ -32,6 +32,12 @@ export const SCREENS = [
   // the customers most likely to be on a phone cannot buy anything.
   { name: 'checkout',         path: '/checkout/__PLAN__', auth: true },
   { name: 'library',          path: '/library',   auth: true },
+  // §22's in-app half. Everything the platform has told this customer.
+  { name: 'notifications',    path: '/notifications', auth: true },
+  // The renewal payment page (Addendum D §3). Its URL is SIGNED, so it cannot
+  // be written here — it is found the way a customer finds it, from the link
+  // on the billing page.
+  { name: 'renewal',          path: '__RENEWAL__', auth: true },
 
   // --- Admin Panel ---------------------------------------------------------
   { name: 'admin-login',      path: '/admin/login' },
@@ -66,6 +72,11 @@ export const SCREENS = [
   { name: 'admin-credits',    path: '/admin/customer-credits', admin: true },
   { name: 'admin-gateways',   path: '/admin/payment-gateways', admin: true },
   { name: 'admin-payments',   path: '/admin/payments',         admin: true },
+  { name: 'admin-announcements', path: '/admin/announcements',        admin: true },
+  { name: 'admin-announcement-new', path: '/admin/announcements/create', admin: true },
+  { name: 'admin-templates',  path: '/admin/notification-templates',    admin: true },
+  { name: 'admin-template-new', path: '/admin/notification-templates/create', admin: true },
+  { name: 'admin-notice-log', path: '/admin/notification-deliveries',   admin: true },
 ];
 
 /** Credentials for the seeded responsive-test account. */

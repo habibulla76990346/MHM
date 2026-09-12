@@ -88,7 +88,7 @@ Do not run `playwright install`.
 
 ## Where the build is
 
-**Phases 0–7 complete.** Phase 6 delivered the money: plans with per-currency pricing and
+**Phases 0–7 complete, plus the two Phase 6 items that were outstanding.** Phase 6 delivered the money: plans with per-currency pricing and
 configurable limits, an append-only credit ledger with pre-authorisation holds, the configurable
 tax engine, immutable invoices with gap-free numbering and credit notes, coupons, countries and
 currencies, and the multi-gateway payment framework with Razorpay, webhooks, reconciliation and
@@ -97,6 +97,9 @@ whose four genuine differences each have a test, while DeepSeek, Mistral, Groq, 
 Hugging Face are rows in the preset list served by the adapter that already existed. A provider
 Aziv AI has never heard of goes from nothing to answering without a line of code, and a test
 proves it by reading `app/` for the provider's name.
+After Phase 7 was approved, the two gaps flagged at the end of it were closed: **manual
+subscription renewal** (the invoice, the signed payment link, the past-due grace period and a
+notice at every step) and the **notification system, templates and announcements** (§22).
 **Phase 8 is next** — files/RAG, image and voice. See `docs/09-development-phases.md`.
 
 **Everything from Phase 3 onward was built and tested entirely against fixtures.** No real OpenAI,
@@ -121,7 +124,41 @@ until it is configured.
   are separate; the webhook URL to paste into the gateway's dashboard is on the Webhook action.
 - **Reporting currency, rate feed, routing defaults** — Admin → Routing and Health → Defaults, and
   Admin → Countries and currencies.
+- **Email** — `MAIL_MAILER` and its host and credentials in `.env`, never in the panel. Until that
+  is set, `aziv:diagnose` says so: the default writes email to a log file and delivers nothing.
+- **What customers are told** — Admin → Notifications → Templates changes the wording of any
+  message; Admin → Notifications → Announcements composes one and sends it to an audience; Admin →
+  Notifications → Delivery log says whether it arrived.
+- **Renewal timing** — Admin → Settings → Billing: how many days early the invoice goes out, how
+  long access continues unpaid, and how long a payment link stays usable.
 
+
+### Notifications, in one paragraph
+
+`NotificationEvent` is the catalogue and nothing outside it can be sent: an undeclared key throws,
+so a typo is a failure at the call site rather than an email nobody can find, edit or switch off.
+Each event declares its channels and its VARIABLES, and `TemplateRenderer` substitutes those and
+nothing else — a placeholder the event does not provide is REMOVED, which is what stops a template
+being edited into printing something it was never given, and every value that does reach a
+template is scrubbed by the same `Redactor` the diagnostics layer uses. Wording ships in code, so
+an empty `notification_templates` table still sends complete email; a row is an override, deleting
+it restores the shipped words, and switching the event off is a separate deliberate act. Email is
+queued and in-app is written immediately, both through `Notifier` — there is no second path.
+`notification_deliveries` records THAT a message went and never WHAT it said, because an audit
+table is read by more people than an inbox is.
+
+### Renewal, in one paragraph
+
+A subscription that a gateway cannot auto-renew is renewed by invoice (Addendum D §3), and
+`RenewalService` owns only the TIMING: the invoice is issued a configurable number of days before
+the period ends and mailed with a signed payment link; at period end unpaid it becomes `past_due`
+and keeps working while it is reminded; only after the grace period does it end, and the customer
+is told that too. The paperwork itself still comes from `InvoiceService`, `CheckoutService` and
+`SubscriptionService` — there is one billing system and this is not a second one. One invoice per
+period is guaranteed by a UNIQUE index on (subscription, renewal period start), not by a check in
+PHP, because the scheduler, an admin action and the customer's own billing page can all reach the
+same period in the same millisecond. A free plan renews itself with no invoice and no email, since
+its periods are how its allowance refreshes.
 
 ### Routing, in one paragraph
 
@@ -271,6 +308,11 @@ php artisan aziv:test-fixtures  # local plan + no-money gateway, so the gate can
 - **Dead code cannot be sabotaged, so it cannot be trusted.** `AiRouter::fallback()` duplicated the
   live substitution logic and had no callers; breaking it on purpose changed no test result, which
   is how it was found. Two copies of a safety guarantee is one copy and one thing that drifts.
+- **An issued invoice really is immutable, including for new code.** The renewal path set `due_at`
+  after issuing and the model refused it — only `status` and `paid_at` may move. Anything that is
+  part of what the document SAYS belongs on the draft.
+- **Laravel's default mailer is `log`.** Everything "sends", every delivery records as sent, and
+  nothing reaches anybody. `aziv:diagnose` reports it now, graded by environment.
 - **A gate is worth only what it can catch.** Break it on purpose before trusting it. The
   hard-coded-colour gate silently checked two directory levels for a whole phase, because PHP's
   `glob('**')` does not recurse. Every design token lives in `resources/css/tokens.css`, imported

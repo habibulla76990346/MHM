@@ -6,11 +6,13 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Billing\BillingController;
 use App\Http\Controllers\Billing\PricingController;
+use App\Http\Controllers\Billing\RenewalController;
 use App\Http\Controllers\Branding\ManifestController;
 use App\Http\Controllers\Chat\StreamController;
 use App\Http\Controllers\Checkout\CheckoutController;
 use App\Http\Controllers\Content\PageController;
 use App\Http\Controllers\FileDownloadController;
+use App\Http\Controllers\Notifications\NotificationCentreController;
 use App\Http\Controllers\Webhooks\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -45,6 +47,26 @@ Route::post('banners/{uuid}/dismiss', [PageController::class, 'dismissBanner'])
 Route::post('webhooks/payments/{gateway}', PaymentWebhookController::class)
     ->middleware('throttle:120,1')
     ->name('webhooks.payments');
+
+/**
+ * Paying a renewal invoice from the link in an email (Addendum D §3).
+ *
+ * OUTSIDE THE AUTH GROUP ON PURPOSE. The whole point of the link is that it
+ * works for somebody reading their email on a phone they have never signed in
+ * on. `signed` is the authorisation: an HMAC over the URL under the
+ * application key, which cannot be edited to point at a different payment and
+ * expires on its own. The pages behind it show four facts the email already
+ * carried and nothing that belongs to an account.
+ */
+Route::middleware('signed')->group(function () {
+    Route::get('renew/{payment:uuid}', [RenewalController::class, 'show'])->name('renewal.show');
+    Route::post('renew/{payment:uuid}', [RenewalController::class, 'pay'])
+        ->middleware('throttle:10,1')->name('renewal.pay');
+    Route::match(['get', 'post'], 'renew/{payment:uuid}/return', [RenewalController::class, 'return'])
+        ->name('renewal.return');
+    Route::get('renew/{payment:uuid}/status', [RenewalController::class, 'status'])
+        ->middleware('throttle:60,1')->name('renewal.status');
+});
 
 /* ---------------------------------------------------------------- guest -- */
 Route::middleware('guest')->group(function () {
@@ -115,6 +137,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('checkout.return');
     Route::get('checkout/{payment:uuid}/status', [CheckoutController::class, 'status'])
         ->middleware('throttle:60,1')->name('checkout.status');
+
+    // What the platform has told this customer (§22). In-app notifications
+    // are written by the same notifier that sends the email, so the two can
+    // never disagree about what was said.
+    Route::get('notifications', [NotificationCentreController::class, 'index'])->name('notifications');
+    Route::post('notifications/read', [NotificationCentreController::class, 'markRead'])
+        ->middleware('throttle:60,1')->name('notifications.read');
 
     // Every uploaded file is served through here — never by direct URL.
     // Owner Addendum H control US-9.

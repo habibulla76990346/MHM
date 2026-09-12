@@ -7,7 +7,10 @@ use App\Domains\Billing\Models\Invoice;
 use App\Domains\Billing\Models\Plan;
 use App\Domains\Billing\Models\Subscription;
 use App\Domains\Billing\Services\InvoiceService;
+use App\Domains\Billing\Services\RenewalService;
 use App\Domains\Billing\Services\SubscriptionService;
+use App\Domains\Notifications\Services\Notifier;
+use App\Domains\Notifications\Support\NotificationEvent;
 use App\Domains\Payments\DTO\CheckoutRequest;
 use App\Domains\Payments\DTO\CheckoutSession;
 use App\Domains\Payments\DTO\TransactionStatus;
@@ -43,6 +46,7 @@ class CheckoutService
         private readonly GatewaySelector $selector,
         private readonly SubscriptionService $subscriptions,
         private readonly InvoiceService $invoices,
+        private readonly Notifier $notifier,
     ) {}
 
     /**
@@ -70,24 +74,95 @@ class CheckoutService
 
         $payment = $this->reserve($user, $plan, $decision, (float) $price->amount, $currency);
 
-        // Already in flight from a double-submitted form: reuse it rather than
-        // creating a second charge.
-        if ($payment->gateway_order_id !== null) {
-            return ['payment' => $payment, 'session' => $this->resume($payment)];
+        return ['payment' => $payment, 'session' => $this->openCheckout($payment, $plan->name)];
+    }
+
+    /**
+     * Reserve the payment for a renewal invoice that has already been issued.
+     *
+     * SEPARATE FROM `start()` IN WHAT IT RESERVES, IDENTICAL IN WHAT HAPPENS
+     * NEXT. A renewal is not a new sale: the invoice exists, the amount is
+     * already fixed by it, and the customer may open the link days later. So
+     * this creates the local row only — no gateway order is opened until
+     * somebody actually clicks, because an order created a week early is an
+     * order most gateways will have expired by then.
+     *
+     * The idempotency key is the SUBSCRIPTION AND THE PERIOD, not the hour:
+     * one renewal payment per period however many times this is called, and
+     * a reminder sent a second time reaches the same payment and the same
+     * invoice.
+     */
+    public function reserveRenewal(Subscription $subscription, Invoice $invoice): Payment
+    {
+        $currency = strtoupper((string) $invoice->currency);
+
+        $decision = $this->selector->select(
+            'subscription',
+            $currency,
+            $invoice->customer_country,
+            $subscription->plan_id,
+            (string) ($subscription->renewal_mechanism ?: 'manual'),
+        );
+
+        if (! $decision->chosen()) {
+            throw new RuntimeException($decision->explainFailure());
         }
 
-        $adapter = $this->registry->for($decision->gateway);
+        $key = self::key('renew', (string) $subscription->getKey(), (string) $invoice->renewal_period_start?->timestamp);
+
+        $payment = Payment::firstOrCreate(
+            ['idempotency_key' => $key],
+            [
+                'user_id' => $subscription->user_id,
+                'subscription_id' => $subscription->getKey(),
+                'plan_id' => $subscription->plan_id,
+                'invoice_id' => $invoice->getKey(),
+                'gateway_id' => $decision->gateway->getKey(),
+                'mode' => $decision->gateway->mode,
+                'purpose' => Payment::PURPOSE_RENEWAL,
+                'presentment_amount' => (float) $invoice->total,
+                'presentment_currency' => $currency,
+                'status' => Payment::STATUS_CREATED,
+                'metadata' => ['invoice' => $invoice->number],
+            ],
+        );
+
+        // `firstOrCreate` returns a thin model on insert — it holds only what
+        // was passed, while the database holds the column defaults.
+        return $payment->refresh();
+    }
+
+    /**
+     * Open the gateway's checkout for a payment that is already reserved.
+     *
+     * One implementation for both paths. A payment already in flight — a
+     * double-submitted form, a link opened twice — RESUMES rather than
+     * creating a second charge.
+     */
+    public function openCheckout(Payment $payment, ?string $description = null, ?string $returnUrl = null): CheckoutSession
+    {
+        if ($payment->gateway_order_id !== null) {
+            return $this->resume($payment);
+        }
+
+        $adapter = $this->registry->for($payment->gateway);
+
+        if (! $adapter) {
+            throw new RuntimeException(__('This payment cannot be opened: its gateway is no longer installed.'));
+        }
+
+        $user = $payment->user;
 
         $session = $adapter->createCheckout(new CheckoutRequest(
             reference: $payment->uuid,
             amount: (float) $payment->presentment_amount,
             currency: $payment->presentment_currency,
-            description: $plan->name,
-            customerEmail: (string) $user->email,
-            customerName: $user->name,
-            returnUrl: route('checkout.return', $payment),
+            description: (string) ($description ?: $payment->plan?->name ?: __('Payment')),
+            customerEmail: (string) $user?->email,
+            customerName: $user?->name,
+            returnUrl: $returnUrl ?: route('checkout.return', $payment),
             cancelUrl: route('billing'),
-            metadata: ['payment_uuid' => $payment->uuid, 'user_id' => (string) $user->getKey()],
+            metadata: ['payment_uuid' => $payment->uuid, 'user_id' => (string) $payment->user_id],
         ));
 
         $payment->forceFill([
@@ -100,7 +175,7 @@ class CheckoutService
             'mode' => $session->mode,
         ]);
 
-        return ['payment' => $payment, 'session' => $session];
+        return $session;
     }
 
     /**
@@ -128,7 +203,7 @@ class CheckoutService
                 'plan_id' => $plan->getKey(),
                 'gateway_id' => $gateway->getKey(),
                 'mode' => $gateway->mode,
-                'purpose' => 'subscription',
+                'purpose' => Payment::PURPOSE_SUBSCRIPTION,
                 'presentment_amount' => $amount,
                 'presentment_currency' => strtoupper($currency),
                 'status' => Payment::STATUS_CREATED,
@@ -205,14 +280,14 @@ class CheckoutService
      */
     private function markPaid(Payment $payment, TransactionStatus $status): Payment
     {
-        return DB::transaction(function () use ($payment, $status) {
+        [$settled, $justPaid] = DB::transaction(function () use ($payment, $status) {
             /** @var Payment $locked */
             $locked = Payment::whereKey($payment->getKey())->lockForUpdate()->first();
 
             if ($locked->isPaid()) {
                 // Already done. A replayed webhook lands here and does nothing,
                 // which is exactly what should happen.
-                return $locked;
+                return [$locked, false];
             }
 
             $base = $this->inBaseCurrency(
@@ -234,12 +309,52 @@ class CheckoutService
             $subscription = $this->activateSubscription($locked);
             $this->issueInvoice($locked, $subscription);
 
-            return $locked->fresh();
+            return [$locked->fresh(), true];
         });
+
+        // OUTSIDE THE TRANSACTION, and only on the attempt that actually
+        // changed something. Inside it, a queued job could be picked up by a
+        // worker before the commit landed and find nothing; on a replay, it
+        // would thank the customer a second time for one payment.
+        if ($justPaid) {
+            $this->announcePayment($settled);
+        }
+
+        return $settled;
+    }
+
+    /**
+     * Tell the customer their money arrived.
+     *
+     * WHAT IT SAYS is the amount, the plan, the invoice number and how long
+     * they are paid up for. WHAT IT NEVER SAYS is anything about the
+     * instrument — no card, no last four, no bank. Aziv AI does not hold those
+     * and an email is forwarded, printed and stored on servers nobody here
+     * controls.
+     */
+    private function announcePayment(Payment $payment): void
+    {
+        $user = $payment->user;
+
+        if (! $user) {
+            return;
+        }
+
+        $payment->loadMissing(['plan', 'invoice', 'subscription']);
+
+        $this->notifier->send($user, NotificationEvent::PAYMENT_RECEIVED, [
+            'amount' => strtoupper((string) $payment->presentment_currency).' '
+                .number_format((float) $payment->presentment_amount, 2),
+            'plan' => (string) ($payment->plan?->name ?: __('your subscription')),
+            'invoice_number' => (string) $payment->invoice?->number,
+            'period_end' => optional($payment->subscription?->current_period_end)->toFormattedDateString() ?: '',
+        ], $payment->invoice ?: $payment);
     }
 
     private function markUnpaid(Payment $payment, TransactionStatus $status): Payment
     {
+        $wasOpen = ! in_array($payment->status, [Payment::STATUS_FAILED, Payment::STATUS_PAID], true);
+
         // A pending payment stays pending: the sweep will ask again. Only a
         // definite failure closes it, because closing early would abandon a
         // customer whose bank was simply slow.
@@ -252,6 +367,23 @@ class CheckoutService
             'failure_reason' => $status->failureReason,
             'last_checked_at' => now(),
         ])->save();
+
+        // Once, on the transition. The sweep asks repeatedly, and a customer
+        // must not get an email every five minutes about one failed card.
+        //
+        // The gateway's own reason is NOT passed on. We are rarely told the
+        // real one, and repeating a bank's terse code to a customer sends
+        // them to argue with the wrong people.
+        if ($wasOpen && $payment->status === Payment::STATUS_FAILED && $payment->user) {
+            $this->notifier->send($payment->user, NotificationEvent::PAYMENT_FAILED, [
+                'amount' => strtoupper((string) $payment->presentment_currency).' '
+                    .number_format((float) $payment->presentment_amount, 2),
+                'plan' => (string) ($payment->plan?->name ?: __('your subscription')),
+                'pay_url' => $payment->isRenewal()
+                    ? app(RenewalService::class)->payUrl($payment)
+                    : route('billing'),
+            ], $payment);
+        }
 
         return $payment;
     }
@@ -312,7 +444,17 @@ class CheckoutService
     private function issueInvoice(Payment $payment, ?Subscription $subscription): ?Invoice
     {
         if ($payment->invoice_id) {
-            return $payment->invoice;
+            // A RENEWAL ARRIVES WITH ITS INVOICE. It was issued days earlier
+            // and mailed to the customer; paying it settles that document
+            // rather than raising a second one for the same period. Marking
+            // paid is idempotent, so a replayed webhook changes nothing.
+            $existing = $payment->invoice;
+
+            if ($existing && ! $existing->isPaid()) {
+                $this->invoices->markPaid($existing, $payment->paid_at ?? now());
+            }
+
+            return $existing;
         }
 
         $draft = $this->invoices->draft(

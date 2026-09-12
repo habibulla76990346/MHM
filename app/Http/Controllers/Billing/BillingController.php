@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Billing;
 
 use App\Domains\Billing\Models\Country;
 use App\Domains\Billing\Models\Invoice;
+use App\Domains\Billing\Models\Subscription;
 use App\Domains\Billing\Services\EntitlementService;
+use App\Domains\Billing\Services\RenewalService;
 use App\Domains\Billing\Services\SubscriptionService;
+use App\Domains\Billing\Support\RenewalNotice;
 use App\Domains\Credits\Models\CreditLedgerEntry;
 use App\Domains\Credits\Services\CreditService;
 use App\Domains\Tax\Models\CustomerTaxProfile;
@@ -28,6 +31,7 @@ class BillingController extends Controller
         EntitlementService $entitlements,
         CreditService $credits,
         SubscriptionService $subscriptions,
+        RenewalService $renewals,
     ): View {
         $user = auth()->user();
 
@@ -38,6 +42,12 @@ class BillingController extends Controller
         $balance = $credits->balance($user);
 
         return view('billing.index', [
+            // A customer must always have a way to renew that does not depend
+            // on finding an email. Prepared on the way in, so the page shows
+            // the same invoice and the same payment the notice carried —
+            // never a second one (the guard is a unique index, so asking here
+            // is safe however many times the page is opened).
+            'renewal' => $this->outstandingRenewal($renewals, $entitlements->subscription($user)),
             'subscription' => $entitlements->subscription($user),
             'plan' => $entitlements->plan($user),
             'balance' => $balance,
@@ -56,6 +66,33 @@ class BillingController extends Controller
                 ->orderBy('name')
                 ->get(),
         ]);
+    }
+
+    /**
+     * The renewal this customer owes, if there is one.
+     *
+     * Only when it is genuinely due: preparing a renewal months early would
+     * issue an invoice — and burn an invoice number — for a period nobody has
+     * reached. The notice window the owner configured decides when that is,
+     * so the page and the email agree.
+     */
+    private function outstandingRenewal(RenewalService $renewals, ?Subscription $subscription): ?RenewalNotice
+    {
+        if (! $subscription || $subscription->renewal_mechanism !== 'manual' || $subscription->cancelled_at) {
+            return null;
+        }
+
+        $due = $subscription->current_period_end?->isBefore(
+            now()->addDays((int) settings('billing.renewal_notice_days'))
+        );
+
+        if (! $due) {
+            return null;
+        }
+
+        $notice = $renewals->prepare($subscription);
+
+        return $notice && $notice->invoice->isOutstanding() ? $notice : null;
     }
 
     /**

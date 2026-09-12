@@ -108,6 +108,7 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | **You provide** | **A Razorpay account** (plus any other gateway accounts you want live), your plan pricing, and your accountant's confirmation of GST treatment (D-12) |
 | **You will see** | Customers can subscribe and pay, credits deduct accurately, and you can add or switch payment gateways from the Admin Panel |
 | **Size** | 7–10 sessions — the largest phase; will be split into 6a (billing + tax + currencies) and 6b (gateways) |
+| **Completed later** | Two items from this list shipped after Phase 7 was approved, before Phase 8 began: **manual subscription renewal** (Addendum D §3 — the renewal invoice, the signed payment link, the past-due grace period and the notices at every step) and the **notification system, templates and announcements** (§22). Both are recorded in `docs/12-decision-log.md` under "Closing the Phase 6 gaps". |
 
 ---
 

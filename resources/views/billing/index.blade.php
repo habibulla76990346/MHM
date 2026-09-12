@@ -4,6 +4,30 @@
             <x-ui.alert variant="success">{{ session('status') }}</x-ui.alert>
         @endif
 
+        {{-- A customer must never depend on finding an email in order to
+             keep their subscription. This is the same invoice and the same
+             payment the renewal notice carried, not a second one. --}}
+        @if ($renewal)
+            <div class="rounded-lg border border-border bg-surface p-5">
+                <h2 class="mb-2 font-semibold text-heading" style="font-size: var(--text-fluid-lg);">
+                    {{ $subscription?->status === 'past_due' ? __('Your renewal is overdue') : __('Time to renew') }}
+                </h2>
+
+                <p class="text-text-muted">
+                    {{ __('Invoice :number for :amount covers :from to :to.', [
+                        'number' => $renewal->invoice->number,
+                        'amount' => $renewal->invoice->currency . ' ' . number_format((float) $renewal->invoice->total, 2),
+                        'from' => $renewal->periodStart->format('j M Y'),
+                        'to' => $renewal->periodEnd->format('j M Y'),
+                    ]) }}
+                </p>
+
+                <div class="mt-4">
+                    <x-ui.button :href="$renewal->payUrl">{{ __('Pay now') }}</x-ui.button>
+                </div>
+            </div>
+        @endif
+
         <div class="rounded-lg border border-border bg-surface p-5">
             <h2 class="mb-4 font-semibold text-heading" style="font-size: var(--text-fluid-lg);">{{ __('Your plan') }}</h2>
 

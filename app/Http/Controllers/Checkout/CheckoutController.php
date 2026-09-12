@@ -51,6 +51,8 @@ class CheckoutController extends Controller
             'payment' => $payment,
             'session' => $session,
             'currency' => $currency,
+            'returnUrl' => route('checkout.return', $payment),
+            'statusUrl' => route('checkout.status', $payment),
         ]);
     }
 

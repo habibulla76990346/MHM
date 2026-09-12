@@ -16,5 +16,18 @@
                 @endforeach
             </dl>
         </div>
+
+        <div class="rounded-lg border border-border bg-surface p-5">
+            <h2 class="mb-2 font-semibold text-heading" style="font-size: var(--text-fluid-lg);">{{ __('Notifications') }}</h2>
+            <p class="mb-4 text-text-muted">
+                {{ __('Everything the platform has told you — renewals, invoices, payments and announcements — is kept here as well as emailed.') }}
+            </p>
+            <x-ui.button variant="secondary" :href="route('notifications')">
+                {{ __('Open notifications') }}
+                @if (auth()->user()->unreadNotifications()->count() > 0)
+                    ({{ auth()->user()->unreadNotifications()->count() }})
+                @endif
+            </x-ui.button>
+        </div>
     </div>
 </x-layouts.app>

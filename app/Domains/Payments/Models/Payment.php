@@ -38,6 +38,22 @@ class Payment extends Model
 
     public const STATUS_PARTIALLY_REFUNDED = 'partially_refunded';
 
+    /** A first purchase or a plan change, started from the checkout page. */
+    public const PURPOSE_SUBSCRIPTION = 'subscription';
+
+    /** The next period of a subscription that is renewed by invoice. */
+    public const PURPOSE_RENEWAL = 'renewal';
+
+    public const PURPOSES = [
+        self::PURPOSE_SUBSCRIPTION => 'Subscription',
+        self::PURPOSE_RENEWAL => 'Renewal',
+    ];
+
+    public function isRenewal(): bool
+    {
+        return $this->purpose === self::PURPOSE_RENEWAL;
+    }
+
     protected $fillable = [
         'uuid', 'user_id', 'subscription_id', 'plan_id', 'invoice_id', 'gateway_id',
         'gateway_payment_id', 'gateway_order_id', 'mode', 'purpose', 'idempotency_key',

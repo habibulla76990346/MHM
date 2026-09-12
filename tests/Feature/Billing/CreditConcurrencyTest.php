@@ -3,10 +3,18 @@
 namespace Tests\Feature\Billing;
 
 use App\Domains\Billing\Models\Invoice;
+use App\Domains\Billing\Models\Plan;
+use App\Domains\Billing\Models\PlanPrice;
+use App\Domains\Billing\Models\Subscription;
 use App\Domains\Billing\Services\InvoiceNumberAllocator;
 use App\Domains\Billing\Services\InvoiceService;
+use App\Domains\Billing\Services\RenewalService;
 use App\Domains\Credits\Models\CreditHold;
 use App\Domains\Credits\Services\CreditService;
+use App\Domains\Payments\Adapters\FixtureGatewayAdapter;
+use App\Domains\Payments\Models\Payment;
+use App\Domains\Payments\Models\PaymentGatewayCredential;
+use App\Domains\Payments\Models\PaymentGatewayRecord;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Support\Facades\DB;
@@ -127,6 +135,65 @@ class CreditConcurrencyTest extends TestCase
 
         // Sequential with no gaps: 1..8, never 1,1,2,5.
         $this->assertSame(range(1, 8), $values);
+    }
+
+    /**
+     * The renewal guarantee that cannot be proved sequentially: **a period is
+     * invoiced once**, however many things reach it at the same instant.
+     *
+     * Three of them genuinely can: the nightly scheduler, an administrator
+     * pressing "send the renewal now", and the customer opening their billing
+     * page. Sequentially they all find the invoice the first one made. In
+     * parallel they can all find NO invoice and all raise one — and a customer
+     * who receives three bills for one month, each with its own number, is a
+     * problem that cannot be corrected by deleting two of them, because a
+     * number that has been issued cannot be un-issued.
+     */
+    public function test_parallel_renewal_preparation_raises_one_invoice(): void
+    {
+        $user = User::factory()->create();
+
+        $plan = Plan::create([
+            'name' => 'Pro', 'slug' => 'pro-concurrency', 'status' => Plan::STATUS_ACTIVE,
+            'billing_cycle' => 'monthly', 'credits_per_period' => 100,
+        ]);
+        PlanPrice::create(['plan_id' => $plan->getKey(), 'currency' => 'INR', 'amount' => 999]);
+
+        $gateway = PaymentGatewayRecord::create([
+            'key' => FixtureGatewayAdapter::KEY, 'name' => 'Fixture',
+            'adapter_class' => FixtureGatewayAdapter::class,
+            'status' => PaymentGatewayRecord::STATUS_ACTIVE,
+            'mode' => PaymentGatewayRecord::MODE_SANDBOX,
+            'is_default' => true, 'priority' => 1,
+        ]);
+        PaymentGatewayCredential::create([
+            'gateway_id' => $gateway->getKey(),
+            'mode' => PaymentGatewayRecord::MODE_SANDBOX,
+            'label' => 'Test',
+            'credentials' => ['key_id' => 'fixture'],
+            'status' => 'active',
+        ]);
+
+        $subscription = Subscription::create([
+            'user_id' => $user->getKey(), 'plan_id' => $plan->getKey(),
+            'status' => Subscription::STATUS_ACTIVE,
+            'current_period_start' => now()->subMonth(),
+            'current_period_end' => now()->addDay(),
+            'currency' => 'INR', 'amount' => 999, 'renewal_mechanism' => 'manual',
+        ]);
+
+        $this->inParallel(6, function () use ($subscription) {
+            return app(RenewalService::class)->prepare($subscription->fresh()) !== null;
+        });
+
+        $invoices = Invoice::where('subscription_id', $subscription->getKey())->get();
+
+        $this->assertCount(1, $invoices, 'Six simultaneous renewals must produce one invoice.');
+        $this->assertNotNull($invoices->first()->number);
+
+        // And one payment: six payment rows would mean a customer could be
+        // charged more than once for the same month.
+        $this->assertSame(1, Payment::where('subscription_id', $subscription->getKey())->count());
     }
 
     /**

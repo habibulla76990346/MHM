@@ -300,20 +300,44 @@ class SubscriptionService
         return $applied;
     }
 
-    /** Move subscriptions whose paid period has run out into `expired`. */
+    /**
+     * End one subscription. The only place a subscription becomes `expired`.
+     *
+     * Two situations lead here and they are deliberately kept apart:
+     * `expireLapsed()` below ends a CANCELLED one when its paid time runs out,
+     * and `RenewalService::endAfterGrace()` ends an UNPAID one after its grace
+     * period. Different timing, different messaging, one implementation — so
+     * the act of ending cannot drift between them.
+     */
+    public function expire(Subscription $subscription): Subscription
+    {
+        $subscription->forceFill([
+            'status' => Subscription::STATUS_EXPIRED,
+            'ended_at' => now(),
+        ])->save();
+
+        return $subscription;
+    }
+
+    /**
+     * End cancelled subscriptions whose paid period has run out.
+     *
+     * CANCELLED ONLY. An unpaid one (`past_due`) is not ended here: it has a
+     * grace period and a customer who is being reminded, and both belong to
+     * `RenewalService`. Ending it here as well would mean two schedules
+     * racing to close the same account — and the stricter one would always
+     * win, quietly cancelling the grace period the owner configured.
+     */
     public function expireLapsed(): int
     {
         $count = 0;
 
-        Subscription::whereIn('status', [Subscription::STATUS_CANCELLED, Subscription::STATUS_PAST_DUE])
+        Subscription::where('status', Subscription::STATUS_CANCELLED)
             ->whereNotNull('current_period_end')
             ->where('current_period_end', '<', now())
             ->chunkById(100, function ($subscriptions) use (&$count) {
                 foreach ($subscriptions as $subscription) {
-                    $subscription->forceFill([
-                        'status' => Subscription::STATUS_EXPIRED,
-                        'ended_at' => now(),
-                    ])->save();
+                    $this->expire($subscription);
                     $count++;
                 }
             });

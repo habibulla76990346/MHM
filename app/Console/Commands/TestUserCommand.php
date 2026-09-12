@@ -15,6 +15,12 @@ use Illuminate\Console\Command;
  */
 class TestUserCommand extends Command
 {
+    /** The customer account the responsive gate signs in as. */
+    public const EMAIL = 'responsive@aziv.test';
+
+    /** The administrator it signs in as for the Admin Panel screens. */
+    public const ADMIN_EMAIL = 'responsive-admin@aziv.test';
+
     protected $signature = 'aziv:test-user
                             {--email=}
                             {--password=Responsive-Test-2026}
@@ -33,7 +39,7 @@ class TestUserCommand extends Command
         $isAdmin = (bool) $this->option('admin');
 
         $email = $this->option('email')
-            ?: ($isAdmin ? 'responsive-admin@aziv.test' : 'responsive@aziv.test');
+            ?: ($isAdmin ? self::ADMIN_EMAIL : self::EMAIL);
 
         $user = User::withTrashed()->firstOrNew(['email' => $email]);
         $user->fill([

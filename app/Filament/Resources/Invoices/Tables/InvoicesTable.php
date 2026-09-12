@@ -4,6 +4,8 @@ namespace App\Filament\Resources\Invoices\Tables;
 
 use App\Domains\Billing\Models\Invoice;
 use App\Domains\Billing\Services\InvoiceService;
+use App\Domains\Notifications\Services\Notifier;
+use App\Domains\Notifications\Support\NotificationEvent;
 use App\Domains\Security\Services\ActivityLogger;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
@@ -62,6 +64,50 @@ class InvoicesTable
             ])
             ->recordActions([
                 ViewAction::make(),
+
+                /**
+                 * Send the customer their invoice again.
+                 *
+                 * The one caller of the `invoice.issued` notification, and the
+                 * reason that event exists: an ordinary purchase is already
+                 * confirmed by "payment received", and a renewal by the
+                 * renewal notice, so an automatic third email would be noise.
+                 * What owners actually need is to RE-SEND one — the customer
+                 * deleted it, the address was wrong, their accountant wants a
+                 * copy.
+                 *
+                 * A draft has no number and is not a document yet, so there
+                 * is nothing to send.
+                 */
+                Action::make('email_invoice')
+                    ->label('Email to customer')
+                    ->icon('heroicon-o-envelope')
+                    ->requiresConfirmation()
+                    ->modalDescription('Sends this invoice to the address on the account.')
+                    ->visible(fn (Invoice $record) => $record->isIssued()
+                        && $record->user !== null
+                        && (auth()->user()?->can('billing.manage') ?? false))
+                    ->action(function (Invoice $record) {
+                        app(Notifier::class)->send($record->user, NotificationEvent::INVOICE_ISSUED, [
+                            'invoice_number' => (string) $record->number,
+                            'amount' => $record->currency.' '.number_format((float) $record->total, 2),
+                            'issued_on' => optional($record->issued_at)->toFormattedDateString() ?: '',
+                            'invoice_url' => route('billing.invoice', $record),
+                        ], $record);
+
+                        // The ACT is audited, never the message: an audit
+                        // trail holding a rendered email would hold whatever
+                        // the email held.
+                        app(ActivityLogger::class)->log('invoice.emailed', $record, null, [
+                            'number' => $record->number,
+                        ]);
+
+                        Notification::make()
+                            ->title('Queued for sending')
+                            ->body('It will go out with the next run of the queue.')
+                            ->success()
+                            ->send();
+                    }),
 
                 // The ONLY way to correct an issued invoice. There is no edit
                 // action anywhere, because there is no edit.

@@ -344,6 +344,33 @@ class SettingRegistry
                 rules: ['integer', 'min:30', 'max:3650'],
             ),
 
+            // --- Notifications (blueprint §22) -------------------------------
+            new SettingDefinition(
+                key: 'notifications.email_enabled', type: 'bool', default: true, group: 'notifications',
+                label: 'Send email notifications',
+                description: 'Turn off to stop every outgoing email except password resets and email verification, which are part of signing in. In-app notices keep working.',
+            ),
+
+            // --- Manual renewal (Owner Addendum D §3) ------------------------
+            new SettingDefinition(
+                key: 'billing.renewal_notice_days', type: 'int', default: 7, group: 'billing',
+                label: 'Send the renewal invoice this many days early',
+                description: 'A subscription that renews by invoice needs the bill before the period ends, not on the day it stops.',
+                rules: ['integer', 'min:1', 'max:60'],
+            ),
+            new SettingDefinition(
+                key: 'billing.renewal_grace_days', type: 'int', default: 7, group: 'billing',
+                label: 'Keep access this many days after an unpaid renewal',
+                description: 'A customer who is late still has a working account, and a link to put it right. Set to 0 to stop access the moment the period ends.',
+                rules: ['integer', 'min:0', 'max:60'],
+            ),
+            new SettingDefinition(
+                key: 'billing.renewal_link_days', type: 'int', default: 30, group: 'billing',
+                label: 'A payment link stays usable for (days)',
+                description: 'The link in a renewal email expires after this. Long enough to be useful, short enough that an old email is not a way in.',
+                rules: ['integer', 'min:1', 'max:180'],
+            ),
+
             // --- Uploads (Owner Addendum H) ----------------------------------
             new SettingDefinition(
                 key: 'uploads.max_size_kb', type: 'int', default: 10240, group: 'uploads',

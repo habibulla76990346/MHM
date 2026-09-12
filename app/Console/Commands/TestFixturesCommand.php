@@ -4,9 +4,11 @@ namespace App\Console\Commands;
 
 use App\Domains\Billing\Models\Plan;
 use App\Domains\Billing\Models\PlanPrice;
+use App\Domains\Billing\Models\Subscription;
 use App\Domains\Payments\Adapters\FixtureGatewayAdapter;
 use App\Domains\Payments\Models\PaymentGatewayCredential;
 use App\Domains\Payments\Models\PaymentGatewayRecord;
+use App\Models\User;
 use Illuminate\Console\Command;
 
 /**
@@ -26,6 +28,65 @@ class TestFixturesCommand extends Command
     protected $signature = 'aziv:test-fixtures';
 
     protected $description = 'Create the local plan and development gateway the responsive gate checks checkout against';
+
+    /**
+     * A renewal that is genuinely due, for the test account.
+     *
+     * WHY THE GATE NEEDS THIS TOO. The renewal payment page is reached by a
+     * SIGNED link, so the responsive runner cannot construct a URL for it —
+     * it has to find one the way a customer does, from the billing page. That
+     * only appears when a manual subscription is inside its notice window.
+     *
+     * Without it the newest money screen in the product is the one screen
+     * nobody checks at 320px.
+     */
+    private function seedRenewal(): void
+    {
+        $user = User::where('email', TestUserCommand::EMAIL)->first();
+
+        if (! $user) {
+            $this->line('No test account yet — run aziv:test-user to include the renewal screen in the gate.');
+
+            return;
+        }
+
+        // A SEPARATE PLAN from the one checkout buys, and not a public one.
+        // Subscribing the test account to the purchasable plan would replace
+        // its "Buy" button with "Your current plan", and the checkout screen
+        // — the one Addendum A names by name — would stop being checked.
+        $plan = Plan::firstOrCreate(
+            ['slug' => 'responsive-renewal'],
+            [
+                'name' => 'Test Renewal Plan',
+                'description' => 'A local plan with a renewal falling due, so the renewal payment page has something real to render.',
+                'billing_cycle' => 'monthly',
+                'credits_per_period' => 100,
+                'status' => Plan::STATUS_ACTIVE,
+                'is_public' => false,
+                'sort_order' => 901,
+            ],
+        );
+
+        PlanPrice::updateOrCreate(
+            ['plan_id' => $plan->getKey(), 'currency' => strtoupper((string) settings('billing.base_currency'))],
+            ['amount' => 499, 'is_active' => true],
+        );
+
+        Subscription::updateOrCreate(
+            ['user_id' => $user->getKey(), 'plan_id' => $plan->getKey()],
+            [
+                'status' => Subscription::STATUS_ACTIVE,
+                'current_period_start' => now()->subMonth(),
+                // Inside the notice window, so the invoice and the link exist.
+                'current_period_end' => now()->addDay(),
+                'currency' => strtoupper((string) settings('billing.base_currency')),
+                'amount' => 499,
+                'renewal_mechanism' => 'manual',
+            ],
+        );
+
+        $this->line('Renewal due for '.$user->email.' — the billing page carries the payment link.');
+    }
 
     public function handle(): int
     {
@@ -81,6 +142,8 @@ class TestFixturesCommand extends Command
                 'status' => 'active',
             ],
         );
+
+        $this->seedRenewal();
 
         $this->info('Test plan ready: '.$plan->uuid);
         $this->line('Checkout: /checkout/'.$plan->uuid);

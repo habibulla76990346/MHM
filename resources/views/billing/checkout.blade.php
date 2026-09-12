@@ -36,10 +36,15 @@
                      the gateway's script which merchant this is and authorises
                      nothing on its own; the secret is server-side and cannot
                      be rendered, because the model that holds it is $hidden. --}}
+                {{-- The two URLs are passed IN rather than built here. A
+                     renewal is paid from an emailed link by someone who may
+                     not be signed in, so it comes back to a signed route
+                     instead of an authenticated one — same page, same flow,
+                     different proof of who is asking. --}}
                 <div id="checkout"
                      data-config="{{ json_encode($session->publicConfig) }}"
-                     data-return="{{ route('checkout.return', $payment) }}"
-                     data-status="{{ route('checkout.status', $payment) }}">
+                     data-return="{{ $returnUrl }}"
+                     data-status="{{ $statusUrl }}">
                     <x-ui.button full id="pay-now">{{ __('Pay now') }}</x-ui.button>
                 </div>
 

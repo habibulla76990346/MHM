@@ -1070,7 +1070,7 @@ callers" as a fact, and a fact in a document is a fact until someone adds a thir
 everything that reads a credential back in plaintext is now pinned by a test that strips comments
 first, so documenting the rule cannot trip it and adding a caller cannot pass quietly.
 
-## Still owed from Phase 6 — verified during Phase 7, not silently carried
+## Still owed from Phase 6 — verified during Phase 7, and delivered after it (see below)
 
 Phase 7 included a check the owner asked for: **is native gateway auto-renewal required by the
 approved plan?** It is not. No requirement in `docs/01-requirements-register.md` (PG-1..PG-25) asks
@@ -1093,5 +1093,154 @@ left to be discovered:
    verification. Every "we will email the customer" in the billing flow is currently unimplemented,
    which also blocks item 1.
 
-Both are billing-facing and neither is a Phase 7 concern; they are listed so the next phase starts
-by deciding where they belong rather than by rediscovering them.
+Both are billing-facing and neither was a Phase 7 concern. **Both were built immediately after
+Phase 7 was approved, before any of Phase 8 was started** — the section below records how.
+
+## Closing the Phase 6 gaps — manual renewal and the notification system
+
+Built after Phase 7 was approved and before Phase 8 was started, because a subscription that
+cannot be renewed and a platform that cannot tell anybody anything are not features to schedule —
+they are two halves of one hole.
+
+### An announcement is a message, not a second banner
+
+The first design put announcements on the page. It was wrong, and the reason is worth keeping:
+Aziv AI already has a banner. `Banner` (Phase 2) owns the strip at the top of a page, its
+priority, its audience and its per-browser dismissal. A second strip would have meant two
+audiences, two dismissals, and two ways to push content below the fold on a phone — and the second
+one is always the one that forgets a rule.
+
+What §22 asks for and a banner cannot do is REACH PEOPLE: an audience defined by their
+subscription, delivered in the app and by email, with a record that it went. So an announcement is
+composed, targeted and sent, and it goes out through the same notifier as a renewal notice. The
+banner is placement; the announcement is people. A test asserts the announcement never grows a
+`priority`, a `cta_url` or a `is_dismissible` — the columns it would need to become a banner.
+
+### Every notification is declared before it can be sent
+
+`NotificationEvent` is the catalogue, and it works the way the settings registry does: an
+undeclared key THROWS rather than being delivered. A typo would otherwise become an email nobody
+can find in the Admin Panel, nobody can edit, and no owner can switch off.
+
+Each event declares its channels and its VARIABLES — a closed list with a plain-English meaning —
+and the renderer substitutes those and nothing else. That is the security property: a template
+cannot be edited into printing something it was never given, because a placeholder the event does
+not provide is REMOVED rather than resolved. Every value that does reach a template is scrubbed by
+the same `Redactor` the diagnostics layer uses, so a credential cannot reach an inbox even if a
+caller passes one.
+
+The one carve-out is a link back to this platform, and it is as narrow as it can be: absolute,
+http(s), same host. A signed payment link ends in a long opaque signature, and the scrubber removes
+long opaque strings — correctly, since that is also what a bearer token looks like. Scrubbing it
+would have mailed customers a broken link, and nobody would have found out until one of them tried
+to pay.
+
+### Wording ships with the product; a database row is an override
+
+Every event carries its own subject and body in code. An empty `notification_templates` table
+therefore sends complete, correct email — a notification system that needs seeding before it works
+is one that silently does nothing on a fresh install, which is exactly the failure mode this whole
+delivery exists to remove. Deleting a template row restores the shipped wording; SWITCHING AN EVENT
+OFF is a separate, deliberate act, because those are two different things an owner might mean.
+
+### The delivery log records that, never what
+
+`notification_deliveries` answers "did the renewal notice for invoice 42 go out, and did it fail?".
+It cannot answer "what did it say". A rendered body carries a payment link, an amount and a
+customer's name, and an audit table is read by more people than an inbox is. The error column is
+scrubbed by the model on write, not at the call site — a mail driver's exception routinely carries
+the SMTP password, and a scrub that has to be remembered is a scrub that gets forgotten.
+
+### Manual renewal: what the lifecycle actually promises
+
+Addendum D §3 said a manual-renewal customer "receives an invoice and a payment link each period".
+Before this, that sentence was aspirational: the subscription simply stopped receiving credits and
+the customer's first news of it was losing access. Now:
+
+| when | what happens | what the customer gets |
+|---|---|---|
+| period end − notice days | the invoice is issued | the invoice and a signed payment link |
+| period end, unpaid | `past_due` — still working | a reminder with the same link |
+| period end + grace days | it ends | told that it has ended, and how to start again |
+| paid, at any point | the ordinary payment path renews it | a receipt |
+
+All three intervals are settings. `RenewalService` decides WHEN; the invoice still comes from
+`InvoiceService`, the payment and gateway from `CheckoutService`, the renewal itself from
+`SubscriptionService`. There is one billing system and this is not a second one.
+
+### One invoice per period, and the guard is the database
+
+Three things can reach the same period at the same instant: the nightly scheduler, an
+administrator pressing "send the renewal now", and the customer opening their billing page.
+Sequentially they all find the invoice the first one made. In parallel they can all find none and
+all raise one — and three bills for one month, each with its own number, cannot be corrected by
+deleting two, because an issued number cannot be un-issued.
+
+So `invoices` has a unique index on (subscription, renewal period start). The test forks six
+processes; with the index downgraded to an ordinary index it produces three invoices, which is
+what makes it a proof rather than a decoration.
+
+### The payment link is signed, dated, and says almost nothing
+
+It is an HMAC over the URL under the application key — the same mechanism as the
+email-verification link, chosen rather than invented so there is one way of proving "this person
+received our email". It cannot be edited to point at another payment, it expires on its own, and
+the routes behind it sit outside the auth group deliberately: the whole purpose is to work for
+somebody reading their email on a phone they have never signed in on.
+
+What the page shows is therefore kept to the four facts the email already carried — plan, amount,
+invoice number, date. No name, no address, no email, no account. A forwarded email must not become
+a window into somebody's account. A separate guard refuses a signed link pointed at an ordinary
+checkout payment, whose result page belongs behind a login.
+
+### A free plan renews itself
+
+A plan that costs nothing has nothing to invoice, but it still has PERIODS — that is how its
+allowance refreshes. Leaving it out would have meant a free customer's credits silently stopped
+arriving with no bill to explain why. This was a real bug in Phase 6, found while building the
+renewal path.
+
+### Two lifecycles for ending a subscription, one implementation
+
+A CANCELLED subscription ends when the time it paid for runs out: no grace, no chasing, because the
+customer asked to stop. An UNPAID one ends after the grace period, having been invoiced and
+reminded first. Both call `SubscriptionService::expire()`, so the act of ending cannot drift
+between them, but they decide WHEN separately — and `expireLapsed()` was narrowed to cancellations
+so the two schedules cannot race to close the same account, with the stricter one always winning
+and quietly cancelling the grace period the owner configured.
+
+### Email follows the owner's theme
+
+Email clients strip stylesheets, ignore custom properties, and Gmail removes `<style>` blocks — so
+the only colour that survives is one written into the element. `ThemeService::emailPalette()`
+resolves the owner's tokens to plain values and the mail template inlines them. A white-label
+owner's email therefore looks like their platform, and no mail template contains a colour of its
+own, so Rule 1 holds there too.
+
+### The check that catches the silent failure
+
+Laravel's default mailer is `log`. Everything "sends" perfectly, every delivery is recorded as
+sent, and not one message reaches anybody — so a renewal notice goes into a file, the subscription
+lapses, and the first news of it is a customer asking why they lost access. `aziv:diagnose` now
+reports it, graded by environment: on a developer's machine `log` is correct and a red would be
+noise that teaches people to ignore the screen; in production it is critical. It reads the driver
+name and whether a host and from-address exist — never the password, so Rule 4 holds by
+construction.
+
+### A Phase 6 gate caught this work
+
+The renewal path first set `due_at` AFTER issuing the invoice, and the model layer refused it:
+only `status` and `paid_at` may move once a document is issued. The due date is part of what the
+invoice says, so it belongs on the draft. The immutability guarantee written in Phase 6 stopped a
+Phase 8-era mistake the first time the test ran, which is the whole argument for writing guarantees
+as code rather than as review notes.
+
+### What was deliberately NOT built
+
+**Per-customer notification preferences.** §22 does not ask for them, and inventing an
+unsubscribe surface for transactional billing mail is a decision with legal weight in several
+jurisdictions. There is a single global switch (`notifications.email_enabled`), which is
+configuration; per-customer opt-out is a decision for the owner to ask for.
+
+**Push notifications.** §22 calls them future-ready, and they are: the in-app half uses Laravel's
+own notification table, so a push channel is added to the notifier rather than built beside it.

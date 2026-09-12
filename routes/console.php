@@ -2,8 +2,10 @@
 
 use App\Domains\AI\Jobs\AggregateDailyUsageJob;
 use App\Domains\AI\Jobs\RefreshExchangeRatesJob;
+use App\Domains\Billing\Services\RenewalService;
 use App\Domains\Billing\Services\SubscriptionService;
 use App\Domains\Credits\Services\CreditService;
+use App\Domains\Notifications\Services\AnnouncementService;
 use App\Domains\Payments\Services\ReconciliationService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -80,6 +82,38 @@ Schedule::call(function () {
 })
     ->hourly()
     ->name('subscriptions:advance')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/**
+ * Renewals for subscriptions that are paid by invoice (Addendum D §3).
+ *
+ * DAILY, and it does four things in one pass: issue the invoice and mail the
+ * payment link before the period ends, renew a free plan that has nothing to
+ * invoice, mark an unpaid one overdue while it keeps working, and end it only
+ * once the grace period the owner configured has run out.
+ *
+ * The window it looks back over has no floor, so a server that was switched
+ * off for a fortnight bills the invoices it owes rather than skipping them — a
+ * customer who was never asked for money must never be treated as one who did
+ * not pay.
+ */
+Schedule::call(fn () => app(RenewalService::class)->run())
+    ->dailyAt('06:00')
+    ->name('billing:renewals')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/**
+ * Announcements whose scheduled time has come (§22).
+ *
+ * Hourly rather than by the minute: an owner scheduling a maintenance notice
+ * picks an hour, not a second, and a job that wakes every minute to find
+ * nothing is a job a shared host is paying for.
+ */
+Schedule::call(fn () => app(AnnouncementService::class)->sendDue())
+    ->hourly()
+    ->name('announcements:send-due')
     ->withoutOverlapping()
     ->onOneServer();
 

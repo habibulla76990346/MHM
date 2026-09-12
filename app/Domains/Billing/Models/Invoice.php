@@ -40,7 +40,7 @@ class Invoice extends Model
     private const MUTABLE_AFTER_ISSUE = ['status', 'paid_at', 'updated_at'];
 
     protected $fillable = [
-        'uuid', 'user_id', 'subscription_id', 'number', 'status', 'subtotal',
+        'uuid', 'user_id', 'subscription_id', 'renewal_period_start', 'number', 'status', 'subtotal',
         'discount_total', 'tax_total', 'total', 'currency', 'exchange_rate_used',
         'base_total', 'supplier_legal_name', 'supplier_address', 'supplier_tax_number',
         'customer_name', 'customer_address', 'customer_country', 'customer_state',
@@ -58,6 +58,7 @@ class Invoice extends Model
             'base_total' => 'decimal:6',
             'exchange_rate_used' => 'decimal:8',
             'is_export' => 'boolean',
+            'renewal_period_start' => 'datetime',
             'issued_at' => 'datetime',
             'due_at' => 'datetime',
             'paid_at' => 'datetime',
@@ -121,6 +122,17 @@ class Invoice extends Model
     public function creditNotes(): HasMany
     {
         return $this->hasMany(CreditNote::class, 'invoice_id');
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->status === self::STATUS_PAID;
+    }
+
+    /** Issued, not yet paid, and not credited away — something to chase. */
+    public function isOutstanding(): bool
+    {
+        return $this->status === self::STATUS_ISSUED;
     }
 
     public function isIssued(): bool
