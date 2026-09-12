@@ -4,6 +4,11 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Billing\BillingController;
+use App\Http\Controllers\Billing\PricingController;
+use App\Http\Controllers\Branding\ManifestController;
+use App\Http\Controllers\Chat\StreamController;
+use App\Http\Controllers\Content\PageController;
 use App\Http\Controllers\FileDownloadController;
 use Illuminate\Support\Facades\Route;
 
@@ -11,16 +16,20 @@ Route::view('/', 'home')->name('home');
 
 // The PWA manifest is generated, not a static file: every value in it is
 // administrator-controlled branding (owner decisions D-09 and D-10).
-Route::get('manifest.webmanifest', \App\Http\Controllers\Branding\ManifestController::class)
+Route::get('manifest.webmanifest', ManifestController::class)
     ->name('manifest');
 
 // Pages written in the Admin Panel. Prefixed with /p/ so an administrator can
 // never create a page whose slug shadows an application route — "login" as a
 // page slug would otherwise break signing in.
-Route::get('p/{slug}', [\App\Http\Controllers\Content\PageController::class, 'show'])
+Route::get('p/{slug}', [PageController::class, 'show'])
     ->name('pages.show');
 
-Route::post('banners/{uuid}/dismiss', [\App\Http\Controllers\Content\PageController::class, 'dismissBanner'])
+// The public pricing page (§20). Outside the auth group on purpose: someone
+// deciding whether to sign up cannot sign in yet.
+Route::get('pricing', PricingController::class)->name('pricing');
+
+Route::post('banners/{uuid}/dismiss', [PageController::class, 'dismissBanner'])
     ->name('banners.dismiss');
 
 /* ---------------------------------------------------------------- guest -- */
@@ -59,15 +68,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Streaming a reply (§15). GET so an EventSource can open it; the browser
     // sends the session cookie, and the policy proves the message belongs to
     // whoever is asking.
-    Route::get('chat/{message:uuid}/stream', \App\Http\Controllers\Chat\StreamController::class)
+    Route::get('chat/{message:uuid}/stream', StreamController::class)
         ->name('chat.stream');
 
     // The non-streaming path (risk R-01). Same answer, one response — used
     // when the owner has switched streaming off, or the stream never opened.
-    Route::post('chat/{message:uuid}/complete', [\App\Http\Controllers\Chat\StreamController::class, 'complete'])
+    Route::post('chat/{message:uuid}/complete', [StreamController::class, 'complete'])
         ->name('chat.complete');
 
-    Route::post('chat/{message:uuid}/stop', [\App\Http\Controllers\Chat\StreamController::class, 'stop'])
+    Route::post('chat/{message:uuid}/stop', [StreamController::class, 'stop'])
         ->name('chat.stop');
 
     // Destinations the navigation points at. Built out in later phases; they
@@ -76,6 +85,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('library', 'placeholder', ['heading' => 'Library', 'phase' => 8])->name('library');
     Route::view('images', 'placeholder', ['heading' => 'Images', 'phase' => 8])->name('images');
     Route::view('account', 'account')->name('account');
+
+    // The customer's own billing: plan, credits, invoices and the details that
+    // get copied onto future invoices.
+    Route::get('billing', [BillingController::class, 'show'])->name('billing');
+    Route::post('billing/details', [BillingController::class, 'updateProfile'])
+        ->middleware('throttle:20,1')->name('billing.profile');
+    Route::get('billing/invoices/{invoice:uuid}', [BillingController::class, 'invoice'])
+        ->name('billing.invoice');
 
     // Every uploaded file is served through here — never by direct URL.
     // Owner Addendum H control US-9.

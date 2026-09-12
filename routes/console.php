@@ -2,6 +2,8 @@
 
 use App\Domains\AI\Jobs\AggregateDailyUsageJob;
 use App\Domains\AI\Jobs\RefreshExchangeRatesJob;
+use App\Domains\Billing\Services\SubscriptionService;
+use App\Domains\Credits\Services\CreditService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -44,5 +46,38 @@ Schedule::job(new AggregateDailyUsageJob)
  */
 Schedule::job(new RefreshExchangeRatesJob)
     ->dailyAt('00:05')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/**
+ * Housekeeping the credit system needs to stay honest (§19).
+ *
+ * Holds first: a worker that died mid-call would otherwise reserve a
+ * customer's balance for ever, and they would see credit they cannot spend
+ * with no way to find out why.
+ */
+Schedule::call(fn () => app(CreditService::class)->releaseExpiredHolds())
+    ->everyTenMinutes()
+    ->name('credits:release-expired-holds')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::call(fn () => app(CreditService::class)->expireCredits())
+    ->dailyAt('00:40')
+    ->name('credits:expire')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/**
+ * Subscriptions: apply the downgrades that were waiting for a period to end,
+ * and close out the ones whose paid time has run out.
+ */
+Schedule::call(function () {
+    $subscriptions = app(SubscriptionService::class);
+    $subscriptions->applyScheduledChanges();
+    $subscriptions->expireLapsed();
+})
+    ->hourly()
+    ->name('subscriptions:advance')
     ->withoutOverlapping()
     ->onOneServer();

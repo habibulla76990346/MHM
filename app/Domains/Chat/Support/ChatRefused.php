@@ -56,6 +56,24 @@ class ChatRefused extends RuntimeException
         return new self(__('Type a message first.'));
     }
 
+    /**
+     * Not enough credit for the answer they asked for.
+     *
+     * Says what to do rather than only what went wrong (Addendum G): a
+     * customer who reads "insufficient balance" and nothing else has no idea
+     * whether to wait, pay, or complain.
+     */
+    public static function outOfCredits(): self
+    {
+        return new self(__('You do not have enough credits left for this. Add credits or upgrade your plan to continue.'));
+    }
+
+    /** A plan limit, in the plan's own words. */
+    public static function planLimit(string $explanation): self
+    {
+        return new self($explanation);
+    }
+
     public static function tooManyAttachments(int $limit): self
     {
         return new self(__('You can attach at most :limit file(s) to a message.', ['limit' => $limit]));

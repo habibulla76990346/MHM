@@ -40,18 +40,45 @@
   font-size: max(16px, 1rem);
 }
 
-/* Buttons, including the icon-only ones in input affixes and section headers. */
+/* Buttons, including the icon-only ones in input affixes and section headers,
+   and the row actions inside a table.
+
+   THE TABLE ROW ACTIONS ARE HERE BECAUSE OF A GAP THE GATE ONLY FOUND ONCE
+   THERE WERE ROWS: Filament renders them as link-style anchors 32px tall, and
+   every admin table checked before this phase happened to be empty, so the
+   gate had nothing to measure. A rule is only as good as the page it is run
+   against. */
 .fi-btn,
 .fi-icon-btn,
 .fi-user-menu-trigger,
 .fi-sidebar-item-btn,
 .fi-topbar-start > a,
-.fi-link {
+.fi-link,
+.fi-ac-action,
+.fi-ac-btn-action,
+.fi-ac-link-action,
+.fi-ta-actions a,
+.fi-ta-actions button {
   min-height: var(--tap-min);
 }
 
+/* min-height DOES NOTHING on an inline element, which is why `.fi-link` was in
+   the rule above for two phases and still measured 32px: the browser silently
+   ignores the property rather than warning about it. Link-style actions have
+   to be inline-FLEX before the minimum applies to them at all. */
+.fi-link,
+.fi-ac-link-action,
+.fi-ta-actions a {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* A short label must not make a small target. "Yes" is two characters wide and
+   still has to be as tappable as "Save changes". */
+.fi-btn,
 .fi-icon-btn,
-.fi-user-menu-trigger {
+.fi-user-menu-trigger,
+.fi-ac-btn-action {
   min-width: var(--tap-min);
 }
 

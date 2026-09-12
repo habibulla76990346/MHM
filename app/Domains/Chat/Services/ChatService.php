@@ -21,11 +21,15 @@ use App\Domains\AI\Services\ProviderRegistry;
 use App\Domains\AI\Support\Capability;
 use App\Domains\AI\Support\ErrorClass;
 use App\Domains\AI\Usage\UsageRecorder;
+use App\Domains\Billing\Services\EntitlementService;
+use App\Domains\Billing\Services\SubscriptionService;
 use App\Domains\Chat\Models\Conversation;
 use App\Domains\Chat\Models\Message;
 use App\Domains\Chat\Models\MessageAttachment;
 use App\Domains\Chat\Models\MessageUsage;
 use App\Domains\Chat\Support\ChatRefused;
+use App\Domains\Credits\Models\CreditHold;
+use App\Domains\Credits\Services\CreditService;
 use App\Domains\Files\Models\File;
 use App\Models\User;
 use Generator;
@@ -66,6 +70,9 @@ class ChatService
         private readonly RetryPolicy $retries,
         private readonly CircuitBreaker $breaker,
         private readonly UsageRecorder $usage,
+        private readonly EntitlementService $entitlements,
+        private readonly SubscriptionService $subscriptions,
+        private readonly CreditService $credits,
     ) {}
 
     // -- starting a turn -----------------------------------------------------
@@ -109,6 +116,13 @@ class ChatService
                 'routing_log_id' => $decision->log?->getKey(),
                 'parent_message_id' => $userMessage->getKey(),
             ]);
+
+            // PRE-AUTHORISE before a provider is called. Inside the
+            // transaction and under the balance's row lock, so ten
+            // simultaneous turns cannot all pass an affordability check
+            // against the same balance — the refusal rolls the whole turn
+            // back rather than saving a question nobody will answer.
+            $this->authoriseSpend($assistant, $model, $user, $text);
 
             // The first message names the conversation. Not an AI call: that
             // would double what a chat costs for something the first few words
@@ -155,6 +169,11 @@ class ChatService
             // The link that keeps history intact.
             'regenerated_from_id' => $previous->getKey(),
         ]);
+
+        // A regeneration is a second answer and costs a second time. Held the
+        // same way, so an out-of-credit customer is told before the provider
+        // is called rather than after the money is spent.
+        $this->authoriseSpend($replacement, $model, $user);
 
         $this->limiter->hit($user);
 
@@ -335,6 +354,14 @@ class ChatService
         int $depth = 0,
     ): RoutingDecision {
         $mode = $conversation->effectiveRoutingMode();
+
+        // A model the customer's plan forbids is EXCLUDED before scoring, not
+        // rejected afterwards: choosing it and then refusing would show them
+        // an error for a decision they did not make.
+        $exclude = array_values(array_unique(array_merge(
+            $exclude,
+            $conversation->user ? $this->entitlements->deniedModelIds($conversation->user) : [],
+        )));
 
         return $this->router->route(
             required: $this->router->resolveCapabilities($hasImages),
@@ -523,6 +550,101 @@ class ChatService
         ], true);
     }
 
+    // -- credit -------------------------------------------------------------
+
+    /**
+     * Hold an estimate of what this answer will cost.
+     *
+     * ESTIMATED HIGH, ON PURPOSE: the context that will be sent plus the most
+     * output the model is allowed to produce. Holding the eventual figure is
+     * impossible — nobody knows it until the answer exists — and holding a low
+     * guess would let a customer start a reply they cannot pay for. The hold
+     * is settled down to the real cost the moment it is known, so nothing is
+     * over-charged; only over-promised, briefly.
+     *
+     * An unpriced model holds zero and is served. Metering starts when the
+     * owner enters prices, not when this code ships.
+     */
+    private function authoriseSpend(Message $assistant, AiModel $model, User $user, string $pending = ''): void
+    {
+        // Nothing to meter against until the owner publishes a plan.
+        if (! $this->entitlements->meteringIsActive()) {
+            return;
+        }
+
+        $estimate = $this->estimateCredits($assistant, $model, $pending);
+
+        $hold = $this->credits->hold(
+            user: $user,
+            amount: $estimate,
+            referenceType: 'chat_message',
+            referenceId: (string) $assistant->getKey(),
+        );
+
+        if (! $hold) {
+            throw ChatRefused::outOfCredits();
+        }
+    }
+
+    private function estimateCredits(Message $assistant, AiModel $model, string $pending = ''): float
+    {
+        $inputTokens = $this->conversationTokens($assistant->conversation, $pending);
+
+        $maxOutput = min(
+            (int) settings('chat.max_output_tokens'),
+            $model->max_output_tokens ?: (int) settings('chat.max_output_tokens'),
+        );
+
+        $cost = $this->usage->cost($model, new UsageMetrics(
+            inputTokens: $inputTokens,
+            outputTokens: $maxOutput,
+        ));
+
+        return (float) $cost['credit_cost'];
+    }
+
+    /** The hold taken for this answer, if there is one still open. */
+    private function holdFor(Message $assistant): ?CreditHold
+    {
+        return CreditHold::where('reference_type', 'chat_message')
+            ->where('reference_id', (string) $assistant->getKey())
+            ->where('status', CreditHold::HELD)
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * Charge what the answer actually cost.
+     *
+     * Capped at the hold by CreditService, so an estimate that was too low
+     * cannot bill a customer beyond what they were told was reserved.
+     */
+    private function settleCredit(Message $assistant, ?float $creditCost): void
+    {
+        $hold = $this->holdFor($assistant);
+
+        if (! $hold) {
+            return;
+        }
+
+        $this->credits->settle($hold, (float) ($creditCost ?? 0), __('AI reply'));
+    }
+
+    /**
+     * Let the hold go without charging.
+     *
+     * A customer pays for answers, never for attempts — a provider failure
+     * costs the owner money and the customer nothing.
+     */
+    private function releaseCredit(Message $assistant): void
+    {
+        $hold = $this->holdFor($assistant);
+
+        if ($hold) {
+            $this->credits->release($hold);
+        }
+    }
+
     // -- internals -----------------------------------------------------------
 
     private function guard(Conversation $conversation, User $user, string $text, array $fileIds): void
@@ -531,16 +653,35 @@ class ChatService
             throw ChatRefused::empty();
         }
 
+        // Everybody is on a plan. Assigned lazily so switching billing on does
+        // not require a migration over every existing account, and so an
+        // account created before plans existed simply lands on the default the
+        // first time it is used.
+        $this->subscriptions->ensureSubscription($user);
+
         $maxLength = (int) settings('chat.max_message_length');
 
         if (mb_strlen($text) > $maxLength) {
             throw ChatRefused::tooLong($maxLength);
         }
 
-        $maxAttachments = (int) settings('chat.max_attachments');
+        // The tighter of the platform limit and the plan's own. A plan may
+        // restrict further than the global setting; it may never exceed it.
+        $maxAttachments = min(
+            (int) settings('chat.max_attachments'),
+            $this->entitlements->maxAttachments($user) ?? PHP_INT_MAX,
+        );
 
         if (count($fileIds) > $maxAttachments) {
             throw ChatRefused::tooManyAttachments($maxAttachments);
+        }
+
+        // §19's message limits. A SOFT limit is allowed through — the owner
+        // asked to be told, not to stop serving.
+        $allowance = $this->entitlements->checkMessageAllowance($user);
+
+        if (! $allowance->allowed) {
+            throw ChatRefused::planLimit((string) $allowance->reason);
         }
 
         if ($this->limiter->tooManyAttempts($user)) {
@@ -695,6 +836,7 @@ class ChatService
         ])->save();
 
         $this->clearStop($assistant);
+        $this->releaseCredit($assistant);
     }
 
     /** Settle a row and hand back the failure for the caller to throw. */
@@ -729,6 +871,11 @@ class ChatService
             httpStatus: $status,
             capability: 'chat',
         );
+
+        // Charged from the SAME figure the usage log recorded, so what the
+        // customer is billed and what the owner's margin report shows can
+        // never be two different numbers.
+        $this->settleCredit($assistant, $log?->credit_cost !== null ? (float) $log->credit_cost : null);
 
         try {
             MessageUsage::updateOrCreate(

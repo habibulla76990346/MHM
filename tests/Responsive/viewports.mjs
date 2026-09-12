@@ -26,6 +26,8 @@ export const SCREENS = [
   { name: 'content-page',     path: '/p/home' },
   { name: 'dashboard',        path: '/dashboard', auth: true },
   { name: 'account',          path: '/account',   auth: true },
+  { name: 'pricing',          path: '/pricing' },
+  { name: 'billing',          path: '/billing',   auth: true },
   { name: 'library',          path: '/library',   auth: true },
 
   // --- Admin Panel ---------------------------------------------------------
@@ -47,6 +49,14 @@ export const SCREENS = [
   { name: 'admin-personas',   path: '/admin/personas',        admin: true },
   { name: 'admin-costs',      path: '/admin/usage-and-costs',  admin: true },
   { name: 'admin-routing',    path: '/admin/routing-and-health', admin: true },
+  { name: 'admin-plans',      path: '/admin/plans',            admin: true },
+  { name: 'admin-plan-edit',  path: '/admin/plans/create',     admin: true },
+  { name: 'admin-coupons',    path: '/admin/coupons',          admin: true },
+  { name: 'admin-invoices',   path: '/admin/invoices',         admin: true },
+  { name: 'admin-tax',        path: '/admin/tax-and-compliance', admin: true },
+  { name: 'admin-tax-rules',  path: '/admin/tax-jurisdictions', admin: true },
+  { name: 'admin-currencies', path: '/admin/countries-and-currencies', admin: true },
+  { name: 'admin-credits',    path: '/admin/customer-credits', admin: true },
 ];
 
 /** Credentials for the seeded responsive-test account. */
