@@ -4,6 +4,7 @@ namespace App\Domains\Chat\Services;
 
 use App\Domains\Chat\Models\Conversation;
 use App\Domains\Chat\Models\Message;
+use App\Domains\Knowledge\Models\KnowledgeBase;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -15,13 +16,44 @@ class ConversationService
 {
     public function start(User $user, ?int $personaId = null, ?int $modelId = null): Conversation
     {
-        return Conversation::create([
+        $conversation = Conversation::create([
             'user_id' => $user->getKey(),
             'persona_id' => $personaId,
             'pinned_model_id' => $modelId,
             'routing_mode' => $modelId ? Conversation::ROUTING_SPECIFIC_MODEL : Conversation::ROUTING_AUTO,
             'last_message_at' => now(),
         ]);
+
+        $this->attachKnowledgeBases($conversation, $user);
+
+        return $conversation;
+    }
+
+    /**
+     * Every knowledge base this customer may read, attached to a new
+     * conversation (§17).
+     *
+     * AUTOMATIC, BECAUSE RELEVANCE IS ALREADY THE FILTER. A customer who
+     * uploads a document expects to be able to ask about it, not to find a
+     * second control that must also be switched on — and the retrieval floor
+     * means a base with nothing relevant in it contributes nothing to the
+     * answer and nothing to the prompt.
+     *
+     * Attachment is still not permission: `KnowledgeBase::isReadableBy()` is
+     * checked again on every question, so a grant withdrawn tomorrow stops
+     * being searched tomorrow rather than when the conversation ends.
+     */
+    private function attachKnowledgeBases(Conversation $conversation, User $user): void
+    {
+        if (! settings('knowledge.enabled')) {
+            return;
+        }
+
+        $ids = KnowledgeBase::readableBy($user)->pluck('id')->all();
+
+        if ($ids !== []) {
+            $conversation->knowledgeBases()->syncWithoutDetaching($ids);
+        }
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Domains\AI\Adapters;
 
 use App\Domains\AI\Contracts\ContributesDiagnostics;
 use App\Domains\AI\Contracts\SupportsChat;
+use App\Domains\AI\Contracts\SupportsEmbeddings;
 use App\Domains\AI\Contracts\SupportsModelDiscovery;
 use App\Domains\AI\Contracts\SupportsStreaming;
 use App\Domains\AI\Contracts\SupportsVision;
@@ -43,7 +44,7 @@ use Illuminate\Http\Client\Response;
  * Every one of those differences is contained here. Nothing above
  * ProviderAdapter changes, which is the point (§12).
  */
-class GeminiAdapter extends BaseAdapter implements ContributesDiagnostics, SupportsChat, SupportsModelDiscovery, SupportsStreaming, SupportsVision
+class GeminiAdapter extends BaseAdapter implements ContributesDiagnostics, SupportsChat, SupportsEmbeddings, SupportsModelDiscovery, SupportsStreaming, SupportsVision
 {
     public const KEY = 'gemini';
 
@@ -57,7 +58,62 @@ class GeminiAdapter extends BaseAdapter implements ContributesDiagnostics, Suppo
             Capability::VISION,
             Capability::JSON_MODE,
             Capability::LONG_CONTEXT,
+            Capability::EMBEDDINGS,
         ];
+    }
+
+    /**
+     * Turn text into vectors, Google's way.
+     *
+     * A DIFFERENT SHAPE FROM EVERYONE ELSE, which is the whole reason this
+     * adapter exists: the batch endpoint is `:batchEmbedContents`, each input
+     * is wrapped in its own request object, each of those has to repeat the
+     * model name, and the vectors come back under `embeddings[].values`
+     * rather than `data[].embedding`.
+     *
+     * Nothing above this method knows any of that. `EmbeddingService` asks for
+     * vectors and gets vectors, exactly as chat asks for a reply.
+     *
+     * @param  array<int, string>  $inputs
+     * @return array<int, array<int, float>>
+     */
+    public function embed(string $modelIdentifier, array $inputs): array
+    {
+        if ($inputs === []) {
+            return [];
+        }
+
+        $requests = array_map(fn (string $text) => [
+            // Repeated per request, and it must carry the `models/` prefix
+            // even though the URL already names the model.
+            'model' => 'models/'.$modelIdentifier,
+            'content' => ['parts' => [['text' => $text]]],
+        ], array_values($inputs));
+
+        [$response] = $this->send(fn (PendingRequest $client) => $client->post(
+            $this->modelUrl($modelIdentifier, 'batchEmbedContents'),
+            ['requests' => $requests],
+        ));
+
+        $vectors = [];
+
+        foreach ((array) data_get($response->json(), 'embeddings', []) as $row) {
+            $values = data_get($row, 'values');
+
+            if (is_array($values)) {
+                $vectors[] = array_map('floatval', $values);
+            }
+        }
+
+        if (count($vectors) !== count($inputs)) {
+            // Gemini returns them in request order with no index to check
+            // against, so a short response is the only signal that something
+            // is misaligned — and a vector on the wrong chunk is a search
+            // that quietly returns the wrong passage for ever.
+            throw new ProviderFailed(ErrorClass::PROVIDER_ERROR);
+        }
+
+        return $vectors;
     }
 
     public function chat(ChatRequest $request): ChatResponse

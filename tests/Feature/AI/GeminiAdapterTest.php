@@ -222,7 +222,7 @@ class GeminiAdapterTest extends TestCase
 
     // -- OpenAI's own adapter -------------------------------------------------
 
-    public function test_the_openai_adapter_keeps_non_chat_endpoints_out_of_the_catalog(): void
+    public function test_the_openai_adapter_classifies_single_purpose_models_rather_than_dropping_them(): void
     {
         $provider = AiProvider::create([
             'name' => 'OpenAI', 'slug' => 'openai',
@@ -246,10 +246,30 @@ class GeminiAdapterTest extends TestCase
 
         $models = app(ProviderRegistry::class)->for($provider->fresh())->listModels();
 
-        // Not an allowlist of model names — those go stale. The endpoint
-        // families that are demonstrably not chat are declined, so an owner's
-        // catalog is not filled with entries that fail when selected.
-        $this->assertCount(1, $models);
-        $this->assertSame('some-chat-model', $models[0]->identifier);
+        $byIdentifier = collect($models)->keyBy('identifier');
+
+        // STILL DROPPED: families that cannot serve any capability Aziv AI
+        // routes. Importing them fills an owner's catalog with entries that
+        // fail the moment anyone selects one.
+        $this->assertNull($byIdentifier->get('omni-moderation-latest'));
+
+        // NO LONGER DROPPED. Until Phase 8 every non-chat family was declined,
+        // which was right when chat was the only capability and became wrong
+        // the moment knowledge bases needed something to embed with: a catalog
+        // with no embedding model in it leaves the router nothing to choose.
+        // They are imported and CLASSIFIED instead — which is what the
+        // capability system exists for.
+        $this->assertSame(
+            [Capability::CHAT, Capability::STREAMING],
+            $byIdentifier->get('some-chat-model')->capabilities,
+        );
+        $this->assertSame([Capability::EMBEDDINGS], $byIdentifier->get('text-embedding-3-large')->capabilities);
+        $this->assertSame([Capability::TRANSCRIPTION], $byIdentifier->get('whisper-1')->capabilities);
+        $this->assertSame([Capability::IMAGE_GENERATION], $byIdentifier->get('dall-e-3')->capabilities);
+
+        // And the classification is what keeps the router honest: an
+        // embeddings endpoint has no reply to give, so it must never be
+        // offered a conversation.
+        $this->assertNotContains(Capability::CHAT, $byIdentifier->get('text-embedding-3-large')->capabilities);
     }
 }

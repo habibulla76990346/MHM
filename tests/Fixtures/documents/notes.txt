@@ -1,0 +1,2 @@
+Aziv AI runs on PHP 8.4.
+The renewal grace period is seven days by default.

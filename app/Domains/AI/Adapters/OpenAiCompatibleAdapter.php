@@ -4,6 +4,7 @@ namespace App\Domains\AI\Adapters;
 
 use App\Domains\AI\Contracts\ContributesDiagnostics;
 use App\Domains\AI\Contracts\SupportsChat;
+use App\Domains\AI\Contracts\SupportsEmbeddings;
 use App\Domains\AI\Contracts\SupportsModelDiscovery;
 use App\Domains\AI\Contracts\SupportsStreaming;
 use App\Domains\AI\DTO\ChatRequest;
@@ -33,7 +34,7 @@ use Generator;
  * Nothing here names a provider or a model. It speaks the shape, and the
  * catalog supplies the identifiers (Rule 5).
  */
-class OpenAiCompatibleAdapter extends BaseAdapter implements ContributesDiagnostics, SupportsChat, SupportsModelDiscovery, SupportsStreaming
+class OpenAiCompatibleAdapter extends BaseAdapter implements ContributesDiagnostics, SupportsChat, SupportsEmbeddings, SupportsModelDiscovery, SupportsStreaming
 {
     public const KEY = 'openai_compatible';
 
@@ -48,7 +49,59 @@ class OpenAiCompatibleAdapter extends BaseAdapter implements ContributesDiagnost
             Capability::VISION,
             Capability::TOOL_USE,
             Capability::JSON_MODE,
+            Capability::EMBEDDINGS,
         ];
+    }
+
+    /**
+     * Turn text into vectors (§17).
+     *
+     * ONE REQUEST FOR THE WHOLE BATCH, because the alternative — a call per
+     * chunk — turns a 300-chunk document into 300 round trips and 300 chances
+     * for a rate limit. The shape is the same one OpenAI defined, so every
+     * compatible provider answers it.
+     *
+     * The order that comes back is NOT trusted. The response carries an
+     * `index` per row and it is used to reorder, because a vector attached to
+     * the wrong chunk is not an error anybody sees — it is a search that
+     * quietly returns the wrong passage for ever.
+     *
+     * @param  array<int, string>  $inputs
+     * @return array<int, array<int, float>>
+     */
+    public function embed(string $modelIdentifier, array $inputs): array
+    {
+        if ($inputs === []) {
+            return [];
+        }
+
+        [$response] = $this->send(fn ($client) => $client->post($this->url('embeddings'), [
+            'model' => $modelIdentifier,
+            'input' => array_values($inputs),
+        ]));
+
+        $vectors = [];
+
+        foreach ((array) data_get($response->json(), 'data', []) as $row) {
+            $vector = data_get($row, 'embedding');
+
+            if (! is_array($vector)) {
+                continue;
+            }
+
+            $index = (int) (data_get($row, 'index') ?? count($vectors));
+            $vectors[$index] = array_map('floatval', $vector);
+        }
+
+        ksort($vectors);
+
+        if (count($vectors) !== count($inputs)) {
+            // Silently returning fewer vectors than chunks would attach every
+            // subsequent vector to the wrong chunk.
+            throw new ProviderFailed(ErrorClass::PROVIDER_ERROR);
+        }
+
+        return array_values($vectors);
     }
 
     public function chat(ChatRequest $request): ChatResponse

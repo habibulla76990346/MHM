@@ -307,7 +307,7 @@ The owner confirmed these stay as proposed **for now**. Silence is still not app
 | ID | Decision | Recommendation | Needed by |
 |---|---|---|---|
 | **D-02** | Filament for the admin panel | **Yes.** ~90 screens on exactly the blueprint's stack. Note: D-07 makes Filament's themeability a live concern — it is met via CSS custom properties, confirmed workable | Phase 2 |
-| **D-03** | Vector storage for document search | **Start with MySQL.** Schema allows swapping the backend later without a rewrite | Phase 8 |
+| **D-03** | Vector storage for document search | ✅ **BUILT AS RECOMMENDED in Phase 8a.** MySQL, behind a `VectorStore` interface so the backend swaps without a rewrite | Phase 8 |
 | **D-05** | Launch after Phase 6 or Phase 9 | **After Phase 6.** Nothing is skipped; Phases 7–9 happen with real customers already using it | Phase 6 |
 | **D-06** | Tailwind build tooling | **Standard Node build.** Node never touches your server — assets are built in CI and shipped compiled, so cPanel needs neither Node nor Composer | Phase 0 |
 | **D-10** | PWA depth | **Installability in Phase 2, service worker in Phase 9.** Full offline not proposed: AI answers cannot be cached, and caching customer data creates privacy risk | Phase 2 |
@@ -1244,3 +1244,174 @@ configuration; per-customer opt-out is a decision for the owner to ask for.
 
 **Push notifications.** §22 calls them future-ready, and they are: the in-app half uses Laravel's
 own notification table, so a push channel is added to the notifier rather than built beside it.
+
+## Phase 8a — files, extraction and knowledge bases
+
+Phase 8 is the largest in the plan and its own row says it may be split. This
+is the first part: everything behind the sentence "upload a PDF and ask
+questions about it". Image generation (§16) and voice (§18) are 8b and 8c.
+
+### D-03 answered: MySQL, behind an interface
+
+The recommendation stood — start with the database, keep the backend
+swappable — and `VectorStore` is that promise made mechanical rather than
+aspirational. `DatabaseVectorStore` stores a packed float32 BLOB beside each
+chunk and computes cosine similarity in PHP; a pgvector or Qdrant
+implementation is a second class bound in one line of `KnowledgeServiceProvider`.
+
+The trade is stated honestly in the code: MySQL cannot index a vector, so a
+search reads every chunk in the bases being searched. For the size D-03
+anticipates — hundreds to a few thousand chunks in a personal collection —
+that is milliseconds, and it needs nothing installed, backed up or paid for.
+The admin table shows the passage count per collection and marks the ones
+where that stops being true.
+
+Float32 rather than JSON is not micro-optimisation: a 1536-dimension vector is
+6 KB packed and about 20 KB as JSON text, and that ratio decides whether a
+search reads 60 MB or 200 MB off disk.
+
+### Extraction is a layer, not a function
+
+`TextExtractor` has the same shape as `FileScanner` and `ProviderAdapter`, for
+the same reason: extraction quality varies enormously by file, and the honest
+position is that today's extractor is the best available rather than the only
+one conceivable. OCR for scanned pages is a class registered in
+`ExtractorRegistry` with nothing above it changing.
+
+Three of the four formats need no dependency at all. A .docx is a ZIP of XML
+and the `zip` and `dom` extensions are already required, so Word documents are
+read natively — but by WALKING the XML, not by stripping tags: Word splits a
+sentence across arbitrarily many runs, and a tab or line break has no text
+content, so `strip_tags` welds "Region" and "Bengaluru" into one nonsense
+token in every table in the document.
+
+PDF is the exception and gets the one new dependency. It is a container with
+its own compression, font encodings and text-positioning model; hand-rolling
+that produces an extractor that works on the three files it was tested
+against. `smalot/pdfparser` is pure PHP, so it ships in `vendor/` and adds
+nothing a server must provide.
+
+### An extractor never throws for a file it cannot read
+
+A scanned PDF parses perfectly and yields nothing. A .doc renamed to .docx is
+not a zip. Both are ordinary outcomes of accepting files from people, and both
+end as a SENTENCE the customer reads — not an exception the queue retries
+three times and fails identically. `ExtractedText::unusable()` carries the
+reason; `ExtractDocumentJob` has `tries = 1` for exactly this reason, while
+`EmbedDocumentJob` retries because a rate limit really does clear.
+
+### Embeddings go through the router like everything else
+
+Nothing in the knowledge layer names a provider or a model. `EmbeddingService`
+asks `AiRouter` for `Capability::EMBEDDINGS` and gets whatever the owner
+enabled, and the call is recorded by the same `UsageRecorder` as chat with the
+capability set to `embeddings`. Indexing a 400-page manual is a real bill from
+a real provider; an owner who cannot see it on the same screen as their chat
+cost has no idea what knowledge bases are costing them.
+
+**This required changing a Phase 4 decision.** `OpenAiAdapter` dropped every
+non-chat model from the catalog, which was right when chat was the only
+capability and became wrong the moment knowledge bases needed something to
+embed with — a catalog with no embedding model leaves the router nothing to
+choose. Those families are now imported and CLASSIFIED instead: embeddings,
+transcription, speech and image generation each get their own capability, and
+only the genuinely unusable ones (moderation, legacy completions) are still
+declined. That is what the capability system is for, and it means an
+embeddings endpoint can never be offered a conversation it has no reply to.
+
+**One model per document, resolved once.** Vectors from two models are not in
+the same space, and the similarity between them is arithmetic rather than
+meaning — a search that returns confident nonsense with no error anywhere. The
+store filters by dimension in SQL and `Vector::cosine()` returns zero for a
+length mismatch, so the failure is structurally impossible rather than
+avoided by care.
+
+### One permission decision, checked on every question
+
+§17 requires that "sensitive file access must follow role-based permissions and
+privacy rules". There is exactly one method — `KnowledgeBase::isReadableBy()` —
+and the policy delegates to it rather than restating it, so a gate check and a
+retrieval check cannot disagree.
+
+A PERSONAL collection belongs to its owner and to nobody else, **including
+administrators**: an admin reading a customer's uploaded documents through the
+chat interface is precisely what that privacy rule forbids, so the admin
+resource's query is scoped to shared collections and personal ones are not
+listed there at all. Administering a collection and searching it are different
+things on different screens.
+
+A SHARED collection needs an explicit grant, to a named customer or to a whole
+plan. There is no "everyone" value to set by accident, because the commonest
+way sensitive documents leak is a broad default nobody revisited. Grants and
+removals are audited: "who gave this customer access to the internal
+handbook?" is asked after the fact.
+
+**Attachment is not permission.** A conversation records which collections it
+may draw on, but the grant is re-checked on every question — so access
+withdrawn today stops being searched today, not when the conversation ends.
+And `VectorStore::search()` treats an empty list of collections as "search
+nothing" rather than "no filter", so there is no path where a missing filter
+becomes an unrestricted search.
+
+### Attaching is automatic, because relevance is already the filter
+
+A customer who uploads a document expects to ask about it, not to find a
+second switch that must also be on. New conversations attach every collection
+the customer may read; the relevance floor means a collection with nothing
+pertinent contributes nothing to the answer and nothing to the prompt.
+
+### Retrieval never breaks a conversation
+
+If the embedding provider is down or no embedding model is configured, the
+customer gets an ordinary answer without their documents. The failure is
+recorded for the owner, who is the person who can fix it. A chat that refuses
+to run because a knowledge base is unavailable is worse than a chat that
+answers from what it knows.
+
+### Passages are a system message, cited, and capped
+
+As a user message the model would answer the document instead of the question,
+and the customer would see text they never typed attributed to them. As part
+of the persona it would persist into turns it has nothing to do with.
+
+Every passage is cited — a model given unattributed text presents it as its
+own knowledge, and the customer cannot tell which half of an answer came from
+their document. The citation is also what makes a wrong answer checkable.
+
+Retrieval spends the same context budget the conversation does, and the
+ceiling is whichever is lower: the owner's setting, or a third of the model's
+window. Retrieval that quietly pushed the last three messages out of context
+would answer from documents while forgetting what was being discussed.
+
+### `retrieval_logs`, for the same reason as `routing_logs`
+
+"Why did it answer that?" needs an answer six months later. Chunk ids and
+scores, never the chunk text — the text is one join away and duplicating it
+would double the storage of the largest table in the system.
+
+### Two gates that could not fail, found by breaking them
+
+**The DOCX test passed against a `strip_tags` implementation.** The fixture had
+no tabs, so the case the XML walker exists for was never exercised. The fixture
+now contains a tab and a line break and the assertion names both — the sabotage
+fails now, and did not before.
+
+**A bare `<select>` in the customer app was 39px.** The touch-minimum rule in
+`app.css` covered buttons and never form controls; the Library is simply the
+first customer screen with a select on it. Fixed in the design system rather
+than on the page, so every future screen inherits it — the same shape of bug as
+the Filament searchable select found in Phase 7.
+
+### Test structure: a trait, not a base class
+
+Three knowledge suites shared setup by extending one another, which re-ran the
+indexing tests three times and reported failures against classes that did not
+contain them. `Tests\Support\IndexesDocuments` is the same setup as a trait.
+
+The fake embedder deserves a note of its own: it maps words onto a hash space
+and normalises, so cosine similarity really is a function of shared words. A
+fake returning constant or random vectors would let "retrieval returns relevant
+chunks" pass while asserting only that the first row came back first. Its first
+version used 64 dimensions and stopwords collided into the same buckets and
+dominated every comparison — widened to 256 with short words down-weighted,
+which is roughly what a real model learns to do.

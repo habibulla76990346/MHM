@@ -127,7 +127,7 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 
 ---
 
-## Phase 8 — Files/RAG + image + voice
+## Phase 8 — Files/RAG + image + voice  ·  8a BUILT
 
 | | |
 |---|---|
@@ -138,6 +138,8 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | **You provide** | Vector storage decision (D-03) · malware scanning decision (D-08) · image/voice provider keys |
 | **You will see** | Upload a PDF and ask questions about it. Generate images. Speak to Aziv AI and hear it answer |
 | **Size** | 5–6 sessions — the largest phase; may be split. Upload security already exists from Phase 1, so this phase adds analysis, not foundations |
+| **8a — built** | Files and knowledge bases (§17). Extraction as an extensible layer (PDF, DOCX, TXT/MD, CSV — three of the four needing no dependency); chunking with overlap and page/row citations; embeddings routed by capability through the existing adapter layer and metered by the existing usage recorder; `VectorStore` with a MySQL implementation (**D-03 answered**); retrieval with one permission decision re-checked on every question; the customer Library replacing its placeholder; admin collections with grants by customer or plan. Recorded in `docs/12-decision-log.md` under "Phase 8a". |
+| **8b / 8c — not started** | Image generation (§16) and voice (§18). |
 
 ---
 

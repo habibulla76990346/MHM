@@ -42,6 +42,17 @@
     min-width: var(--tap-min);
   }
 
+  /* FORM CONTROLS TOO, which this rule did not cover until a customer screen
+     finally had a bare <select> on it: a browser's default select is 39px and
+     the rule above only reached buttons. Checkboxes and radios are excluded on
+     purpose — they are 16px by design, and what has to meet the minimum is the
+     LABEL wrapping them, which is how the Admin Panel handles it. */
+  select,
+  textarea,
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden']) {
+    min-height: var(--tap-min);
+  }
+
   /* iOS zooms the page when focusing an input below 16px. Never allow it. */
   input,
   select,

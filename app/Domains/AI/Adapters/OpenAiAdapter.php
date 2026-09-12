@@ -26,15 +26,33 @@ class OpenAiAdapter extends OpenAiCompatibleAdapter implements SupportsVision
     public const DEFAULT_BASE_URL = 'https://api.openai.com/v1';
 
     /**
-     * Endpoint families that exist on /models but are not chat completions.
+     * Endpoint families that exist on /models and cannot serve any capability
+     * Aziv AI currently routes.
      *
      * Matched as prefixes of the identifier the provider itself returns —
      * never an allowlist of model names, which would go stale the week after
-     * it was written.
+     * it was written. Importing these would fill an owner's catalog with
+     * entries that fail the moment anyone selects one.
      */
-    private const NON_CHAT_PREFIXES = [
-        'text-embedding', 'whisper', 'tts-', 'dall-e', 'omni-moderation',
-        'text-moderation', 'babbage', 'davinci', 'sora',
+    private const UNUSABLE_PREFIXES = [
+        'omni-moderation', 'text-moderation', 'babbage', 'davinci', 'sora',
+    ];
+
+    /**
+     * Families that ARE usable, just not for chat.
+     *
+     * Dropping these was right when chat was the only capability. It stopped
+     * being right the moment knowledge bases needed something to embed with:
+     * a catalog with no embedding model in it means the router has nothing to
+     * choose and an owner has nothing to enable. They are imported and
+     * CLASSIFIED instead — which is what the capability system is for.
+     */
+    private const CAPABILITY_PREFIXES = [
+        'text-embedding' => Capability::EMBEDDINGS,
+        'whisper' => Capability::TRANSCRIPTION,
+        'tts-' => Capability::SPEECH,
+        'dall-e' => Capability::IMAGE_GENERATION,
+        'gpt-image' => Capability::IMAGE_GENERATION,
     ];
 
     public function capabilities(): array
@@ -55,7 +73,7 @@ class OpenAiAdapter extends OpenAiCompatibleAdapter implements SupportsVision
         $models = [];
 
         foreach (parent::listModels() as $model) {
-            if ($this->isNonChatEndpoint($model->identifier)) {
+            if ($this->isUnusable($model->identifier)) {
                 continue;
             }
 
@@ -65,25 +83,40 @@ class OpenAiAdapter extends OpenAiCompatibleAdapter implements SupportsVision
                 description: $model->description,
                 contextWindow: $model->contextWindow,
                 maxOutputTokens: $model->maxOutputTokens,
-                // Chat and streaming only. Whether a given model can see
-                // images is a fact about that model, and OpenAI's /models
-                // response does not state it — so an administrator ticks it,
-                // rather than a regex guessing from the name.
-                capabilities: [Capability::CHAT, Capability::STREAMING],
+                // Whether a given CHAT model can also see images is a fact
+                // about that model, and OpenAI's /models response does not
+                // state it — so an administrator ticks it, rather than a
+                // regex guessing from the name. The single-purpose families
+                // below are different: an embeddings endpoint cannot chat,
+                // and pretending otherwise would let the router send a
+                // conversation somewhere that has no reply to give.
+                capabilities: $this->capabilitiesFor($model->identifier),
             );
         }
 
         return $models;
     }
 
-    private function isNonChatEndpoint(string $identifier): bool
+    private function isUnusable(string $identifier): bool
     {
-        foreach (self::NON_CHAT_PREFIXES as $prefix) {
+        foreach (self::UNUSABLE_PREFIXES as $prefix) {
             if (str_starts_with($identifier, $prefix)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /** @return array<int, string> */
+    private function capabilitiesFor(string $identifier): array
+    {
+        foreach (self::CAPABILITY_PREFIXES as $prefix => $capability) {
+            if (str_starts_with($identifier, $prefix)) {
+                return [$capability];
+            }
+        }
+
+        return [Capability::CHAT, Capability::STREAMING];
     }
 }

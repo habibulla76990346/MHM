@@ -100,7 +100,9 @@ proves it by reading `app/` for the provider's name.
 After Phase 7 was approved, the two gaps flagged at the end of it were closed: **manual
 subscription renewal** (the invoice, the signed payment link, the past-due grace period and a
 notice at every step) and the **notification system, templates and announcements** (§22).
-**Phase 8 is next** — files/RAG, image and voice. See `docs/09-development-phases.md`.
+**Phase 8a is built** — files, extraction and knowledge bases (§17): upload a PDF and ask questions
+about it. **Phase 8b and 8c are next** — image generation (§16) and voice (§18). See
+`docs/09-development-phases.md`.
 
 **Everything from Phase 3 onward was built and tested entirely against fixtures.** No real OpenAI,
 Gemini or Razorpay credential has been used — the plan has the owner supply those. Every adapter
@@ -129,9 +131,28 @@ until it is configured.
 - **What customers are told** — Admin → Notifications → Templates changes the wording of any
   message; Admin → Notifications → Announcements composes one and sends it to an audience; Admin →
   Notifications → Delivery log says whether it arrived.
+- **Knowledge bases** — Admin → Knowledge → Collections creates a SHARED collection and grants it
+  to named customers or whole plans. Customers make their own from the Library. Indexing needs a
+  provider offering embeddings: add one, sync its catalog, enable an embedding model.
 - **Renewal timing** — Admin → Settings → Billing: how many days early the invoice goes out, how
   long access continues unpaid, and how long a payment link stays usable.
 
+
+### Knowledge bases, in one paragraph
+
+A file becomes searchable through one queued pipeline: extract, chunk, embed. Extraction is an
+extensible layer (`TextExtractor` + `ExtractorRegistry`) shaped exactly like the scanner and adapter
+layers, and an extractor NEVER throws for a file it cannot read — a scanned PDF and a `.doc` renamed
+to `.docx` are ordinary outcomes that end as a sentence the customer reads. Embeddings go through
+`AiRouter` by capability and are metered by `UsageRecorder` like any other call, so nothing here
+names a provider and an owner can see what indexing costs. Vectors are packed float32 in MySQL
+behind a `VectorStore` interface (D-03), so the backend swaps without a rewrite. There is exactly
+ONE permission decision — `KnowledgeBase::isReadableBy()` — the policy delegates to it, retrieval
+re-checks it on every question, and `VectorStore::search()` treats an empty list of collections as
+"search nothing" rather than "no filter". A personal collection is private to its owner INCLUDING
+from administrators, which is why the admin resource is scoped to shared collections. Retrieved
+passages go in as a cited system message under a context ceiling, and a retrieval failure never
+breaks a conversation — the customer gets an ordinary answer and the owner gets the record.
 
 ### Notifications, in one paragraph
 
@@ -313,6 +334,13 @@ php artisan aziv:test-fixtures  # local plan + no-money gateway, so the gate can
   part of what the document SAYS belongs on the draft.
 - **Laravel's default mailer is `log`.** Everything "sends", every delivery records as sent, and
   nothing reaches anybody. `aziv:diagnose` reports it now, graded by environment.
+- **A fixture can make a gate impossible to fail.** The DOCX extraction test passed against a
+  `strip_tags` implementation because the fixture had no tabs — the one thing the XML walker exists
+  for. Sabotage found it; the fixture now contains a tab and a line break.
+- **Form controls were never given the touch minimum.** `app.css` covered buttons only, so a bare
+  `<select>` was 39px on every customer screen. Found the first time a customer screen had one.
+- **Extending a test class re-runs its tests in every subclass.** Three knowledge suites sharing
+  setup by inheritance ran the indexing tests three times. Share setup with a trait.
 - **A gate is worth only what it can catch.** Break it on purpose before trusting it. The
   hard-coded-colour gate silently checked two directory levels for a whole phase, because PHP's
   `glob('**')` does not recurse. Every design token lives in `resources/css/tokens.css`, imported

@@ -1,11 +1,21 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\ChatServiceProvider;
+use App\Providers\DiagnosticsServiceProvider;
+use App\Providers\Filament\AdminPanelProvider;
+use App\Providers\FilesServiceProvider;
+use App\Providers\KnowledgeServiceProvider;
+use App\Providers\SecurityServiceProvider;
+use App\Providers\SettingsServiceProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\ChatServiceProvider::class,
-    App\Providers\Filament\AdminPanelProvider::class,
-    App\Providers\SettingsServiceProvider::class,
-    App\Providers\SecurityServiceProvider::class,
-    App\Providers\FilesServiceProvider::class,
-    App\Providers\DiagnosticsServiceProvider::class,
+    AppServiceProvider::class,
+    ChatServiceProvider::class,
+    AdminPanelProvider::class,
+    SettingsServiceProvider::class,
+    SecurityServiceProvider::class,
+    FilesServiceProvider::class,
+    KnowledgeServiceProvider::class,
+    DiagnosticsServiceProvider::class,
 ];

@@ -118,7 +118,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Destinations the navigation points at. Built out in later phases; they
     // exist now so the nav is never a dead link and the responsive gate has
     // real screens to check.
-    Route::view('library', 'placeholder', ['heading' => 'Library', 'phase' => 8])->name('library');
+    // Documents a customer can ask questions about (§17). Replaced the Phase 8
+    // placeholder that stood here so the navigation was never a dead link.
+    Route::view('library', 'library')->name('library');
     Route::view('images', 'placeholder', ['heading' => 'Images', 'phase' => 8])->name('images');
     Route::view('account', 'account')->name('account');
 

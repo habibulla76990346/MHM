@@ -31,6 +31,9 @@ export const SCREENS = [
   // Addendum A names this one explicitly: checkout has to work at 320px, or
   // the customers most likely to be on a phone cannot buy anything.
   { name: 'checkout',         path: '/checkout/__PLAN__', auth: true },
+  // §17's customer side: collections, upload, and what each document's
+  // status is. Seeded with a real indexed document so the list is not empty —
+  // a gate run against an empty screen measures nothing.
   { name: 'library',          path: '/library',   auth: true },
   // §22's in-app half. Everything the platform has told this customer.
   { name: 'notifications',    path: '/notifications', auth: true },
@@ -72,6 +75,8 @@ export const SCREENS = [
   { name: 'admin-credits',    path: '/admin/customer-credits', admin: true },
   { name: 'admin-gateways',   path: '/admin/payment-gateways', admin: true },
   { name: 'admin-payments',   path: '/admin/payments',         admin: true },
+  { name: 'admin-knowledge',  path: '/admin/knowledge-bases',           admin: true },
+  { name: 'admin-knowledge-new', path: '/admin/knowledge-bases/create',  admin: true },
   { name: 'admin-announcements', path: '/admin/announcements',        admin: true },
   { name: 'admin-announcement-new', path: '/admin/announcements/create', admin: true },
   { name: 'admin-templates',  path: '/admin/notification-templates',    admin: true },

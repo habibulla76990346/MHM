@@ -96,6 +96,12 @@ class PermissionRegistry
                 'notifications.view', 'notifications.templates.manage',
                 'announcements.manage', 'announcements.broadcast',
             ],
+            // §17. Curating a SHARED knowledge base means deciding what every
+            // customer granted it will be told, so it is its own authority —
+            // not a corner of content, and never implied by file access.
+            'knowledge' => [
+                'knowledge.view', 'knowledge.manage', 'knowledge.grant',
+            ],
         ];
     }
 
@@ -136,6 +142,7 @@ class PermissionRegistry
                 'billing.view', 'billing.manage', 'billing.gateways.manage',
                 'notifications.view', 'notifications.templates.manage',
                 'announcements.manage', 'announcements.broadcast',
+                'knowledge.view', 'knowledge.manage', 'knowledge.grant',
                 'content.view', 'content.manage', 'content.publish',
                 'themes.view', 'themes.manage',
                 'branding.view', 'branding.manage',
@@ -158,6 +165,10 @@ class PermissionRegistry
                 // the delivery log holds no message bodies, so answering it
                 // does not mean reading a customer's mail.
                 'notifications.view',
+                // Can see that a shared base exists and who was granted it.
+                // Reading a customer's documents is a different thing and is
+                // not granted by this.
+                'knowledge.view',
                 'analytics.view',
             ],
 
@@ -175,6 +186,7 @@ class PermissionRegistry
                 'settings.view',
                 'notifications.view', 'notifications.templates.manage',
                 'announcements.manage', 'announcements.broadcast',
+                'knowledge.view', 'knowledge.manage',
                 'content.view', 'content.manage', 'content.publish',
                 'themes.view', 'themes.manage',
                 'branding.view', 'branding.manage',

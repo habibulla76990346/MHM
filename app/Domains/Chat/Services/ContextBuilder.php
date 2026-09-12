@@ -7,6 +7,7 @@ use App\Domains\AI\Models\AiModel;
 use App\Domains\Chat\Models\Conversation;
 use App\Domains\Chat\Models\Message;
 use App\Domains\Chat\Models\Persona;
+use App\Domains\Knowledge\Services\RetrievalService;
 use Illuminate\Support\Collection;
 
 /**
@@ -27,6 +28,8 @@ use Illuminate\Support\Collection;
  */
 class ContextBuilder
 {
+    public function __construct(private readonly RetrievalService $retrieval) {}
+
     /**
      * Roughly four characters per token across English prose and code.
      *
@@ -49,6 +52,26 @@ class ContextBuilder
 
         $history = $this->history($conversation, $upTo);
         $budget = $this->tokenBudget($model);
+
+        /**
+         * Retrieved passages, if this conversation has documents attached.
+         *
+         * PLACED AS A SYSTEM MESSAGE, before the history and after the
+         * persona. As a user message it would look like something the customer
+         * typed and the model would answer it; as part of the persona it would
+         * persist into turns it has nothing to do with.
+         *
+         * IT SPENDS THE SAME BUDGET as the conversation, and is counted first.
+         * Retrieval that quietly pushed the customer's last three messages out
+         * of context would answer a question from documents while forgetting
+         * what was being discussed.
+         */
+        $retrieved = $this->retrievedContext($conversation, $upTo, $budget);
+
+        if ($retrieved !== null) {
+            $messages[] = ChatMessage::system($retrieved);
+            $budget -= $this->estimateTokens($retrieved);
+        }
 
         // Walk backwards from the newest, so the messages that survive a tight
         // budget are the ones that matter most to the reply.
@@ -77,6 +100,85 @@ class ContextBuilder
         }
 
         return $messages;
+    }
+
+    /**
+     * The document passages that bear on the newest question.
+     *
+     * Returns null when there is nothing attached, nothing relevant, or
+     * retrieval failed — all three of which are ordinary and none of which
+     * should stop a conversation. `RetrievalService` decides what may be
+     * searched; this only decides how much of it fits and how it reads.
+     *
+     * EVERY PASSAGE IS CITED. A model given unattributed text presents it as
+     * its own knowledge, and a customer cannot tell which half of an answer
+     * came from their document and which from the model's training. The
+     * citation is also what makes a wrong answer checkable.
+     */
+    private function retrievedContext(Conversation $conversation, ?Message $upTo, int $budget): ?string
+    {
+        if (! settings('knowledge.enabled')) {
+            return null;
+        }
+
+        $question = $this->newestQuestion($conversation, $upTo);
+
+        if ($question === null) {
+            return null;
+        }
+
+        $chunks = $this->retrieval->retrieve($conversation, $question, $upTo);
+
+        if ($chunks === []) {
+            return null;
+        }
+
+        // Whichever ceiling is lower: the owner's setting, or a third of this
+        // model's budget. A small model must not have its whole context filled
+        // with documents.
+        $ceiling = min(
+            (int) settings('knowledge.max_context_tokens'),
+            (int) floor($budget / 3),
+        );
+
+        $lines = [];
+        $used = 0;
+
+        foreach ($chunks as $chunk) {
+            $passage = '['.$chunk->citation().'] '.$chunk->content;
+            $cost = $this->estimateTokens($passage);
+
+            if ($lines !== [] && $used + $cost > $ceiling) {
+                break;
+            }
+
+            $lines[] = $passage;
+            $used += $cost;
+        }
+
+        if ($lines === []) {
+            return null;
+        }
+
+        return implode("\n\n", array_merge([
+            __('The following passages come from documents the customer has provided. Use them when they are relevant, cite the source in square brackets when you do, and say plainly when they do not contain the answer rather than inventing one.'),
+        ], $lines));
+    }
+
+    /**
+     * What the customer most recently asked.
+     *
+     * Retrieval is driven by the question, not by the whole conversation: a
+     * search over ten turns of small talk retrieves whatever the small talk
+     * resembles.
+     */
+    private function newestQuestion(Conversation $conversation, ?Message $upTo): ?string
+    {
+        $question = $this->history($conversation, $upTo)
+            ->reverse()
+            ->firstWhere('role', Message::ROLE_USER)?->content;
+
+        return filled($question) ? (string) $question : null;
     }
 
     /**

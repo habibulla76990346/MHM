@@ -371,6 +371,43 @@ class SettingRegistry
                 rules: ['integer', 'min:1', 'max:180'],
             ),
 
+            // --- Knowledge bases (blueprint §17, decision D-03) --------------
+            new SettingDefinition(
+                key: 'knowledge.enabled', type: 'bool', default: true, group: 'knowledge',
+                label: 'Let customers use knowledge bases',
+                description: 'Uploading documents and asking questions about them. Turning this off hides the feature; nothing already indexed is deleted.',
+            ),
+            new SettingDefinition(
+                key: 'knowledge.vector_store', type: 'string', default: 'database', group: 'knowledge',
+                label: 'Where document vectors are stored',
+                description: 'Decision D-03: the database, which needs nothing extra installed. A dedicated vector service can be added later without re-indexing being a code change.',
+                rules: ['string', 'max:32'],
+            ),
+            new SettingDefinition(
+                key: 'knowledge.max_documents_per_base', type: 'int', default: 200, group: 'knowledge',
+                label: 'Documents per knowledge base',
+                description: 'A ceiling that protects search speed. The database vector store reads every chunk in a base on each question.',
+                rules: ['integer', 'min:1', 'max:10000'],
+            ),
+            new SettingDefinition(
+                key: 'knowledge.storage_mb_per_customer', type: 'int', default: 200, group: 'knowledge',
+                label: 'Storage per customer (MB)',
+                description: 'Total size of the documents one customer may keep. A plan can raise this with the knowledge.storage_mb feature.',
+                rules: ['integer', 'min:1', 'max:1000000'],
+            ),
+            new SettingDefinition(
+                key: 'knowledge.retention_days', type: 'int', default: 0, group: 'knowledge',
+                label: 'Delete unused documents after (days)',
+                description: 'Counted from the last time a document was searched. Zero keeps them until somebody deletes them.',
+                rules: ['integer', 'min:0', 'max:3650'],
+            ),
+            new SettingDefinition(
+                key: 'knowledge.max_context_tokens', type: 'int', default: 2000, group: 'knowledge',
+                label: 'Most tokens of document text per answer',
+                description: 'Retrieved passages compete with the conversation itself for the model\'s context. This caps how much of it they may take.',
+                rules: ['integer', 'min:200', 'max:100000'],
+            ),
+
             // --- Uploads (Owner Addendum H) ----------------------------------
             new SettingDefinition(
                 key: 'uploads.max_size_kb', type: 'int', default: 10240, group: 'uploads',

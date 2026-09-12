@@ -5,10 +5,12 @@ namespace App\Domains\Chat\Models;
 use App\Domains\AI\Models\AiModel;
 use App\Domains\AI\Models\AiProvider;
 use App\Domains\AI\Routing\RoutingMode;
+use App\Domains\Knowledge\Models\KnowledgeBase;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
@@ -163,5 +165,23 @@ class Conversation extends Model
     public function touchLastMessage(): void
     {
         $this->forceFill(['last_message_at' => now()])->save();
+    }
+
+    /**
+     * Knowledge bases this conversation may draw on (§17).
+     *
+     * ATTACHMENT IS NOT PERMISSION. This says what the customer chose; whether
+     * they may still read it is decided per question by
+     * `KnowledgeBase::isReadableBy()`, because a grant can be withdrawn after
+     * a conversation was started.
+     */
+    public function knowledgeBases(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            KnowledgeBase::class,
+            'conversation_knowledge_base',
+            'conversation_id',
+            'knowledge_base_id',
+        )->withTimestamps();
     }
 }

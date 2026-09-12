@@ -5,6 +5,9 @@ namespace App\Console\Commands;
 use App\Domains\Billing\Models\Plan;
 use App\Domains\Billing\Models\PlanPrice;
 use App\Domains\Billing\Models\Subscription;
+use App\Domains\Files\Models\File;
+use App\Domains\Knowledge\Models\Document;
+use App\Domains\Knowledge\Models\KnowledgeBase;
 use App\Domains\Payments\Adapters\FixtureGatewayAdapter;
 use App\Domains\Payments\Models\PaymentGatewayCredential;
 use App\Domains\Payments\Models\PaymentGatewayRecord;
@@ -88,6 +91,89 @@ class TestFixturesCommand extends Command
         $this->line('Renewal due for '.$user->email.' — the billing page carries the payment link.');
     }
 
+    /**
+     * A collection with a document in it, for the test account.
+     *
+     * WHY THE GATE NEEDS THIS. Every admin table in this project was once
+     * checked while empty, so no row action was ever measured. The Library is
+     * the same shape: an empty state is a different screen from a list of
+     * documents with a status and a Remove button on each.
+     *
+     * The document is written straight into the ready state. Indexing it for
+     * real would need an embedding provider and a live API key, and a gate
+     * fixture must not depend on either.
+     */
+    private function seedLibrary(): void
+    {
+        $user = User::where('email', TestUserCommand::EMAIL)->first();
+
+        if (! $user) {
+            return;
+        }
+
+        $base = KnowledgeBase::firstOrCreate(
+            ['user_id' => $user->getKey(), 'name' => 'Responsive test collection'],
+            ['scope' => KnowledgeBase::SCOPE_PERSONAL, 'created_by' => $user->getKey()],
+        );
+
+        $file = File::firstOrCreate(
+            ['user_id' => $user->getKey(), 'original_name' => 'handbook.txt'],
+            [
+                'disk' => 'private',
+                'path' => 'uploads/'.$user->getKey().'/handbook.txt',
+                'stored_name' => 'handbook.txt',
+                'detected_mime' => 'text/plain',
+                'extension' => 'txt',
+                'size_bytes' => 128,
+                'checksum' => hash('sha256', 'responsive-fixture'),
+                'purpose' => 'knowledge',
+            ],
+        );
+
+        $ready = Document::updateOrCreate(
+            ['knowledge_base_id' => $base->getKey(), 'file_id' => $file->getKey()],
+            [
+                'user_id' => $user->getKey(),
+                'title' => 'handbook.txt',
+                'status' => Document::STATUS_READY,
+                'extractor_key' => 'plain-text',
+                'character_count' => 128,
+                'chunk_count' => 2,
+                'extracted_at' => now(),
+                'embedded_at' => now(),
+            ],
+        );
+
+        // A failed one too: the row that shows a reason is a different layout
+        // from the row that shows a passage count, and both have to survive
+        // 320px.
+        $failedFile = File::firstOrCreate(
+            ['user_id' => $user->getKey(), 'original_name' => 'scan.pdf'],
+            [
+                'disk' => 'private',
+                'path' => 'uploads/'.$user->getKey().'/scan.pdf',
+                'stored_name' => 'scan.pdf',
+                'detected_mime' => 'application/pdf',
+                'extension' => 'pdf',
+                'size_bytes' => 2048,
+                'checksum' => hash('sha256', 'responsive-fixture-failed'),
+                'purpose' => 'knowledge',
+            ],
+        );
+
+        Document::updateOrCreate(
+            ['knowledge_base_id' => $base->getKey(), 'file_id' => $failedFile->getKey()],
+            [
+                'user_id' => $user->getKey(),
+                'title' => 'scan.pdf',
+                'status' => Document::STATUS_FAILED,
+                'failure_reason' => 'No readable text was found in this file. If it is a scan or a photo of a document, it needs to be converted to text first.',
+            ],
+        );
+
+        $this->line('Library fixture ready: '.$ready->title.' in "'.$base->name.'".');
+    }
+
     public function handle(): int
     {
         if (app()->environment('production')) {
@@ -144,6 +230,7 @@ class TestFixturesCommand extends Command
         );
 
         $this->seedRenewal();
+        $this->seedLibrary();
 
         $this->info('Test plan ready: '.$plan->uuid);
         $this->line('Checkout: /checkout/'.$plan->uuid);
