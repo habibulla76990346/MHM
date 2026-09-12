@@ -24,6 +24,30 @@ const CHECKS = [
   ['body has explicit background',  C.bodyHasExplicitBackground],
 ];
 
+/**
+ * Some screens hide the thing worth checking until someone interacts.
+ *
+ * A form section behind a choice, or a repeater with no rows, renders nothing
+ * — and a gate that measures only what is visible would pass it by default.
+ * Each preparer opens one of those, so the fields inside are measured like
+ * every other field.
+ */
+const PREPARERS = {
+  async customApiMapping(page) {
+    // "Custom API" is the one adapter that needs a mapping described by hand,
+    // so choosing it is what reveals the builder.
+    await page.selectOption('select[id$="adapter_type"]', 'custom_http');
+    await page.waitForTimeout(700);
+
+    const add = page.locator('button:has-text("Add to mappings")').first();
+
+    if (await add.count()) {
+      await add.click();
+      await page.waitForTimeout(900);
+    }
+  },
+};
+
 const RED = s => `\x1b[31m${s}\x1b[0m`;
 const GRN = s => `\x1b[32m${s}\x1b[0m`;
 const DIM = s => `\x1b[2m${s}\x1b[0m`;
@@ -130,6 +154,12 @@ for (const screen of RESOLVED) {
     try {
       const res = await page.goto(BASE + screen.path, { waitUntil: 'networkidle', timeout: 20000 });
       if (!res || res.status() >= 400) throw new Error(`HTTP ${res ? res.status() : 'no response'}`);
+      if (screen.prepare) {
+        // A preparer that cannot do its job is a FAILURE, not a skip: the
+        // fields it was there to reveal would otherwise go unchecked while
+        // the screen still reported green.
+        await PREPARERS[screen.prepare](page);
+      }
       const bad = [];
       for (const [label, fn] of CHECKS) {
         const r = await fn(page);

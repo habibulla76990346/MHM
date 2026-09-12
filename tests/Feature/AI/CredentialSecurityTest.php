@@ -252,6 +252,82 @@ class CredentialSecurityTest extends TestCase
      * is the actual commitment — and it fails loudly if someone adds one later
      * believing it to be a helpful retry.
      */
+    /**
+     * `secret()` is the one door to a plaintext credential, and the list of
+     * people who walk through it is short enough to name.
+     *
+     * CLAUDE.md states this as a fact about the codebase, which means it stops
+     * being true the first time someone adds a caller and nobody notices.
+     * Pinning the list turns "we intend this" into "the build says so": a new
+     * caller fails here, and making it pass means someone looked at that call
+     * and decided it belongs at a request boundary.
+     *
+     * Comments are stripped before the scan, so writing about the rule — as
+     * the credential model's own docblock does — cannot trip it.
+     */
+    public function test_only_the_request_boundary_ever_reads_a_credential_back(): void
+    {
+        $callers = [];
+
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(app_path(), \FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($files as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $code = $this->withoutComments((string) file_get_contents($file->getPathname()));
+
+            // The declaration of the method is not a call to it.
+            $code = preg_replace('/function\s+secret\s*\(/', '', $code);
+
+            if (str_contains((string) $code, 'secret()')) {
+                $callers[] = str_replace(app_path().'/', '', $file->getPathname());
+            }
+        }
+
+        sort($callers);
+
+        $this->assertSame([
+            // Anthropic sends the key in a header of its own name, so it
+            // builds its own client rather than bending the shared one.
+            'Domains/AI/Adapters/AnthropicAdapter.php',
+            // Every provider whose key is sent the ordinary way.
+            'Domains/AI/Adapters/BaseAdapter.php',
+            // A custom provider substitutes the key into the header the owner
+            // described — at the moment of the request, and nowhere else.
+            'Domains/AI/Adapters/CustomHttpAdapter.php',
+            // Reads a gateway key to answer "is this a live key in test mode?"
+            // and returns a verdict. Rule 4: the value never reaches output.
+            'Domains/Diagnostics/Checks/PaymentGatewayCheck.php',
+            // The gateway credential reading its own field back.
+            'Domains/Payments/Models/PaymentGatewayCredential.php',
+        ], $callers, implode("\n", [
+            'Something new reads a credential back in plaintext.',
+            'That is allowed only where a request is signed or a value verified.',
+            'If this is another such boundary, add it here with the reason. If it',
+            'is anything else — a log line, a screen, a job payload — it is a leak.',
+        ]));
+    }
+
+    /** Source with every comment removed, so documenting a rule cannot break it. */
+    private function withoutComments(string $source): string
+    {
+        $kept = '';
+
+        foreach (token_get_all($source) as $token) {
+            if (is_array($token) && in_array($token[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+                continue;
+            }
+
+            $kept .= is_array($token) ? $token[1] : $token;
+        }
+
+        return $kept;
+    }
+
     public function test_no_quota_triggered_key_rotation_is_present_in_the_source(): void
     {
         $offenders = [];

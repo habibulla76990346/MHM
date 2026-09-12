@@ -987,3 +987,111 @@ had nothing to measure.
 An empty relationship column rendered a 32px empty link. `TextColumn::make('prices')` on a HasMany
 resolves to a collection Filament renders as nothing, and the fix is `->state()`. The gate found it
 the first time a table had rows in it.
+
+## Phase 7 — Claude, DeepSeek, Mistral, Groq, and anything OpenAI-shaped
+
+### Five providers, one new adapter
+
+Phase 7 was asked for five providers and shipped ONE class. Anthropic needed it; DeepSeek,
+Mistral and Groq did not, and neither did OpenRouter or Hugging Face, which came along free
+because they copy the same shape. Each of those is a row in `ProviderRegistry::presets()` naming
+an adapter that already existed — a base URL and where to get a key, both editable afterwards.
+
+That ratio is the argument §12 was making. If adding DeepSeek had needed a `DeepSeekAdapter`,
+"multi-provider" would mean "the providers we got round to", and the sixth would wait for a
+release. It is asserted rather than admired: the preset test fails if fewer than five presets
+are served by the shared adapter.
+
+### The four things Anthropic genuinely does differently
+
+An adapter is justified by real differences, not by the provider being famous. Anthropic's are:
+
+1. **The system prompt is a top-level field**, not a message with `role: system`. Sent inline it
+   is ignored, so a persona silently stops working — no error, just a different personality.
+2. **`max_tokens` is required.** Omitted, the request is rejected outright.
+3. **Its own auth headers** — `x-api-key` plus a dated `anthropic-version`. Not a bearer token,
+   and the version is not something an owner should have to know about.
+4. **Typed streaming events.** Text arrives as `content_block_delta` with `text_delta`, the stream
+   ends on `message_stop`, and other block types (thinking, tool use) share the channel. An
+   adapter that forwarded every delta would paste a model's private reasoning into the reply.
+
+Each of the four has its own test. Together they are the entire justification for the class, and
+if a future version removed them the class should go with them.
+
+### `baseRequest()`, so timeouts cannot drift
+
+Anthropic overrides `client()` to build its own auth. Before this phase that meant restating the
+timeouts, the JSON handling and the owner's extra headers — the way two adapters end up with
+different timeout behaviour for no reason anyone remembers. `client()` now composes
+`baseRequest()`, and an adapter with unusual auth overrides only the auth.
+
+### Stage 5 has one implementation, not two
+
+`AiRouter::fallback()` was unreachable. Every substitution goes through `ChatService::substitute()`,
+which re-runs the router with the failed models excluded — and the two copies held the same two
+guards (a pinned conversation never substitutes; the owner's depth limit is obeyed) with nothing
+keeping them in step.
+
+The multi-provider gate found it by being sabotaged: breaking cross-family fallback in
+`AiRouter::fallback()` changed no test result, because nothing calls it. Breaking the same thing
+in `ChatService::substitute()` failed three tests immediately. Two copies of a safety guarantee is
+one copy and one thing that drifts, so the dead one is gone and the router documents where stage 5
+actually lives.
+
+### A provider Aziv AI has never heard of, added from the panel
+
+The plan's claim was that this needs no code. It is now a test that walks the owner's actual
+journey — create, paste a key, test the connection, refresh the catalog, enable a model, chat —
+against an invented company, and then reads every PHP file under `app/` and fails if that
+company's name, slug or address appears in any of them. Nothing but a code change can make that
+assertion fail, which is the only way to state "no code change" as a fact.
+
+The presets are convenience and are proved to be: the provider in that test uses none.
+
+### What an owner can point a provider at, deliberately not restricted
+
+The API address is whatever the owner types, including a private address. Blocking those would
+break the case this phase exists to serve — a model server the owner runs themselves, on
+localhost or inside their own network, is an OpenAI-shaped provider like any other. The screen is
+reachable only by an administrator with `providers.manage`, which is the same authority that could
+add any provider at all.
+
+### Two gaps the phase found in earlier work
+
+**A searchable select was never 44px.** Filament replaces a searchable `Select` with a button
+carrying a different class, so the rule covering `.fi-select-input` never touched it: 36px, on
+every screen with a searchable select, since Phase 1. The provider form was the first such screen
+the responsive gate visits — the gate can only find what it is pointed at, so the screen was added
+along with a way to open a form section that is hidden until someone interacts. Both the preset
+picker and the custom-API mapping builder are now measured at six viewports.
+
+**`secret()` had grown a third caller with nothing checking.** CLAUDE.md stated "exactly two
+callers" as a fact, and a fact in a document is a fact until someone adds a third. The list of
+everything that reads a credential back in plaintext is now pinned by a test that strips comments
+first, so documenting the rule cannot trip it and adding a caller cannot pass quietly.
+
+## Still owed from Phase 6 — verified during Phase 7, not silently carried
+
+Phase 7 included a check the owner asked for: **is native gateway auto-renewal required by the
+approved plan?** It is not. No requirement in `docs/01-requirements-register.md` (PG-1..PG-25) asks
+for it, and Addendum D §3 explicitly treats manual renewal as a deliberate choice with different
+customer messaging. The Phase 6 gate item that *is* required — a subscription is never routed to a
+gateway lacking recurring capability — is implemented and tested.
+
+Two things from Phase 6's own build list are genuinely missing, and are recorded here rather than
+left to be discovered:
+
+1. **The renewal invoice and payment link.** Addendum D §3 says a manual-renewal customer
+   "receives an invoice and a payment link each period". Nothing sends one: the scheduled work is
+   `subscriptions:advance`, which applies downgrades and expires lapsed subscriptions. A
+   manual-renewal subscription therefore ends quietly, and the customer's first signal is losing
+   access. Needs a scheduled job that issues the next period's invoice ahead of expiry and a
+   reminder carrying its payment link.
+
+2. **The notification system, templates and announcements** (§22, listed in Phase 6's build).
+   There is no `app/Notifications` and no `app/Mail`; the only mail in the product is email
+   verification. Every "we will email the customer" in the billing flow is currently unimplemented,
+   which also blocks item 1.
+
+Both are billing-facing and neither is a Phase 7 concern; they are listed so the next phase starts
+by deciding where they belong rather than by rediscovering them.

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\AI;
 
+use App\Domains\AI\Adapters\AnthropicAdapter;
 use App\Domains\AI\Adapters\CustomHttpAdapter;
 use App\Domains\AI\Adapters\GeminiAdapter;
 use App\Domains\AI\Adapters\OpenAiAdapter;
@@ -65,6 +66,7 @@ class AdapterContractTest extends TestCase
 
         foreach ([
             OpenAiAdapter::KEY,
+            AnthropicAdapter::KEY,
             GeminiAdapter::KEY,
             OpenAiCompatibleAdapter::KEY,
             CustomHttpAdapter::KEY,
@@ -73,8 +75,10 @@ class AdapterContractTest extends TestCase
         }
 
         // Registration is the whole integration for a new adapter: nothing
-        // else in the application refers to a provider by name.
-        $this->assertCount(4, $registry->keys());
+        // else in the application refers to a provider by name. The count is
+        // asserted so that registering one WITHOUT adding it to the shared
+        // contract suite fails here rather than shipping untested.
+        $this->assertCount(5, $registry->keys());
     }
 
     /**

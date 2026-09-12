@@ -111,7 +111,7 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 
 ---
 
-## Phase 7 — Claude + DeepSeek + Mistral + Groq + generic compatible/custom providers
+## Phase 7 — Claude + DeepSeek + Mistral + Groq + generic compatible/custom providers ✅ BUILT
 
 | | |
 |---|---|
@@ -122,6 +122,7 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | **You provide** | API keys for whichever additional providers you want live |
 | **You will see** | Many AI providers under one interface, with the router choosing between them |
 | **Size** | 2–3 sessions |
+| **Built** | One new class, `AnthropicAdapter` — top-level system prompt, required `max_tokens`, its own auth and version headers, typed SSE deltas. DeepSeek, Mistral, Groq, OpenRouter and Hugging Face are presets served by `OpenAiCompatibleAdapter`: configuration, not code. The custom mapping builder is on the provider form. Gate met by `EveryAdapterContractTest` (every adapter, one suite), `MultiProviderRoutingTest` (four wire shapes, fallback crossing families), and `PanelOnlyProviderTest` (an invented provider added entirely from the panel, then `app/` read to prove its name appears nowhere). |
 
 ---
 

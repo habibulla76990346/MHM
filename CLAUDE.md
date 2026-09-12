@@ -88,14 +88,16 @@ Do not run `playwright install`.
 
 ## Where the build is
 
-**Phases 0–6 complete.** Phase 5 delivered the router — eight routing modes, health from real
-traffic, retry, the circuit breaker, capability-guarded fallback, dated cost recording and the
-usage rollup. Phase 6 delivered the money: plans with per-currency pricing and configurable limits,
-an append-only credit ledger with pre-authorisation holds, the configurable tax engine, immutable
-invoices with gap-free numbering and credit notes, coupons, countries and currencies, and the
-multi-gateway payment framework with Razorpay, webhooks, reconciliation and refunds.
-**Phase 7 is next** — Claude, DeepSeek, Mistral, Groq and generic compatible providers. See
-`docs/09-development-phases.md`.
+**Phases 0–7 complete.** Phase 6 delivered the money: plans with per-currency pricing and
+configurable limits, an append-only credit ledger with pre-authorisation holds, the configurable
+tax engine, immutable invoices with gap-free numbering and credit notes, coupons, countries and
+currencies, and the multi-gateway payment framework with Razorpay, webhooks, reconciliation and
+refunds. Phase 7 delivered the breadth — and needed exactly one new class to do it: Anthropic,
+whose four genuine differences each have a test, while DeepSeek, Mistral, Groq, OpenRouter and
+Hugging Face are rows in the preset list served by the adapter that already existed. A provider
+Aziv AI has never heard of goes from nothing to answering without a line of code, and a test
+proves it by reading `app/` for the provider's name.
+**Phase 8 is next** — files/RAG, image and voice. See `docs/09-development-phases.md`.
 
 **Everything from Phase 3 onward was built and tested entirely against fixtures.** No real OpenAI,
 Gemini or Razorpay credential has been used — the plan has the owner supply those. Every adapter
@@ -162,14 +164,26 @@ ONE idempotent handler that asks the gateway directly, reached by three paths �
 returning, a webhook, and a scheduled sweep — with four separate idempotency guards behind it,
 because a replayed webhook that grants a second month of credits costs real money.
 
+### Adding a provider, in one paragraph
+
+For anything OpenAI-shaped — which is most of the market — it is a row: Admin → AI Providers → Add,
+pick a preset or type a name, an address and how the key is sent, paste the key, refresh the
+catalog, enable a model. `ProviderRegistry::presets()` carries the addresses for the providers the
+product already knows, and every value it fills in stays editable. A provider that copies nobody's
+shape is described in the panel's mapping builder instead — what to send, and where the answer is
+— and the placeholders there are substituted literally, never evaluated. A new adapter class is
+justified only by differences that would silently produce wrong behaviour otherwise; Anthropic has
+four, and each one is a test.
+
 ### AI providers, in one paragraph
 
 Nothing above `app/Domains/AI/Contracts/ProviderAdapter.php` knows which company answered. The
 application asks for CAPABILITIES (`Capability::VISION`), the catalog says which models have them,
 and an adapter translates. `ProviderRegistry` is the only place a provider's shape is named, so
 adding a provider is a row plus — for anything OpenAI-shaped, which is most of the market — no code
-at all. A credential is `$hidden` and encrypted; `secret()` is the one way to read it back and has
-exactly two callers. A provider's raw error text never crosses the boundary: several APIs echo the
+at all. A credential is `$hidden` and encrypted; `secret()` is the one way to read it back, and every
+caller is pinned by a test rather than by this sentence
+(`CredentialSecurityTest::test_only_the_request_boundary_ever_reads_a_credential_back`). A provider's raw error text never crosses the boundary: several APIs echo the
 failing request, and that request carried the key.
 
 ### Chat, in one paragraph
@@ -251,6 +265,12 @@ php artisan aziv:test-fixtures  # local plan + no-money gateway, so the gate can
 - **`firstOrCreate()` returns a thin model on INSERT.** It holds only the attributes you passed,
   while the database holds the column defaults — so the very first read after creation sees nulls.
   `->refresh()` if you are about to read anything you did not write.
+- **A searchable Select is not a `<select>`.** Filament swaps it for a button with a different
+  class, so a rule written for `.fi-select-input` never touches it. It sat at 36px from Phase 1
+  until a screen with one was finally added to the responsive gate.
+- **Dead code cannot be sabotaged, so it cannot be trusted.** `AiRouter::fallback()` duplicated the
+  live substitution logic and had no callers; breaking it on purpose changed no test result, which
+  is how it was found. Two copies of a safety guarantee is one copy and one thing that drifts.
 - **A gate is worth only what it can catch.** Break it on purpose before trusting it. The
   hard-coded-colour gate silently checked two directory levels for a whole phase, because PHP's
   `glob('**')` does not recurse. Every design token lives in `resources/css/tokens.css`, imported

@@ -47,6 +47,10 @@ export const SCREENS = [
   { name: 'admin-faqs',       path: '/admin/faqs',           admin: true },
   { name: 'admin-navigation', path: '/admin/navigation-items', admin: true },
   { name: 'admin-providers',  path: '/admin/ai-providers',    admin: true },
+  // Phase 7 added two sections to this form, and the gate measures only what
+  // is VISIBLE — so the mapping builder, which lives inside an empty repeater
+  // behind an adapter choice, had to be opened before it could be checked.
+  { name: 'admin-provider-new', path: '/admin/ai-providers/create', admin: true, prepare: 'customApiMapping' },
   { name: 'admin-models',     path: '/admin/ai-models',       admin: true },
   { name: 'admin-ai-console', path: '/admin/ai-test-console', admin: true },
   { name: 'admin-personas',   path: '/admin/personas',        admin: true },

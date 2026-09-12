@@ -58,12 +58,9 @@ abstract class BaseAdapter implements ProviderAdapter
         $secret = $credential->secret();
         $extra = $credential->extra();
 
-        $request = Http::timeout($this->provider->timeout_seconds ?: 60)
-            ->connectTimeout(min(15, $this->provider->timeout_seconds ?: 15))
-            ->acceptJson()
-            ->withOptions(['http_errors' => false]);
+        $request = $this->baseRequest();
 
-        $request = match ($this->provider->auth_method) {
+        return match ($this->provider->auth_method) {
             'header' => $request->withHeaders([
                 ($extra['header_name'] ?? 'X-API-Key') => $secret,
             ]),
@@ -72,8 +69,26 @@ abstract class BaseAdapter implements ProviderAdapter
             ]),
             default => $request->withToken($secret),
         };
+    }
 
-        foreach ((array) ($extra['headers'] ?? []) as $name => $value) {
+    /**
+     * Everything an authenticated client needs EXCEPT the authentication:
+     * timeouts, JSON handling, and whatever extra headers the owner added.
+     *
+     * Separate from `client()` because a provider whose auth shape is not a
+     * choice — a required version header, a signed value — overrides `client()`
+     * and would otherwise have to restate the timeouts and the header
+     * plumbing, which is how two adapters end up with different timeout
+     * behaviour for no reason anybody remembers.
+     */
+    protected function baseRequest(): PendingRequest
+    {
+        $request = Http::timeout($this->provider->timeout_seconds ?: 60)
+            ->connectTimeout(min(15, $this->provider->timeout_seconds ?: 15))
+            ->acceptJson()
+            ->withOptions(['http_errors' => false]);
+
+        foreach ((array) ($this->credential()->extra()['headers'] ?? []) as $name => $value) {
             $request = $request->withHeaders([$name => $value]);
         }
 

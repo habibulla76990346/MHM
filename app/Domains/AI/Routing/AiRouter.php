@@ -109,55 +109,25 @@ class AiRouter
     }
 
     /**
-     * STAGE 5. The next candidate after one has failed.
+     * STAGE 5 — the substitute after a failure — is NOT here.
      *
-     * THE CAPABILITY GUARD lives here by construction: this re-runs the whole
-     * pipeline with the SAME `$required`, so a fallback is filtered by stage 2
-     * exactly as the first choice was. A vision request cannot fall back to a
-     * text-only model, because such a model never survives the filter.
+     * It lives in `ChatService::substitute()`, which is the only thing that
+     * knows an attempt failed. What matters is HOW it does it: it calls
+     * `route()` above again with the same requirement and the failed models
+     * excluded, rather than popping from a list built in advance.
      *
-     * Doing it any other way — keeping a pre-built list and popping from it —
-     * is how that guarantee gets lost, since the list would have been built
-     * before anyone knew what would fail.
+     * THE CAPABILITY GUARD follows from that. A substitute is filtered by
+     * stage 2 exactly as the first choice was, so a vision request cannot fall
+     * back to a model that cannot see — not because anyone checks, but because
+     * such a model never survives the filter. A pre-built list would lose the
+     * guarantee, since it would have been built before anyone knew what would
+     * fail.
+     *
+     * A second copy of that logic once lived here, unreachable. Two copies of
+     * a safety guarantee is one copy and one thing that drifts, so this note
+     * replaced it: there is one substitution path, and the multi-provider gate
+     * runs against it.
      */
-    public function fallback(RoutingDecision $previous, array $triedModelIds, ?User $user = null, int $conversationTokens = 0): RoutingDecision
-    {
-        $depth = $previous->fallbackDepth + 1;
-
-        // "One model" means one model. Substituting silently would make the
-        // setting a lie.
-        if (RoutingMode::forbidsFallback($previous->mode)) {
-            return new RoutingDecision(
-                model: null,
-                candidates: $previous->candidates,
-                required: $previous->required,
-                mode: $previous->mode,
-                fallbackDepth: $depth,
-                reason: 'This conversation is pinned to one model, so no substitute was tried.',
-            );
-        }
-
-        if ($depth > app(RetryPolicy::class)->maxFallbackDepth()) {
-            return new RoutingDecision(
-                model: null,
-                candidates: $previous->candidates,
-                required: $previous->required,
-                mode: $previous->mode,
-                fallbackDepth: $depth,
-                reason: 'Reached the maximum number of providers to try.',
-            );
-        }
-
-        return $this->route(
-            required: $previous->required,
-            mode: $previous->mode,
-            user: $user,
-            conversationTokens: $conversationTokens,
-            excludeModelIds: $triedModelIds,
-            fallbackDepth: $depth,
-        );
-    }
-
     private function describeChoice(Candidate $candidate, string $mode, int $depth): string
     {
         $factors = $candidate->factors;

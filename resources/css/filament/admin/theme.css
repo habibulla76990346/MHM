@@ -40,6 +40,15 @@
   font-size: max(16px, 1rem);
 }
 
+/* A SEARCHABLE select is not a `<select>` at all — Filament replaces it with a
+   button that opens a listbox, and that button carries a different class, so
+   the rule above never touched it. It sat at 36px until the Phase 7 provider
+   form put a searchable select on a screen the gate actually visits. */
+.fi-select-input-btn {
+  min-height: var(--tap-min);
+  font-size: max(16px, 1rem);
+}
+
 /* Buttons, including the icon-only ones in input affixes and section headers,
    and the row actions inside a table.
 
