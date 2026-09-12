@@ -8,8 +8,10 @@ use App\Http\Controllers\Billing\BillingController;
 use App\Http\Controllers\Billing\PricingController;
 use App\Http\Controllers\Branding\ManifestController;
 use App\Http\Controllers\Chat\StreamController;
+use App\Http\Controllers\Checkout\CheckoutController;
 use App\Http\Controllers\Content\PageController;
 use App\Http\Controllers\FileDownloadController;
+use App\Http\Controllers\Webhooks\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
@@ -31,6 +33,18 @@ Route::get('pricing', PricingController::class)->name('pricing');
 
 Route::post('banners/{uuid}/dismiss', [PageController::class, 'dismissBanner'])
     ->name('banners.dismiss');
+
+/**
+ * Payment webhooks (Owner Addendum D).
+ *
+ * Outside every auth group and outside CSRF: a gateway is not a browser. The
+ * signature over the raw body is what authenticates it, checked by the
+ * adapter for the named gateway, and a delivery that fails it is recorded and
+ * alerted rather than quietly dropped.
+ */
+Route::post('webhooks/payments/{gateway}', PaymentWebhookController::class)
+    ->middleware('throttle:120,1')
+    ->name('webhooks.payments');
 
 /* ---------------------------------------------------------------- guest -- */
 Route::middleware('guest')->group(function () {
@@ -93,6 +107,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('throttle:20,1')->name('billing.profile');
     Route::get('billing/invoices/{invoice:uuid}', [BillingController::class, 'invoice'])
         ->name('billing.invoice');
+
+    // Checkout. One branded flow whichever shape the chosen gateway uses.
+    Route::get('checkout/{plan:uuid}', [CheckoutController::class, 'start'])
+        ->middleware('throttle:20,1')->name('checkout.start');
+    Route::match(['get', 'post'], 'checkout/{payment:uuid}/return', [CheckoutController::class, 'return'])
+        ->name('checkout.return');
+    Route::get('checkout/{payment:uuid}/status', [CheckoutController::class, 'status'])
+        ->middleware('throttle:60,1')->name('checkout.status');
 
     // Every uploaded file is served through here — never by direct URL.
     // Owner Addendum H control US-9.

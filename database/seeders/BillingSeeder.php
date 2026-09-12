@@ -7,6 +7,8 @@ use App\Domains\Billing\Models\Currency;
 use App\Domains\Billing\Models\Plan;
 use App\Domains\Billing\Models\PlanFeature;
 use App\Domains\Billing\Services\InvoiceNumberAllocator;
+use App\Domains\Payments\Models\PaymentGatewayRecord;
+use App\Domains\Payments\Services\PaymentGatewayRegistry;
 use App\Domains\Tax\Models\TaxJurisdiction;
 use App\Domains\Tax\Models\TaxSettings;
 use Illuminate\Database\Seeder;
@@ -31,6 +33,45 @@ class BillingSeeder extends Seeder
         $this->taxTemplates();
         $this->invoiceNumbering();
         $this->planSkeletons();
+        $this->paymentGateways();
+    }
+
+    /**
+     * The gateways this build knows how to talk to — DISABLED, in sandbox, and
+     * with no credentials.
+     *
+     * Seeding the row saves an owner constructing it by hand and gives the
+     * webhook URL something to belong to. It cannot take a payment until they
+     * enter credentials and switch it on, which is a deliberate, audited act.
+     */
+    private function paymentGateways(): void
+    {
+        foreach (app(PaymentGatewayRegistry::class)->all() as $key => $adapterClass) {
+            $adapter = app($adapterClass);
+
+            PaymentGatewayRecord::firstOrCreate(
+                ['key' => $key],
+                [
+                    'name' => ucfirst($key),
+                    'adapter_class' => $adapterClass,
+                    'status' => PaymentGatewayRecord::STATUS_DISABLED,
+                    'mode' => PaymentGatewayRecord::MODE_SANDBOX,
+                    'priority' => 10,
+                    // Recorded from the ADAPTER, which is the only thing that
+                    // knows what it has actually implemented.
+                    'capabilities' => $adapter->capabilities(),
+                    'checkout_mode' => $adapter->checkoutMode(),
+                    // Empty means "whatever the merchant account allows" — a
+                    // fact about the owner's agreement, not something software
+                    // can determine.
+                    'supported_currencies' => [],
+                    'supported_countries' => [],
+                    'api_base_url' => defined($adapterClass.'::DEFAULT_BASE_URL')
+                        ? constant($adapterClass.'::DEFAULT_BASE_URL')
+                        : null,
+                ],
+            );
+        }
     }
 
     /**

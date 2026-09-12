@@ -860,3 +860,130 @@ report. It is now `rateOn()`.
 `CredentialUsageCounter::record()` seeded the row with the call's own figures and then incremented
 it, counting the first call of every hour twice. It now inserts at zero, so the increment is the one
 place a number is added.
+
+---
+
+## Phase 6 — subscriptions, credits, tax and payments
+
+### The credit ledger is append-only, and the lock is the point
+
+Every write happens under `SELECT … FOR UPDATE` on the balance, inside the transaction that also
+writes the ledger row. Two consequences, and both are the whole design: the cached balance can
+never disagree with the sum of the ledger, and parallel requests cannot both pass an affordability
+check against the same balance.
+
+`if ($balance >= $amount)` is true in two processes at the same instant. Only the database can
+serialise them, which is why the test that proves it forks: a sequential test passes whether or not
+the lock exists, so it proves nothing about the thing that actually goes wrong. With the lock
+removed, ten requests for 30 credits against a balance of 100 all succeed — the owner sells 300
+credits' worth of AI for 100.
+
+### A hold is a pre-authorisation, not a quote
+
+The estimate held before a call is deliberately generous — the context plus the model's maximum
+output — because nobody knows the real figure until the answer exists. It is settled down to what
+the call actually cost.
+
+Settling is capped by the BALANCE, not by the estimate. Capping at the estimate would make the
+owner subsidise every reply that ran longer than expected; the unrecovered remainder when an
+estimate is low is bounded by the model's own output limit, and that is the right place for the
+cost of estimating to fall. A failed call charges nothing at all: a customer pays for answers,
+never for attempts.
+
+### Metering begins when the owner publishes a plan
+
+Not when prices are entered, and not when this code shipped. Otherwise an owner who priced their
+models before configuring billing would find every customer refused by a subscription system they
+had not set up. New and existing accounts land on the default plan the first time they chat, which
+is what lets billing be switched on without a migration over every account.
+
+### An issued invoice is a copy, not a query
+
+Every figure and every name on it is snapshotted at issue: the business address, the customer's
+details, each tax component's name, rate and amount. Nothing is looked up again when it is
+displayed.
+
+The naive alternative — storing a rule reference and recomputing on display — looks correct and is
+quietly catastrophic: the day a rate changes, every historical invoice changes with it, filed
+returns stop matching, and the records shown to an auditor no longer match what the customer was
+charged. Deleting a tax rate outright leaves the invoices that used it completely unmoved, because
+`invoice_tax_lines` has no foreign key back to `tax_rates`. That absence is deliberate.
+
+### Not one tax name, rate or code is in the code
+
+The engine knows how to compare a customer's country and state to the business's, how to read dated
+rates, and how to add or extract a percentage. What the percentages are called and what they are
+worth is entirely data an administrator entered. The rule is now checked rather than reviewed: a
+tokeniser-based scan reads identifiers and string literals with comments stripped, so explaining
+why a name must not appear does not itself trip the gate.
+
+The same scan enforces Addendum D's rule that no gateway name appears in billing code — scoped to
+the billing area, because searching the whole application for a payment brand that is also an
+ordinary English word flags a theme token called "table-stripe", and a gate that cries wolf is a
+gate somebody switches off.
+
+### Four idempotency guarantees, because one is never enough
+
+`payment_webhook_events` unique on (gateway, event id) · `payments.idempotency_key` unique ·
+`subscription_periods` unique on (subscription, period start) · the payment row locked while it is
+settled.
+
+Breaking any one of them on purpose showed why all four are there. Removing the event guard is
+caught by the payment lock; removing the payment lock is caught by the period guard. Each layer
+catches what another misses, and the tests now assert each one specifically rather than only
+asserting the outcome — an outcome test passes while a layer silently rots.
+
+### Three paths, one handler, and the gateway is the only authority
+
+A customer's browser coming back, a webhook, and the scheduled sweep all converge on `settle()`,
+which asks the gateway directly. A URL that says "success" can be replayed, edited, or never
+arrive; a webhook is authentic once verified but is delivered more than once. The sweep is what
+makes the system correct when somebody closes the tab mid-payment — without it, money is taken and
+nothing is delivered, and the first anyone hears of it is a support ticket.
+
+`authorized` is not `captured`. Treating a hold that can expire as a completed payment is how a
+customer gets credits for money that is later released.
+
+### A subscription is never routed to a gateway that cannot renew it
+
+Capability is a hard filter applied before an owner's preferences are read: a routing rule orders
+the gateways that can already do the job, and can never widen them. Capability is read from the
+ADAPTER, not the configuration row, because a row can be edited to claim anything and the claim
+that matters is the one the code can honour.
+
+The shipped adapter declares one-time payments, refunds and partial refunds — not recurring, and
+not mandates. Both exist on the platform, but each carries its own registration flow and RBI
+e-mandate rules, and declaring a capability that is not implemented is exactly the failure the
+guard exists to prevent. Plans sold through it renew by invoice-and-pay until that work is done,
+which is a deliberate choice with different customer messaging.
+
+### A development gateway that can never take money
+
+"Checkout completes on a 320px viewport" cannot be checked against a page that redirects because
+nothing is on sale. So there is a gateway adapter that calls nothing, and it refuses to operate
+outside local and testing environments at every entry point rather than at one — a gateway that
+reported success without taking money would, in production, be a way to get credits for nothing.
+It never reports a payment as complete, even in development.
+
+### Refunds take back what is unspent
+
+The owner's decision, implemented literally: claw back up to the refunded amount from the remaining
+balance, never below zero. Credits already used cost real provider money and cannot be recovered by
+arithmetic, and trapping an honest customer at a negative balance would punish somebody who may
+have had a good reason to ask. A refund also produces a credit note rather than editing the
+invoice.
+
+### Three bugs the phase found in earlier code
+
+`php artisan db:seed` failed on a fresh database: `WithoutModelEvents` suppressed the `creating`
+hooks that generate uuids and slugs, so every seeded page violated a NOT NULL constraint. Seeding a
+fresh database is the first thing a new owner does.
+
+Filament's table row-action links were never 44px tall, because `min-height` does nothing on an
+inline element — the browser ignores the property rather than warning. The rule had been in the
+theme for two phases; every admin table checked before this one happened to be empty, so the gate
+had nothing to measure.
+
+An empty relationship column rendered a 32px empty link. `TextColumn::make('prices')` on a HasMany
+resolves to a collection Filament renders as nothing, and the fix is `->state()`. The gate found it
+the first time a table had rows in it.

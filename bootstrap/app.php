@@ -1,5 +1,8 @@
 <?php
 
+use App\Domains\Diagnostics\Console\DiagnoseCommand;
+use App\Http\Middleware\EnforceSessionPolicy;
+use App\Http\Middleware\EnsureNotInMaintenance;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,12 +15,22 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands([
-        App\Domains\Diagnostics\Console\DiagnoseCommand::class,
+        DiagnoseCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
-            App\Http\Middleware\EnsureNotInMaintenance::class,
-            App\Http\Middleware\EnforceSessionPolicy::class,
+            EnsureNotInMaintenance::class,
+            EnforceSessionPolicy::class,
+        ]);
+
+        // A payment gateway has no session and no CSRF token. What
+        // authenticates its webhook is the signature over the raw body, which
+        // is verified for every delivery and is not optional — see
+        // WebhookProcessor. Excluding the path here is what lets that check be
+        // the only one, rather than a second-best after a token that could
+        // never be present.
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/payments/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

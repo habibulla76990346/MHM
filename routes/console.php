@@ -4,6 +4,7 @@ use App\Domains\AI\Jobs\AggregateDailyUsageJob;
 use App\Domains\AI\Jobs\RefreshExchangeRatesJob;
 use App\Domains\Billing\Services\SubscriptionService;
 use App\Domains\Credits\Services\CreditService;
+use App\Domains\Payments\Services\ReconciliationService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -79,5 +80,19 @@ Schedule::call(function () {
 })
     ->hourly()
     ->name('subscriptions:advance')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/**
+ * The reconciliation sweep (Addendum D §4.1).
+ *
+ * Every few minutes, because this is what makes the system correct when a
+ * customer closes the browser mid-payment and the webhook is delayed or lost.
+ * Without it, money is taken and nothing is delivered — and the first anyone
+ * hears of it is a support ticket.
+ */
+Schedule::call(fn () => app(ReconciliationService::class)->sweep())
+    ->everyFiveMinutes()
+    ->name('payments:reconcile')
     ->withoutOverlapping()
     ->onOneServer();

@@ -27,6 +27,13 @@ These have tests behind them. Breaking one fails the build.
 4. **No credential value reaches the diagnostics layer.** Checks ask "is this valid?" and get a
    boolean. `CheckResult` scrubs at construction, so no output path can leak.
    → `CheckResultTest`, `RedactorTest`
+5. **No tax name, rate or code anywhere in application code, and no gateway name in billing code.**
+   Both were review rules; a review rule lasts as long as the person who remembers it. The scan
+   reads identifiers and string literals with comments stripped, so documenting the rule cannot
+   trip it. → `NoHardCodedTaxOrGatewayTest`
+6. **A balance can never go negative, and an issued invoice can never change.** Proved with forked
+   processes and by editing a rate out from under a document that had already been sent.
+   → `CreditConcurrencyTest`, `InvoiceTest`
 
 ## Rules enforced by review
 
@@ -81,30 +88,37 @@ Do not run `playwright install`.
 
 ## Where the build is
 
-**Phases 0–5 complete.** Phase 3 delivered the universal AI gateway; Phase 4 the OpenAI and Gemini
-adapters, chat with streaming and history, personas, context and rate limits, and the mobile chat
-UI. Phase 5 delivered the router: all eight routing modes, scoring from real traffic, retry with
-jitter honouring `Retry-After`, the circuit breaker with admin reset, capability-guarded fallback,
-routing logs carrying every candidate and its rejection, dated cost and exchange-rate recording,
-provider budgets, the nightly rollup, and two admin screens — Usage and Costs, Routing and Health.
-**Phase 6 is next** — subscriptions, credits, tax and payments. See `docs/09-development-phases.md`.
+**Phases 0–6 complete.** Phase 5 delivered the router — eight routing modes, health from real
+traffic, retry, the circuit breaker, capability-guarded fallback, dated cost recording and the
+usage rollup. Phase 6 delivered the money: plans with per-currency pricing and configurable limits,
+an append-only credit ledger with pre-authorisation holds, the configurable tax engine, immutable
+invoices with gap-free numbering and credit notes, coupons, countries and currencies, and the
+multi-gateway payment framework with Razorpay, webhooks, reconciliation and refunds.
+**Phase 7 is next** — Claude, DeepSeek, Mistral, Groq and generic compatible providers. See
+`docs/09-development-phases.md`.
 
-**Everything from Phase 3 onward was built and tested entirely against fixtures.** No real OpenAI
-or Gemini key has been used — the plan has the owner supply those. Every adapter behaviour and
-every routing decision is proven against recorded shapes; the first real call happens when a key is
-entered at **Admin → AI → Providers → Add provider**.
+**Everything from Phase 3 onward was built and tested entirely against fixtures.** No real OpenAI,
+Gemini or Razorpay credential has been used — the plan has the owner supply those. Every adapter
+behaviour, routing decision and payment path is proven against recorded shapes; the first real call
+happens when a credential is entered.
 
-### Where the owner enters what the cost screens need
+### Where the owner enters what the money screens need
 
-Nothing is required to run. To make the figures read true:
+Nothing is required to run: the platform is unmetered until a plan is published, and tax is off
+until it is configured.
 
 - **API keys** — Admin → AI Providers → *(a provider)* → Credentials. Never in chat, never in a file.
-- **Prices** — Admin → AI Models → *(a model)* → Prices: provider cost and credit price per unit,
-  with an effective-from date. An unpriced model records a visible zero rather than a guess.
+- **Model prices** — Admin → AI Models → *(a model)* → Prices: provider cost and credit price per
+  unit, with an effective-from date. An unpriced model records a visible zero rather than a guess.
 - **Budgets** — Admin → AI Providers → *(a provider)* → Budgets. "Warn" keeps serving and tells
   you; "block" stops spending until the next period.
-- **Reporting currency, the optional rate feed, and routing defaults** — Admin → Routing and Health
-  → Defaults.
+- **Plans** — Admin → Plans. Publishing a DEFAULT plan is what switches metering on for everybody.
+- **Tax** — Admin → Tax and compliance, then Admin → Tax rules. Nothing is charged until you enter
+  your business details, add the rates your accountant confirms, and switch tax on.
+- **Payment gateways** — Admin → Payment gateways → *(a gateway)* → Credentials. Sandbox and live
+  are separate; the webhook URL to paste into the gateway's dashboard is on the Webhook action.
+- **Reporting currency, rate feed, routing defaults** — Admin → Routing and Health → Defaults, and
+  Admin → Countries and currencies.
 
 
 ### Routing, in one paragraph
@@ -126,6 +140,27 @@ price never rewrites the profitability of history. Provider cost stays in the pr
 currency with that currency beside it; the conversion into the owner's currency happens in the
 nightly rollup at the rate that applied on that day, and is stored too. A missing rate records a
 visible zero and the screen names the currency — a zero can be found and corrected, a guess cannot.
+
+### Credits, in one paragraph
+
+The ledger is APPEND-ONLY and every write happens under a row lock on the balance, in the same
+transaction — so the cached balance can never disagree with the sum of the ledger, and two parallel
+requests cannot both spend the same credit. A chat turn takes a generous HOLD before the provider
+is called and settles it to what the call actually cost; a failed call releases the hold and
+charges nothing, because a customer pays for answers and never for attempts. Metering begins when
+the owner publishes a default plan, not when this code shipped, and every account lands on that
+plan the first time it chats.
+
+### Money, in one paragraph
+
+An issued invoice is a COPY of its own computation — supplier and customer identity, every tax
+component's name, rate and amount — so editing or deleting a tax rate cannot alter a document
+already sent, and corrections are credit notes rather than edits. Nothing in code knows any tax
+name, rate or code; nothing outside `app/Domains/Payments/Adapters/` and the registry knows any
+gateway's name. Both rules are checked by a tokeniser scan, not by review. A payment is settled by
+ONE idempotent handler that asks the gateway directly, reached by three paths — the browser
+returning, a webhook, and a scheduled sweep — with four separate idempotency guards behind it,
+because a replayed webhook that grants a second month of credits costs real money.
 
 ### AI providers, in one paragraph
 
@@ -172,6 +207,7 @@ publish an uploaded SVG. The master artwork in `brand/` is never modified and ne
 ```sh
 php artisan aziv:admin:create   # create an administrator (never seeded)
 php artisan aziv:test-user      # local account the responsive gate signs in as
+php artisan aziv:test-fixtures  # local plan + no-money gateway, so the gate can check checkout
 ```
 
 ### Traps worth remembering
@@ -205,6 +241,16 @@ php artisan aziv:test-user      # local account the responsive gate signs in as
   number is added.
 - **The six-viewport gate only measures what is VISIBLE.** A form inside a section that is
   collapsed by default is a form nothing checks. Leave it expanded, or the gate is decorative.
+- **`min-height` does nothing on an inline element.** The browser ignores it silently. Filament's
+  link-style table actions sat at 32px for two phases with a 44px rule pointing straight at them.
+- **A gate is only as good as the page it runs against.** Every admin table was checked while empty,
+  so no row action was ever measured. Seed a row before trusting a table screen.
+- **`WithoutModelEvents` in a seeder breaks anything generated in a `creating` hook.** uuids and
+  slugs both. `php artisan db:seed` failed on a fresh database, which is the first thing a new
+  owner runs.
+- **`firstOrCreate()` returns a thin model on INSERT.** It holds only the attributes you passed,
+  while the database holds the column defaults — so the very first read after creation sees nulls.
+  `->refresh()` if you are about to read anything you did not write.
 - **A gate is worth only what it can catch.** Break it on purpose before trusting it. The
   hard-coded-colour gate silently checked two directory levels for a whole phase, because PHP's
   `glob('**')` does not recurse. Every design token lives in `resources/css/tokens.css`, imported

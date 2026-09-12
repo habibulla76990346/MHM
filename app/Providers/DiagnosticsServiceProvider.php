@@ -25,12 +25,17 @@ class DiagnosticsServiceProvider extends ServiceProvider
         // Manual-only: provider tests are authenticated calls, so running them
         // unattended would spend the owner's money on diagnostics.
         Checks\AiProviderCheck::class,
+        // Payments read configuration only — they never call a gateway, so
+        // they are safe to run unattended. Connectivity is tested from the
+        // gateway screen, by someone who meant to.
+        Checks\PaymentGatewayCheck::class,
+        Checks\TaxConfigurationCheck::class,
     ];
 
     public function register(): void
     {
         $this->app->singleton(CheckRegistry::class, function ($app) {
-            $registry = new CheckRegistry();
+            $registry = new CheckRegistry;
             foreach (self::CHECKS as $class) {
                 $registry->register($app->make($class));
             }

@@ -81,7 +81,45 @@ if (SCREENS.some((s) => s.admin)) {
   );
 }
 
-for (const screen of SCREENS) {
+/**
+ * Some screens need an id that only exists at runtime — checkout needs a plan
+ * that is actually on sale. Resolved by reading the pricing page as the signed
+ * in customer, exactly as a customer would reach it.
+ *
+ * A screen whose placeholder cannot be resolved FAILS. Skipping it would mean
+ * the gate quietly stopped checking the one screen Addendum A names by name.
+ */
+async function resolvePlaceholders(screens) {
+  if (!screens.some((s) => s.path.includes('__PLAN__'))) return screens;
+
+  const page = await browser.newPage({ storageState });
+  let planPath = null;
+
+  try {
+    await page.goto(BASE + '/pricing', { waitUntil: 'networkidle' });
+    planPath = await page.evaluate(() => {
+      const link = [...document.querySelectorAll('a[href*="/checkout/"]')][0];
+      return link ? new URL(link.href).pathname : null;
+    });
+  } catch {
+    planPath = null;
+  }
+
+  await page.close();
+
+  if (!planPath) {
+    console.log(RED('Could not find a plan on sale, so checkout cannot be checked.'));
+    console.log(DIM('Run: php artisan aziv:test-fixtures'));
+    await browser.close();
+    process.exit(1);
+  }
+
+  return screens.map((s) => (s.path.includes('__PLAN__') ? { ...s, path: planPath } : s));
+}
+
+const RESOLVED = await resolvePlaceholders(SCREENS);
+
+for (const screen of RESOLVED) {
   console.log(`\n${screen.name}  ${DIM(BASE + screen.path)}`);
   for (const vp of VIEWPORTS) {
     const page = await browser.newPage({

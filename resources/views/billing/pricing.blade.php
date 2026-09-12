@@ -59,10 +59,12 @@
                                 <span class="inline-flex min-h-11 items-center rounded-lg border border-border px-4 text-sm text-text-muted">
                                     {{ __('Your current plan') }}
                                 </span>
+                            @elseif (auth()->check() && $plan->is_free)
+                                <x-ui.button variant="secondary" :href="route('billing')">{{ __('Manage your plan') }}</x-ui.button>
                             @elseif (auth()->check())
-                                {{-- Checkout arrives with the payment gateways.
-                                     Until then this is honest about what it can do. --}}
-                                <x-ui.button :href="route('billing')">{{ __('Manage your plan') }}</x-ui.button>
+                                <x-ui.button :href="route('checkout.start', ['plan' => $plan, 'currency' => $currency->code])">
+                                    {{ __('Choose :plan', ['plan' => $plan->name]) }}
+                                </x-ui.button>
                             @else
                                 <x-ui.button :href="route('register')">{{ __('Get started') }}</x-ui.button>
                             @endif

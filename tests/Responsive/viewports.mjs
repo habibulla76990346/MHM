@@ -28,6 +28,9 @@ export const SCREENS = [
   { name: 'account',          path: '/account',   auth: true },
   { name: 'pricing',          path: '/pricing' },
   { name: 'billing',          path: '/billing',   auth: true },
+  // Addendum A names this one explicitly: checkout has to work at 320px, or
+  // the customers most likely to be on a phone cannot buy anything.
+  { name: 'checkout',         path: '/checkout/__PLAN__', auth: true },
   { name: 'library',          path: '/library',   auth: true },
 
   // --- Admin Panel ---------------------------------------------------------
@@ -57,6 +60,8 @@ export const SCREENS = [
   { name: 'admin-tax-rules',  path: '/admin/tax-jurisdictions', admin: true },
   { name: 'admin-currencies', path: '/admin/countries-and-currencies', admin: true },
   { name: 'admin-credits',    path: '/admin/customer-credits', admin: true },
+  { name: 'admin-gateways',   path: '/admin/payment-gateways', admin: true },
+  { name: 'admin-payments',   path: '/admin/payments',         admin: true },
 ];
 
 /** Credentials for the seeded responsive-test account. */
