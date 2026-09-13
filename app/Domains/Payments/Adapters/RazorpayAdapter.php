@@ -60,6 +60,17 @@ class RazorpayAdapter extends BaseGatewayAdapter implements SupportsInternationa
         ];
     }
 
+    /**
+     * Its script, loaded only on a page that is about to take a payment.
+     *
+     * PINNED TO A MAJOR VERSION, not to `latest`: a checkout script that can
+     * change under a live payment page is a change nobody tested.
+     */
+    public function checkoutSdkUrl(): ?string
+    {
+        return 'https://checkout.razorpay.com/v1/checkout.js';
+    }
+
     public function checkoutMode(): string
     {
         // Its JavaScript opens over the merchant's own page, so the customer

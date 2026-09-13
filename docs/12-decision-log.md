@@ -1415,3 +1415,136 @@ chunks" pass while asserting only that the first row came back first. Its first
 version used 64 dimensions and stopwords collided into the same buckets and
 dominated every comparison — widened to 256 with short words down-weighted,
 which is roughly what a real model learns to do.
+
+---
+
+## Production blockers — closed before Phase 8b
+
+*The read-only production-readiness audit found three things that would have failed on the day of
+launch and could not fail before it. Each was fixed with a gate that was then deliberately broken
+to prove it detects the failure. Nothing here is a new feature; all of it is the difference between
+"the tests pass" and "it works on a real server".*
+
+### BLK-1 — the Pay Now button opened nothing
+
+**What was wrong.** The checkout page rendered, the gateway's order was created, the button was
+there — and clicking it did nothing at all, on every gateway. Nothing in the browser knew how to
+open a payment step. Every PHP test passed, because every PHP test stopped at the point where the
+browser takes over.
+
+**Why no gate caught it.** The responsive gate measures whether a screen overflows and whether a
+target is big enough; a button that is beautifully laid out and inert passes both. The checkout
+page had never been *used* by a test, only *measured*.
+
+**The decision: the adapter says how its payment step opens, and the browser has a driver.**
+`PaymentGateway::checkoutDriver()` returns a NAME — not a URL and not a snippet — and
+`checkoutSdkUrl()` returns the gateway's own script or null. `resources/js/checkout/drivers/`
+mirrors `app/Domains/Payments/Adapters/` one-for-one, and those two files are the only place in the
+browser bundle allowed to name a gateway. `resources/js/checkout/index.js` reads the driver's name
+from a data attribute, loads the SDK **on demand** — never in the bundle, so a platform that has
+not enabled a gateway does not ship its script — and hands off. Addendum D's rule holds on both
+sides of the wire, and a test reads the front-end source to prove it.
+
+**Where the outcome is decided.** The browser reports one of three outcomes and navigates to the
+URL **the server put in the page**. It never decides that a payment succeeded; it says what the
+customer did, and settlement is still the one idempotent handler asking the gateway directly.
+
+**The gate:** `npm run test:checkout` drives all three outcomes in a real browser against the
+no-money fixture gateway — 14 checks including *"a driver claimed the page"*, which is the
+assertion that would have caught the original bug — plus `CheckoutFrontEndTest` for the eight
+things that can be proven without one.
+
+### BLK-2 — every emailed link would have returned 403
+
+**What was wrong.** Nothing trusted a proxy. A signed URL is an HMAC over the full address
+*including the scheme*; the renewal payment link, the password reset and the email verification
+link are all generated as `https://` by the scheduler or the queue, from `APP_URL`, and validated
+against what the incoming request appears to be. Behind Cloudflare or nginx that is the plain HTTP
+hop, so the signature does not match and a perfectly valid link returns a bare 403.
+
+**Why it could not be found in development.** There is no proxy on a developer's machine. The first
+person to find it would have been a customer trying to pay an invoice.
+
+**The decision: the proxy list is configuration, not a constant.** `TRUSTED_PROXIES` in `.env` —
+`*` behind Cloudflare or a managed load balancer whose addresses change without notice, a named
+range where one exists, and **empty by default**, because trusting every proxy on a server that has
+none in front of it lets a client set its own forwarded headers.
+
+**The gate that had to be rebuilt to be worth anything.** The first version of the test set
+`HTTPS=on` on the request, which makes it secure on its own — it passed with the fix removed.
+`SignedUrlsBehindProxyTest` now sends the **plain HTTP hop** carrying `X-Forwarded-Proto: https`,
+exactly as PHP receives it behind a proxy, and the suite runs with `TRUSTED_PROXIES=*` so the real
+bootstrap path is exercised. Removing the trust turns two tests red. Tampered and expired links are
+still refused, and both use **real** payment records — route-model binding runs before the signed
+middleware, so a made-up uuid 404s before the signature is ever checked and proves nothing.
+
+### BLK-3 — email that sends perfectly and reaches nobody
+
+**What was wrong.** `MAIL_MAILER=log`, which is Laravel's default and was also what `.env.example`
+shipped. Every message "sends", every delivery records as sent, the delivery log is green, and not
+one message leaves the server. A renewal notice in a log file is a subscription that lapses in
+silence.
+
+**The decision: fail loudly rather than silently.** `.env.example` now ships `MAIL_MAILER=smtp`
+with the credentials blank, so a fresh install cannot accidentally deliver to a log file — it
+refuses to send until it is configured, and `aziv:diagnose` says exactly what is missing. `log` is
+correct on a developer's machine and nowhere else.
+
+**Configuration cannot prove delivery, so there is a command that does.**
+`php artisan aziv:mail:test you@example.com` sends the **same** `TemplatedMail` a customer receives,
+through the same mailer, rendered through the same theme — a bespoke test message would prove only
+that a bespoke test message works. It reports the driver and the destination, never a credential,
+and the mail server's own error is scrubbed by the same `Redactor` the diagnostics layer uses,
+because SMTP failures routinely quote the connection string that failed and that string carries the
+password. A non-delivering driver is reported as a **failure**, not a success.
+
+**The gate** proves the scrub end-to-end with a transport that throws an exception carrying a
+password-shaped string, and proves the grading: `MailDeliveryCheck` returns RED/critical for a
+non-delivering mailer in production.
+
+### The rest of the audit's launch-critical list
+
+**Secure session cookies.** Laravel ships `SESSION_SECURE_COOKIE` unset, which means a live site
+whose `.env` predates the setting sends the session cookie over plain HTTP too, where anything on
+the path can read it and become that customer. The **default** is now on in production;
+`SESSION_SAME_SITE=lax` is deliberate rather than `strict`, because `strict` drops the cookie on
+the return leg from a payment gateway and would sign the customer out on the page telling them
+their payment worked.
+
+**Security headers, and the two that are deliberately absent.** `SecurityHeaders` is global rather
+than web-only — a webhook, a health probe and an SSE stream are responses too. It sends `nosniff`,
+`SAMEORIGIN`, `strict-origin-when-cross-origin` (a referrer carries the full path, and a signed
+renewal link must not be handed to whatever the customer clicks next) and HSTS **only over TLS**,
+for six months rather than two years: HSTS is a promise a browser cannot be told to forget, so an
+owner whose certificate lapses has locked out every returning visitor for the remainder of the
+window.
+
+*No `Content-Security-Policy`.* A policy tight enough to be worth having would name the hosts
+serving each gateway's checkout script — and a gateway name may not appear outside
+`app/Domains/Payments/Adapters/`, which the tokeniser scan enforces. The adapter already declares
+its script through `checkoutSdkUrl()`, so a *derived* policy is possible; it is recorded as future
+work rather than guessed at, because a wrong CSP does not fail loudly, it silently stops the Pay
+button working. *No `Permissions-Policy`.* The obvious entries to deny are microphone and camera,
+and both are on the roadmap (§16, §18); shipping a denial a later phase must reverse teaches
+whoever reverses it that these headers are obstacles.
+
+**A debug-off check that had never once run.** `test_debug_mode_is_disabled_when_not_in_local_
+environment` skipped itself in `local` **and** `testing`, which is every environment a test runs
+in. It had never executed, in any phase, on any machine — pointed squarely at the setting that
+prints the entire `.env` to a stranger. It now asserts the shipped default and simulates production
+to prove the grading, and `ProductionSecurityCheck` grades debug, the application key, the URL
+scheme and the cookie flags on the System Health screen. The check names which setting is wrong and
+never what it contains, because the report is designed to be forwarded to a hosting provider.
+
+**Backups, with a restore that is actually performed.** `docs/19-backup-and-restore.md` is the
+runbook; `php artisan aziv:backup:manifest` prints the same list resolved against *this* server's
+configuration, because a document drifts and a configuration does not — the build fails if a
+filesystem disk exists that the manifest does not name. `BackupRestoreTest` writes an encrypted
+credential into a real MySQL table, dumps it with the runbook's own `mysqldump` command, drops the
+table, restores it with `mysql <`, and reads the credential back. It then restores the same
+ciphertext beside a freshly generated key and proves the loss is total — which is the whole reason
+`APP_KEY` is item three on the backup list, and a test is harder to skip than a warning.
+
+A scratch **table** rather than a scratch **database**, deliberately: shared hosting gives the
+application's user rights over one database and no right to create another, and a test needing more
+privilege than production has is a test that gets deleted the first time it fails on a real server.

@@ -40,12 +40,28 @@
                      renewal is paid from an emailed link by someone who may
                      not be signed in, so it comes back to a signed route
                      instead of an authenticated one — same page, same flow,
-                     different proof of who is asking. --}}
+                     different proof of who is asking.
+
+                     The DRIVER is a name, never a gateway's own script inline:
+                     the browser has a small registry mirroring the adapters,
+                     which is how this page still contains no gateway name. --}}
                 <div id="checkout"
+                     data-driver="{{ $checkoutDriver }}"
+                     data-sdk="{{ $checkoutSdk }}"
                      data-config="{{ json_encode($session->publicConfig) }}"
                      data-return="{{ $returnUrl }}"
-                     data-status="{{ $statusUrl }}">
+                     data-status="{{ $statusUrl }}"
+                     data-opening-message="{{ __('Opening the payment window…') }}"
+                     data-dismissed-message="{{ __('Payment cancelled. Nothing has been charged.') }}"
+                     data-refused-message="{{ __('The payment was not completed. Nothing has been charged — you can try again.') }}"
+                     data-sdk-error-message="{{ __('The payment window could not be opened. Check your connection and try again.') }}"
+                     data-unsupported-message="{{ __('This payment method cannot be opened in your browser. Please contact support.') }}">
                     <x-ui.button full id="pay-now">{{ __('Pay now') }}</x-ui.button>
+
+                    {{-- Announced to screen readers as it changes: the whole
+                         outcome of a payment attempt arrives here. --}}
+                    <p data-checkout-status role="status" aria-live="polite" hidden
+                       class="mt-3 text-sm text-text-muted"></p>
                 </div>
 
                 <noscript>

@@ -167,9 +167,15 @@ return [
     | to the server if the browser has a HTTPS connection. This will keep
     | the cookie from being sent to you when it can't be done securely.
     |
+    | AZIV: the DEFAULT is on in production rather than off. Laravel ships this
+    | unset, which means a live site whose .env predates this line sends the
+    | session cookie over plain HTTP too — where anything between the customer
+    | and the server can read it and become them. An owner who genuinely serves
+    | over HTTP can still say so; forgetting is no longer the insecure answer.
+    |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------

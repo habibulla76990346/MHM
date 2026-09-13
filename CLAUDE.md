@@ -34,6 +34,16 @@ These have tests behind them. Breaking one fails the build.
 6. **A balance can never go negative, and an issued invoice can never change.** Proved with forked
    processes and by editing a rate out from under a document that had already been sent.
    → `CreditConcurrencyTest`, `InvoiceTest`
+7. **A signed link survives a proxy, and a tampered one still does not.** Sent as the plain HTTP hop
+   with `X-Forwarded-Proto: https`, because that is what PHP receives behind Cloudflare and it is
+   where the 403 comes from. → `SignedUrlsBehindProxyTest`
+8. **The shipped `.env.example` fails loudly, never silently**, and `aziv:mail:test` proves delivery
+   without printing a credential. → `MailConfigurationTest`
+9. **The Pay button opens a payment step**, in a real browser, for success, refusal and
+   cancellation. → `npm run test:checkout`, `CheckoutFrontEndTest`
+10. **A backup restores.** Actually performed: dump, drop, restore, decrypt — and the same
+    ciphertext under a new `APP_KEY` proves why the key is part of the backup.
+    → `BackupRestoreTest`
 
 ## Rules enforced by review
 
@@ -69,8 +79,11 @@ php artisan test                 # PHPUnit
 npm run build                    # compile assets (no network needed)
 npm run test:responsive          # six-viewport gate (needs the app served)
 npm run test:chat                # chat behaviour gate: mobile keyboard, scroll anchoring
+npm run test:checkout            # checkout gate: the Pay button actually opens a payment step
 php artisan aziv:diagnose        # what is wrong with this server, and whose problem it is
 php artisan aziv:diagnose --json # same, machine-readable
+php artisan aziv:mail:test x@y.z # send one real email and say what happened (no credential printed)
+php artisan aziv:backup:manifest # what a complete backup of THIS server must contain
 ```
 
 ## Local development
@@ -101,7 +114,20 @@ After Phase 7 was approved, the two gaps flagged at the end of it were closed: *
 subscription renewal** (the invoice, the signed payment link, the past-due grace period and a
 notice at every step) and the **notification system, templates and announcements** (§22).
 **Phase 8a is built** — files, extraction and knowledge bases (§17): upload a PDF and ask questions
-about it. **Phase 8b and 8c are next** — image generation (§16) and voice (§18). See
+about it.
+
+**The three production blockers are closed.** A read-only readiness audit exercised the running
+application rather than reading it, and found three things that would have failed on launch day and
+could not fail before it: the **Pay Now button opened nothing** in any browser (every PHP test
+passed, because every PHP test stopped where the browser takes over); **every emailed signed link
+would have returned 403** behind Cloudflare or nginx, because nothing trusted a proxy and a
+signature covers the scheme; and **email delivered to a log file** while recording every message as
+sent. All three are fixed, each with a gate that was deliberately broken to prove it detects the
+failure. Secure cookies, security headers, a debug-off check that had never once executed, and a
+backup runbook with an actually-performed restore came with them — see the *Production blockers*
+section of `docs/12-decision-log.md` and `docs/19-backup-and-restore.md`.
+
+**Phase 8b and 8c are next** — image generation (§16) and voice (§18). See
 `docs/09-development-phases.md`.
 
 **Everything from Phase 3 onward was built and tested entirely against fixtures.** No real OpenAI,
@@ -127,7 +153,9 @@ until it is configured.
 - **Reporting currency, rate feed, routing defaults** — Admin → Routing and Health → Defaults, and
   Admin → Countries and currencies.
 - **Email** — `MAIL_MAILER` and its host and credentials in `.env`, never in the panel. Until that
-  is set, `aziv:diagnose` says so: the default writes email to a log file and delivers nothing.
+  is set, `aziv:diagnose` says so, and `php artisan aziv:mail:test you@yourdomain.com` sends the
+  real thing and reports what the mail server said. A driver of `log`, `array` or `null` accepts
+  every message and delivers none of them, which is why it is treated as a failure.
 - **What customers are told** — Admin → Notifications → Templates changes the wording of any
   message; Admin → Notifications → Announcements composes one and sends it to an audience; Admin →
   Notifications → Delivery log says whether it arrived.
@@ -345,3 +373,22 @@ php artisan aziv:test-fixtures  # local plan + no-money gateway, so the gate can
   hard-coded-colour gate silently checked two directory levels for a whole phase, because PHP's
   `glob('**')` does not recurse. Every design token lives in `resources/css/tokens.css`, imported
   by both `app.css` and the Filament theme — one copy, so the two panels cannot drift.
+- **A test that skips itself in `testing` never runs at all.** `if (app()->environment('local',
+  'testing')) markTestSkipped(...)` reads like a sensible guard and is an unconditional skip —
+  tests only ever run in `testing`. The debug-off assertion sat there for eight phases, pointed at
+  the setting that prints the whole `.env` to a stranger, having never once executed. Simulate the
+  environment (`app()->detectEnvironment(fn () => 'production')`) instead of skipping it.
+- **Setting `HTTPS=on` in a proxy test defeats the test.** A request with that server variable is
+  secure on its own, so a signed-URL suite written that way passes with the trusted-proxy fix
+  removed. Send the plain HTTP hop carrying `X-Forwarded-Proto: https`, which is what PHP actually
+  receives behind a proxy.
+- **Route-model binding runs before the route's `signed` middleware.** A tamper test that edits a
+  link to point at an id which does not exist gets a 404 before the signature is ever checked, and
+  passes whether the signature is verified or not. Create both records.
+- **The responsive gate measures a screen; it never uses one.** The checkout page passed six
+  viewports for two phases while the Pay button did nothing at all in any browser, because no test
+  had ever clicked it. A screen that performs an action needs a behaviour gate, not a layout one.
+- **`.env.example` is a deployment decision, not boilerplate.** It shipped stock Laravel —
+  `APP_NAME=Laravel`, `DB_CONNECTION=sqlite`, `MAIL_MAILER=log` — so the default for a new install
+  was a mailer that delivers nothing while recording everything as sent. Where a wrong default
+  fails silently, ship the one that fails loudly.

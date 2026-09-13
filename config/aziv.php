@@ -49,6 +49,39 @@ return [
     ],
 
     /*
+    |--------------------------------------------------------------------------
+    | HTTP security headers
+    |--------------------------------------------------------------------------
+    | Applied by App\Http\Middleware\SecurityHeaders. See that class for why
+    | this list is short and what is deliberately NOT in it.
+    */
+    'security' => [
+
+        /*
+        | Strict-Transport-Security, in seconds. Sent only on requests that
+        | actually arrived over TLS — announcing it over plain HTTP is both
+        | ignored and meaningless.
+        |
+        | SIX MONTHS, NOT TWO YEARS. This header is a PROMISE a browser
+        | remembers and cannot be told to forget: until it expires, that
+        | browser will refuse to reach the site over HTTP at all. An owner
+        | whose certificate lapses has locked out every returning visitor for
+        | the remainder of the window. Six months is long enough to be worth
+        | having and short enough to recover from.
+        |
+        | 0 disables the header, which is the right setting while a
+        | certificate is still being sorted out.
+        */
+        'hsts_max_age' => (int) env('HSTS_MAX_AGE', 15552000),
+
+        /*
+        | Only turn this on once every subdomain is on HTTPS — it applies the
+        | promise above to all of them, including ones that do not exist yet.
+        */
+        'hsts_include_subdomains' => (bool) env('HSTS_INCLUDE_SUBDOMAINS', false),
+    ],
+
+    /*
     | Minimum supported PHP. The app targets 8.4 but runs on 8.3-8.5 so it
     | stays portable across hosts (decision E-1).
     */

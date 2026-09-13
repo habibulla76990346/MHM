@@ -6,7 +6,8 @@
         "build": "vite build",
         "dev": "vite",
         "test:responsive": "node tests/Responsive/run.mjs",
-        "test:chat": "node tests/Responsive/chat.mjs"
+        "test:chat": "node tests/Responsive/chat.mjs",
+        "test:checkout": "node tests/Responsive/checkout.mjs"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.3.3",

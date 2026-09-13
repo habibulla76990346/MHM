@@ -60,17 +60,22 @@ class FixtureGatewayAdapter extends BaseGatewayAdapter implements SupportsOneTim
     {
         $this->refuseOutsideDevelopment();
 
+        // ONE order id, used everywhere. The first version of this generated
+        // three different random values for the same order, which is harmless
+        // until somebody tries to follow one of them through a log.
+        $orderId = 'fixture_order_'.Str::random(12);
+
         return new CheckoutSession(
-            gatewayReference: 'fixture_'.Str::random(12),
+            gatewayReference: $orderId,
             mode: $this->checkoutMode(),
             publicConfig: [
                 'key' => 'fixture-publishable',
-                'order_id' => 'fixture_order_'.Str::random(8),
+                'order_id' => $orderId,
                 'currency' => $request->currency,
                 'name' => (string) settings('branding.app_name'),
                 'description' => $request->description,
             ],
-            orderId: 'fixture_order_'.Str::random(8),
+            orderId: $orderId,
         );
     }
 

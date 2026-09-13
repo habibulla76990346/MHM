@@ -41,6 +41,25 @@ interface PaymentGateway
 
     public function checkoutMode(): string;
 
+    /**
+     * The front-end driver that opens this gateway's payment step.
+     *
+     * A NAME, NOT A URL OR A SNIPPET. The browser has a small registry of
+     * drivers mirroring `app/Domains/Payments/Adapters/`, and this is the key
+     * into it — so checkout code, in PHP and in JavaScript alike, still never
+     * names a gateway. Adding a gateway is an adapter plus a driver file.
+     */
+    public function checkoutDriver(): string;
+
+    /**
+     * The gateway's own script, or null when the driver needs none.
+     *
+     * Declared here because the adapter is the only thing that knows it, and
+     * loaded on demand rather than on every page: a payment SDK on the chat
+     * screen is a third party watching a conversation it has no part in.
+     */
+    public function checkoutSdkUrl(): ?string;
+
     public function createCheckout(CheckoutRequest $request): CheckoutSession;
 
     /**

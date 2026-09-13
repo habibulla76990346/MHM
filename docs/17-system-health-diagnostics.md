@@ -203,6 +203,29 @@ default admin credentials changed
 **Application** — pending migrations · config cached in production · required settings present ·
 feature flags referencing missing features · retention jobs running · log file size
 
+### What is implemented, and the two checks the production audit added
+
+`MailDeliveryCheck` (`mail.delivery`) reads the driver, the host and the from-address, and grades a
+non-delivering mailer — `log`, `array`, `null` — as **CRITICAL in production and informational
+elsewhere**, because on a developer's machine `log` is the correct setting and a red there would be
+noise that teaches people to ignore this screen. It also reports real evidence over configuration:
+if messages have been failing in the last day, it says so, reading the reason from the scrubbed
+delivery-log column rather than from a live exception.
+
+It answers *"is this configured?"*, which is a different question from *"does it arrive"*. Nothing
+short of an actual send settles the second one, so `php artisan aziv:mail:test you@example.com`
+exists alongside it: the same mailable a customer receives, through the same mailer, with the mail
+server's own error scrubbed by the same `Redactor` this layer uses. It is a command rather than a
+check because sending has a side effect and only the owner can say whether it landed in an inbox.
+
+`ProductionSecurityCheck` (`security.production`) covers the Security row above for the settings
+that are only wrong once a site is live: `APP_DEBUG` on, `APP_KEY` missing, an `APP_URL` that is not
+https (which breaks every signed link in every email), a session cookie without the secure flag on
+an https site, `SESSION_HTTP_ONLY` off, and — as advisories — `SESSION_SAME_SITE`, `SESSION_ENCRYPT`
+and HSTS. **It names which setting is wrong and never what it contains**, because this report is
+designed to be forwarded to a hosting provider. Outside production it returns GREY: a developer
+machine is plain HTTP with debug on, and that is correct.
+
 ---
 
 ## 6. Never exposing secrets — by construction, not by filtering

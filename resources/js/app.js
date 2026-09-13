@@ -1,4 +1,5 @@
 import registerChat from './chat';
+import { initCheckout } from './checkout/index.js';
 
 /**
  * Aziv AI — customer application behaviour.
@@ -96,6 +97,9 @@ function initBottomBar() {
 document.addEventListener('DOMContentLoaded', () => {
   initDrawer();
   initBottomBar();
+  // A no-op on every page without a checkout mount, and the gateway's own
+  // script is fetched only when the customer presses Pay.
+  initCheckout();
 });
 
 // Chat behaviour registers itself as an Alpine component (Phase 4).

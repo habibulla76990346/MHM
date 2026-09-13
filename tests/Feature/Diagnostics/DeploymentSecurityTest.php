@@ -3,6 +3,8 @@
 namespace Tests\Feature\Diagnostics;
 
 use App\Domains\Branding\Services\BrandAssetPublisher;
+use App\Domains\Diagnostics\Checks\ProductionSecurityCheck;
+use App\Domains\Diagnostics\Support\Status;
 use Tests\TestCase;
 
 /**
@@ -48,14 +50,44 @@ class DeploymentSecurityTest extends TestCase
             'The .env file is reachable over HTTP. Every credential is exposed.');
     }
 
-    public function test_debug_mode_is_disabled_when_not_in_local_environment(): void
+    /**
+     * WHAT THIS USED TO BE was a skip: `if (app()->environment('local',
+     * 'testing')) markTestSkipped(...)`. Tests run in `testing`. It had
+     * therefore never executed once, in any phase, on any machine — a gate
+     * that cannot fail is decorative, and this one was pointed at the setting
+     * that prints the entire .env to a stranger.
+     *
+     * So it asserts the two things that CAN be checked from here: that a
+     * live server would be graded, and that the file a new owner copies has
+     * it off. `ProductionHardeningTest` simulates production and proves the
+     * grading is critical rather than advisory.
+     */
+    public function test_debug_mode_is_disabled_on_a_live_server(): void
     {
-        if (app()->environment('local', 'testing')) {
-            $this->markTestSkipped('APP_DEBUG is expected during local development.');
+        if (app()->environment('production')) {
+            $this->assertFalse(config('app.debug'),
+                'APP_DEBUG is on in production. An error page would print every credential in .env to whoever triggered it.');
+
+            return;
         }
 
-        $this->assertFalse(config('app.debug'),
-            'APP_DEBUG is on outside local. Stack traces would leak configuration to visitors.');
+        $this->assertStringContainsString('APP_DEBUG=false', file_get_contents(base_path('.env.example')),
+            'A new owner copying .env.example would start with debug on.');
+
+        // And it is not merely documented — it is graded where somebody looks.
+        $previous = app()->environment();
+        app()->detectEnvironment(fn () => 'production');
+
+        try {
+            config(['app.debug' => true]);
+
+            $result = app(ProductionSecurityCheck::class)->run();
+
+            $this->assertSame(Status::Red, $result->status,
+                'A live server with debug on is not a warning.');
+        } finally {
+            app()->detectEnvironment(fn () => $previous);
+        }
     }
 
     /**

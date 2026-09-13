@@ -28,7 +28,7 @@ use RuntimeException;
  */
 class CheckoutController extends Controller
 {
-    public function start(Request $request, Plan $plan, CheckoutService $checkout): View|RedirectResponse
+    public function start(Request $request, Plan $plan, CheckoutService $checkout, PaymentGatewayRegistry $registry): View|RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
@@ -46,6 +46,8 @@ class CheckoutController extends Controller
             return redirect()->route('pricing')->with('error', $e->getMessage());
         }
 
+        $adapter = $registry->for($payment->gateway);
+
         return view('billing.checkout', [
             'plan' => $plan,
             'payment' => $payment,
@@ -53,6 +55,9 @@ class CheckoutController extends Controller
             'currency' => $currency,
             'returnUrl' => route('checkout.return', $payment),
             'statusUrl' => route('checkout.status', $payment),
+            // Asked of the adapter, which is the only thing that knows.
+            'checkoutDriver' => $adapter?->checkoutDriver() ?? '',
+            'checkoutSdk' => $adapter?->checkoutSdkUrl() ?? '',
         ]);
     }
 

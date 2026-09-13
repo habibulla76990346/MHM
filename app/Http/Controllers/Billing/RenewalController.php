@@ -54,7 +54,7 @@ class RenewalController extends Controller
      * an over-eager mail client — would leave a trail of orders nobody
      * intended, and most gateways expire them.
      */
-    public function pay(Payment $payment, CheckoutService $checkout): View
+    public function pay(Payment $payment, CheckoutService $checkout, PaymentGatewayRegistry $registry): View
     {
         $this->guard($payment);
 
@@ -74,6 +74,8 @@ class RenewalController extends Controller
             ]);
         }
 
+        $adapter = $registry->for($payment->gateway);
+
         return view('billing.checkout', [
             'plan' => $payment->plan,
             'payment' => $payment,
@@ -81,6 +83,8 @@ class RenewalController extends Controller
             'currency' => $payment->presentment_currency,
             'returnUrl' => $this->returnUrl($payment),
             'statusUrl' => URL::signedRoute('renewal.status', ['payment' => $payment->uuid]),
+            'checkoutDriver' => $adapter?->checkoutDriver() ?? '',
+            'checkoutSdk' => $adapter?->checkoutSdkUrl() ?? '',
         ]);
     }
 

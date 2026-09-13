@@ -42,6 +42,24 @@ abstract class BaseGatewayAdapter implements PaymentGateway
         return (array) ($this->gateway->supported_currencies ?? []);
     }
 
+    /**
+     * By default a gateway's driver is named after the gateway itself.
+     *
+     * An adapter overrides this only when it shares a driver with another
+     * gateway — several hosted-page gateways behave identically in the
+     * browser and need no script at all.
+     */
+    public function checkoutDriver(): string
+    {
+        return $this->key();
+    }
+
+    /** Most gateways need no script; a redirect is a form submission. */
+    public function checkoutSdkUrl(): ?string
+    {
+        return null;
+    }
+
     public function supportedCountries(): array
     {
         return (array) ($this->gateway->supported_countries ?? []);

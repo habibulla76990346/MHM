@@ -87,7 +87,7 @@ Every guide the owner listed, written for someone who has never seen the project
 | 13 | **Cloud / VPS deployment** | Full server setup, workers, Redis, S3 |
 | 14 | **Production deployment guide** | Release process, caching, zero-downtime approach |
 | 15 | **Migration: shared hosting → Cloud/VPS** | The checklist, with `APP_KEY` called out |
-| 16 | **Backup & restore** | What to back up, how, and a **tested** restore procedure |
+| 16 | **Backup & restore** | What to back up, how, and a **tested** restore procedure — written: [`docs/19-backup-and-restore.md`](19-backup-and-restore.md), with the restore performed by `BackupRestoreTest` on every build |
 | 17 | **Troubleshooting** | Symptom → cause → fix, **written around the System Health screen** — each diagnostic finding maps to a section here |
 | 17a | **cPanel / shared requirements** | Explicit minimum plan capabilities |
 | 17b | **Cloud / VPS requirements** | Explicit production requirements |

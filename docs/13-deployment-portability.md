@@ -207,7 +207,69 @@ sync), and enable Horizon for queue monitoring.
 
 ---
 
-## 5. What must be verified on the cPanel account before Phase 0
+## 5. Going live: the four settings that only bite in production
+
+*Added after the production-readiness audit. Every one of these is invisible on a developer's
+machine, which is exactly why each now has a gate behind it. `php artisan aziv:diagnose` grades all
+four; `docs/19-backup-and-restore.md` covers the fifth thing a live server needs.*
+
+### 5.1 `TRUSTED_PROXIES` — or every emailed link returns 403
+
+If anything terminates TLS in front of PHP — Cloudflare, a load balancer, nginx — the application
+sees the plain HTTP hop behind it. Signed URLs are an HMAC over the full address **including the
+scheme**, and the renewal payment link, the password reset and the email verification link are all
+generated as `https://` by the scheduler or the queue, from `APP_URL`. Untrusted, the signature is
+computed against `http://`, does not match, and a perfectly valid link returns a bare 403.
+
+| Setting | When |
+|---|---|
+| `TRUSTED_PROXIES=*` | Behind Cloudflare or a managed load balancer, whose addresses change without notice |
+| `TRUSTED_PROXIES=10.0.0.1,10.0.0.2` | A fixed proxy you control — better where the addresses are known |
+| *(empty)* | No proxy at all. The default, because trusting every proxy on a server that has none lets a client set its own forwarded headers |
+
+`APP_URL` must carry the scheme customers actually use. Get it wrong and every link in every email
+is signed against an address that will never validate.
+
+### 5.2 Mail — the most expensive thing to get wrong, because it looks like getting it right
+
+Laravel's default mailer is `log`. Everything "sends", every delivery records as sent, and nothing
+reaches anybody. A renewal notice in a log file is a subscription that lapses in silence.
+
+`.env.example` therefore ships `MAIL_MAILER=smtp` with the credentials blank — it fails loudly
+until it is configured, rather than succeeding quietly forever. Fill in the host, port, username,
+password and scheme your provider gave you, use a `MAIL_FROM_ADDRESS` at a domain whose SPF and
+DKIM records you control, then prove it:
+
+```sh
+php artisan aziv:mail:test you@yourdomain.com
+```
+
+That sends the same email a customer receives, through the same mailer. It never prints a
+credential, and it treats a non-delivering driver as a failure rather than a success.
+
+### 5.3 Cookies and headers
+
+| Setting | Value | Why |
+|---|---|---|
+| `SESSION_SECURE_COOKIE` | `true` | Otherwise the session cookie travels over plain HTTP too, where it can be lifted and replayed. Defaults to on in production now, so forgetting is no longer the insecure answer |
+| `SESSION_SAME_SITE` | `lax` | `strict` drops the cookie on the return leg from a payment gateway — signing the customer out on the page that says their payment worked |
+| `SESSION_HTTP_ONLY` | `true` | A script on the page cannot read the cookie |
+| `SESSION_ENCRYPT` | `true` | Cheap, and worth it wherever the session store is shared |
+| `HSTS_MAX_AGE` | `15552000` (six months) | Sent only over TLS. **Not** two years: HSTS is a promise a browser cannot be told to forget, and a lapsed certificate locks out every returning visitor for the remainder of the window. `0` switches it off while a certificate is being sorted out |
+| `HSTS_INCLUDE_SUBDOMAINS` | off by default | Turn it on only once every subdomain is on HTTPS, including ones that do not exist yet |
+
+`nosniff`, `SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin` and
+`X-Permitted-Cross-Domain-Policies: none` are sent on **every** response and need no configuration.
+
+### 5.4 `APP_DEBUG=false`, and why it is graded rather than trusted
+
+A debug page prints the environment — including `.env` — to whoever triggered the error. It is
+graded as CRITICAL on the System Health screen for a production environment, alongside a missing
+`APP_KEY`, a plain-HTTP `APP_URL` and an insecure session cookie.
+
+---
+
+## 6. What must be verified on the cPanel account before Phase 0
 
 These are facts about the owner's specific hosting plan that change what Phase 0 does. They are
 listed in `12-decision-log.md` as the remaining pre-Phase-0 checks.
@@ -232,7 +294,7 @@ default. If that is the case here, it must be lifted before anything AI-related 
 
 ---
 
-## 6. Honest summary
+## 7. Honest summary
 
 **What this decision buys:** near-zero infrastructure cost during development and staging, on
 hosting already paid for.

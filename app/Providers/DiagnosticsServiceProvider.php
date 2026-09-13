@@ -22,6 +22,7 @@ class DiagnosticsServiceProvider extends ServiceProvider
         Checks\FilesystemCheck::class,
         Checks\DatabaseCheck::class,
         Checks\OutboundHttpsCheck::class,
+        Checks\ProductionSecurityCheck::class,
         // Manual-only: provider tests are authenticated calls, so running them
         // unattended would spend the owner's money on diagnostics.
         Checks\AiProviderCheck::class,
