@@ -147,6 +147,20 @@
                                 {{ __('Regenerate') }}
                             </button>
 
+                            @if ($this->canListen && $message->content)
+                                {{-- Nothing is synthesised until this is
+                                     pressed: reading every reply aloud on the
+                                     chance somebody wants it would bill the
+                                     owner for silence. --}}
+                                <button type="button" class="aziv-msg-tool"
+                                        data-voice-play
+                                        data-endpoint="{{ route('voice.speak', $message) }}"
+                                        data-poll-base="{{ url('voice') }}"
+                                        data-preparing-label="{{ __('Preparing…') }}">
+                                    {{ __('Listen') }}
+                                </button>
+                            @endif
+
                             <button type="button" @class(['aziv-msg-tool', 'is-on' => $message->feedback?->rating === 1])
                                     wire:click="rate('{{ $message->uuid }}', 1)"
                                     aria-label="{{ __('Good answer') }}">👍</button>
@@ -186,6 +200,10 @@
         {{-- COMPOSER ------------------------------------------------------
              Tracks visualViewport so it stays above a mobile keyboard, and
              respects the safe-area inset on a notched device. --}}
+        {{-- Announced, not merely styled: somebody who cannot see the button
+             change colour still has to know the microphone is on. --}}
+        <p class="aziv-voice-status" data-voice-status role="status" aria-live="polite" hidden></p>
+
         <form class="aziv-composer" wire:submit="send" x-ref="composer">
             <label class="sr-only" for="chat-draft">{{ __('Your message') }}</label>
 
@@ -199,6 +217,27 @@
                       class="aziv-composer-input"></textarea>
 
             <div class="aziv-composer-actions">
+                @if ($this->canRecord)
+                    {{-- The recording state has to be unmistakable, so it is
+                         said three ways at once: this button's label and
+                         aria-pressed, the live region below, and the
+                         is-recording class on the composer itself. --}}
+                    <button type="button" class="aziv-record" data-voice-record
+                            aria-pressed="false"
+                            data-endpoint="{{ route('voice.transcribe') }}"
+                            data-poll-base="{{ url('voice') }}"
+                            data-max-seconds="{{ (int) settings('voice.max_recording_seconds') }}"
+                            data-idle-label="{{ __('Record') }}"
+                            data-recording-label="{{ __('Stop recording') }}"
+                            data-recording-message="{{ __('Recording') }}"
+                            data-sending-message="{{ __('Transcribing…') }}"
+                            data-denied-message="{{ __('Aziv AI needs permission to use your microphone. Allow it in your browser and try again.') }}"
+                            data-unsupported-message="{{ __('This browser cannot record audio.') }}"
+                            data-failed-message="{{ __('That recording could not be used. Try again, or type instead.') }}">
+                        {{ __('Record') }}
+                    </button>
+                @endif
+
                 <button type="button" class="aziv-stop" x-show="streamingNow" x-cloak
                         x-on:click="stopStream()">
                     {{ __('Stop') }}

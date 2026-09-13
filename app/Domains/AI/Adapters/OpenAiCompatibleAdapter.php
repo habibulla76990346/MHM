@@ -5,12 +5,22 @@ namespace App\Domains\AI\Adapters;
 use App\Domains\AI\Contracts\ContributesDiagnostics;
 use App\Domains\AI\Contracts\SupportsChat;
 use App\Domains\AI\Contracts\SupportsEmbeddings;
+use App\Domains\AI\Contracts\SupportsImageGeneration;
 use App\Domains\AI\Contracts\SupportsModelDiscovery;
+use App\Domains\AI\Contracts\SupportsSpeech;
 use App\Domains\AI\Contracts\SupportsStreaming;
+use App\Domains\AI\Contracts\SupportsTranscription;
+use App\Domains\AI\Contracts\SupportsVision;
 use App\Domains\AI\DTO\ChatRequest;
 use App\Domains\AI\DTO\ChatResponse;
 use App\Domains\AI\DTO\DiscoveredModel;
+use App\Domains\AI\DTO\GeneratedImage;
+use App\Domains\AI\DTO\ImageRequest;
+use App\Domains\AI\DTO\SpeechRequest;
+use App\Domains\AI\DTO\SynthesisedSpeech;
 use App\Domains\AI\DTO\TestResult;
+use App\Domains\AI\DTO\Transcript;
+use App\Domains\AI\DTO\TranscriptionRequest;
 use App\Domains\AI\DTO\UsageMetrics;
 use App\Domains\AI\Exceptions\ProviderFailed;
 use App\Domains\AI\Support\Capability;
@@ -34,7 +44,7 @@ use Generator;
  * Nothing here names a provider or a model. It speaks the shape, and the
  * catalog supplies the identifiers (Rule 5).
  */
-class OpenAiCompatibleAdapter extends BaseAdapter implements ContributesDiagnostics, SupportsChat, SupportsEmbeddings, SupportsModelDiscovery, SupportsStreaming
+class OpenAiCompatibleAdapter extends BaseAdapter implements ContributesDiagnostics, SupportsChat, SupportsEmbeddings, SupportsImageGeneration, SupportsModelDiscovery, SupportsSpeech, SupportsStreaming, SupportsTranscription, SupportsVision
 {
     public const KEY = 'openai_compatible';
 
@@ -50,6 +60,9 @@ class OpenAiCompatibleAdapter extends BaseAdapter implements ContributesDiagnost
             Capability::TOOL_USE,
             Capability::JSON_MODE,
             Capability::EMBEDDINGS,
+            Capability::IMAGE_GENERATION,
+            Capability::TRANSCRIPTION,
+            Capability::SPEECH,
         ];
     }
 
@@ -102,6 +115,152 @@ class OpenAiCompatibleAdapter extends BaseAdapter implements ContributesDiagnost
         }
 
         return array_values($vectors);
+    }
+
+    /**
+     * Make a picture (§16).
+     *
+     * THE SHAPE OPENAI DEFINED, which is the one most of the market copied —
+     * so this single method serves every OpenAI-compatible provider that
+     * offers images, and adding one of them stays a row rather than a class.
+     *
+     * `b64_json` RATHER THAN A URL, deliberately. A URL means a second HTTP
+     * call to a CDN this application never authorised, and those URLs expire
+     * within the hour — long enough to pass a test and short enough to fail
+     * the first time a queue runs behind. Asking for the bytes makes the
+     * response self-contained. A provider that ignores the parameter and
+     * returns a URL anyway is still handled: the caller downloads it.
+     *
+     * The parameters are sent only when they were ASKED for. A provider that
+     * has never heard of `quality` returns a 400 for it, and defaulting every
+     * request to carry one would break exactly the providers this adapter
+     * exists to support without code.
+     *
+     * @return array<int, GeneratedImage>
+     */
+    public function generateImage(ImageRequest $request): array
+    {
+        $payload = array_filter([
+            'model' => $request->modelIdentifier,
+            'prompt' => $request->prompt,
+            'n' => max(1, $request->count),
+            'size' => $request->size,
+            'response_format' => 'b64_json',
+            'quality' => $request->quality === 'standard' ? null : $request->quality,
+            'style' => $request->style,
+        ], static fn ($value) => $value !== null);
+
+        [$response] = $this->send(fn ($client) => $client->post($this->url('images/generations'), $payload));
+
+        $images = [];
+
+        foreach ((array) data_get($response->json(), 'data', []) as $row) {
+            $encoded = data_get($row, 'b64_json');
+            $revised = data_get($row, 'revised_prompt');
+
+            if (is_string($encoded) && $encoded !== '') {
+                $images[] = GeneratedImage::fromBase64($encoded, revisedPrompt: is_string($revised) ? $revised : null);
+
+                continue;
+            }
+
+            $url = data_get($row, 'url');
+
+            if (is_string($url) && $url !== '') {
+                $images[] = new GeneratedImage(url: $url, revisedPrompt: is_string($revised) ? $revised : null);
+            }
+        }
+
+        if ($images === []) {
+            // A 200 carrying nothing usable is a provider error, not an empty
+            // result: the customer's credits are held against an image.
+            throw new ProviderFailed(ErrorClass::PROVIDER_ERROR);
+        }
+
+        return $images;
+    }
+
+    /**
+     * Turn a recording into words (§18).
+     *
+     * MULTIPART, WHICH IS THE ONE THING THAT MAKES THIS DIFFERENT from every
+     * other call in this adapter: the audio is attached as a file part, not
+     * encoded into JSON. Sending a minute of audio as base64 inside a JSON
+     * body inflates it by a third and several providers simply reject it.
+     *
+     * The bytes come from the caller rather than a path. An adapter that read
+     * a disk would be the one place the "environment is configuration" rule
+     * broke — the file is local on one deployment and on S3 on the next.
+     */
+    public function transcribe(TranscriptionRequest $request): Transcript
+    {
+        [$response] = $this->send(function ($client) use ($request) {
+            $client = $client->asMultipart()->attach(
+                'file',
+                $request->bytes,
+                $request->filename,
+                ['Content-Type' => $request->mimeType],
+            );
+
+            return $client->post($this->url('audio/transcriptions'), array_filter([
+                'model' => $request->modelIdentifier,
+                'language' => $request->language,
+                // The verbose form carries the DURATION, which is what the
+                // customer is charged against. Without it the caller has to
+                // measure the audio itself or guess, and a guess in a billing
+                // path is not acceptable. A provider that ignores the
+                // parameter returns the plain form and the caller measures.
+                'response_format' => 'verbose_json',
+            ], static fn ($value) => $value !== null));
+        });
+
+        $body = $response->json();
+        $text = data_get($body, 'text');
+
+        if (! is_string($text)) {
+            throw new ProviderFailed(ErrorClass::PROVIDER_ERROR);
+        }
+
+        $language = data_get($body, 'language');
+        $duration = data_get($body, 'duration');
+
+        return new Transcript(
+            text: trim($text),
+            language: is_string($language) ? mb_substr($language, 0, 12) : null,
+            seconds: is_numeric($duration) ? (float) $duration : 0.0,
+        );
+    }
+
+    /**
+     * Read words aloud (§18).
+     *
+     * THE RESPONSE IS NOT JSON. This is the only call in the adapter layer
+     * whose body is binary, which matters twice: `->json()` on it returns
+     * null, and an error body IS JSON — so a failure has to be classified
+     * before the bytes are touched, which `send()` already does.
+     */
+    public function synthesise(SpeechRequest $request): SynthesisedSpeech
+    {
+        [$response] = $this->send(fn ($client) => $client->post($this->url('audio/speech'), array_filter([
+            'model' => $request->modelIdentifier,
+            'input' => $request->text,
+            'voice' => $request->voice,
+            'response_format' => $request->format,
+        ], static fn ($value) => $value !== null)));
+
+        $bytes = $response->body();
+
+        if ($bytes === '') {
+            throw new ProviderFailed(ErrorClass::PROVIDER_ERROR);
+        }
+
+        return new SynthesisedSpeech(
+            bytes: $bytes,
+            // The header is a claim; the caller re-reads the type from the
+            // bytes before storing. Passed on because it is useful context,
+            // never because it is trusted.
+            mimeType: $response->header('Content-Type') ?: null,
+        );
     }
 
     public function chat(ChatRequest $request): ChatResponse

@@ -51,6 +51,10 @@ class UsageRecorder
                 'input_tokens' => $usage->inputTokens,
                 'output_tokens' => $usage->outputTokens,
                 'total_tokens' => $usage->totalTokens(),
+                // What a non-text call consumed. Zero tokens beside a real
+                // cost reads as a bug; "1 image" reads as an image.
+                'images' => $usage->images,
+                'audio_seconds' => $usage->seconds,
                 'latency_ms' => $latencyMs,
                 'http_status' => $httpStatus,
                 'error_class' => $errorClass,
@@ -87,18 +91,24 @@ class UsageRecorder
         $output = $model->priceAt('per_1k_output', $at);
         $perRequest = $model->priceAt('per_request', $at);
         $perImage = $usage->images > 0 ? $model->priceAt('per_image', $at) : null;
+        // Audio is charged by duration at every provider that offers it, and
+        // omitting this line is how voice would have recorded a visible zero
+        // for every call while the owner's real bill grew.
+        $perSecond = $usage->seconds > 0 ? $model->priceAt('per_second', $at) : null;
 
         $providerCost =
             ($usage->inputTokens / 1000) * (float) ($input->provider_cost ?? 0)
             + ($usage->outputTokens / 1000) * (float) ($output->provider_cost ?? 0)
             + $usage->requests * (float) ($perRequest->provider_cost ?? 0)
-            + $usage->images * (float) ($perImage->provider_cost ?? 0);
+            + $usage->images * (float) ($perImage->provider_cost ?? 0)
+            + $usage->seconds * (float) ($perSecond->provider_cost ?? 0);
 
         $creditCost =
             ($usage->inputTokens / 1000) * (float) ($input->credit_cost ?? 0)
             + ($usage->outputTokens / 1000) * (float) ($output->credit_cost ?? 0)
             + $usage->requests * (float) ($perRequest->credit_cost ?? 0)
-            + $usage->images * (float) ($perImage->credit_cost ?? 0);
+            + $usage->images * (float) ($perImage->credit_cost ?? 0)
+            + $usage->seconds * (float) ($perSecond->credit_cost ?? 0);
 
         return [
             'provider_cost' => round($providerCost, 10),
@@ -106,7 +116,12 @@ class UsageRecorder
             // An unpriced model records zero in the provider's default
             // currency rather than guessing — a zero that is visibly zero can
             // be found and fixed; an invented number cannot.
-            'currency' => $input->currency ?? $output->currency ?? 'USD',
+            'currency' => $input->currency
+                ?? $output->currency
+                ?? $perImage?->currency
+                ?? $perSecond?->currency
+                ?? $perRequest?->currency
+                ?? 'USD',
         ];
     }
 }

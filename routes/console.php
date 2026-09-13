@@ -5,6 +5,7 @@ use App\Domains\AI\Jobs\RefreshExchangeRatesJob;
 use App\Domains\Billing\Services\RenewalService;
 use App\Domains\Billing\Services\SubscriptionService;
 use App\Domains\Credits\Services\CreditService;
+use App\Domains\Images\Services\MediaRetentionService;
 use App\Domains\Notifications\Services\AnnouncementService;
 use App\Domains\Payments\Services\ReconciliationService;
 use Illuminate\Foundation\Inspiring;
@@ -128,5 +129,22 @@ Schedule::call(fn () => app(AnnouncementService::class)->sendDue())
 Schedule::call(fn () => app(ReconciliationService::class)->sweep())
     ->everyFiveMinutes()
     ->name('payments:reconcile')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/**
+ * Media retention (§16, §18).
+ *
+ * Daily, in the quiet hour after the rollups. Generated images go entirely
+ * when their time is up; audio goes and its row stays, because the transcript
+ * is a chat message the customer owns and the cost is the owner's record.
+ *
+ * Off by default for images and a week for audio — retention is the owner's
+ * decision, and deleting somebody's pictures because nobody chose a number
+ * would be the wrong default to have.
+ */
+Schedule::call(fn () => app(MediaRetentionService::class)->sweep())
+    ->dailyAt('01:10')
+    ->name('media:retention')
     ->withoutOverlapping()
     ->onOneServer();

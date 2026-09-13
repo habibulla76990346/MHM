@@ -64,6 +64,10 @@ class OpenAiAdapter extends OpenAiCompatibleAdapter implements SupportsVision
             Capability::TOOL_USE,
             Capability::JSON_MODE,
             Capability::LONG_CONTEXT,
+            Capability::EMBEDDINGS,
+            Capability::IMAGE_GENERATION,
+            Capability::TRANSCRIPTION,
+            Capability::SPEECH,
         ];
     }
 

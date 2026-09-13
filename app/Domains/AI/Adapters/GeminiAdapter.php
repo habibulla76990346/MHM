@@ -5,14 +5,20 @@ namespace App\Domains\AI\Adapters;
 use App\Domains\AI\Contracts\ContributesDiagnostics;
 use App\Domains\AI\Contracts\SupportsChat;
 use App\Domains\AI\Contracts\SupportsEmbeddings;
+use App\Domains\AI\Contracts\SupportsImageGeneration;
 use App\Domains\AI\Contracts\SupportsModelDiscovery;
 use App\Domains\AI\Contracts\SupportsStreaming;
+use App\Domains\AI\Contracts\SupportsTranscription;
 use App\Domains\AI\Contracts\SupportsVision;
 use App\Domains\AI\DTO\ChatMessage;
 use App\Domains\AI\DTO\ChatRequest;
 use App\Domains\AI\DTO\ChatResponse;
 use App\Domains\AI\DTO\DiscoveredModel;
+use App\Domains\AI\DTO\GeneratedImage;
+use App\Domains\AI\DTO\ImageRequest;
 use App\Domains\AI\DTO\TestResult;
+use App\Domains\AI\DTO\Transcript;
+use App\Domains\AI\DTO\TranscriptionRequest;
 use App\Domains\AI\DTO\UsageMetrics;
 use App\Domains\AI\Exceptions\ProviderFailed;
 use App\Domains\AI\Support\Capability;
@@ -40,11 +46,13 @@ use Illuminate\Http\Client\Response;
  *   - the model identifier is part of the URL PATH, not the body
  *   - streaming is a JSON array over SSE, not OpenAI's delta frames
  *   - usage is `usageMetadata`, with different field names again
+ *   - images come from `:predict`, with the count and the shape of the picture
+ *     under `parameters` and the bytes under `predictions[].bytesBase64Encoded`
  *
  * Every one of those differences is contained here. Nothing above
  * ProviderAdapter changes, which is the point (§12).
  */
-class GeminiAdapter extends BaseAdapter implements ContributesDiagnostics, SupportsChat, SupportsEmbeddings, SupportsModelDiscovery, SupportsStreaming, SupportsVision
+class GeminiAdapter extends BaseAdapter implements ContributesDiagnostics, SupportsChat, SupportsEmbeddings, SupportsImageGeneration, SupportsModelDiscovery, SupportsStreaming, SupportsTranscription, SupportsVision
 {
     public const KEY = 'gemini';
 
@@ -59,6 +67,8 @@ class GeminiAdapter extends BaseAdapter implements ContributesDiagnostics, Suppo
             Capability::JSON_MODE,
             Capability::LONG_CONTEXT,
             Capability::EMBEDDINGS,
+            Capability::IMAGE_GENERATION,
+            Capability::TRANSCRIPTION,
         ];
     }
 
@@ -114,6 +124,112 @@ class GeminiAdapter extends BaseAdapter implements ContributesDiagnostics, Suppo
         }
 
         return $vectors;
+    }
+
+    /**
+     * Turn a recording into words, Google's way (§18).
+     *
+     * NOT A TRANSCRIPTION ENDPOINT AT ALL. Gemini has no `audio/transcriptions`
+     * — audio is an ordinary PART of an ordinary chat message, sent inline as
+     * base64 beside an instruction telling the model what to do with it. The
+     * shape is the difference this adapter exists for, and containing it here
+     * is what lets `VoiceService` ask for a transcript without knowing which
+     * company answered.
+     *
+     * THE INSTRUCTION IS PART OF THE REQUEST, which is unlike every other
+     * provider and worth being explicit about: without one the model
+     * summarises or answers the audio rather than transcribing it, and the
+     * customer's message becomes a reply to itself.
+     *
+     * NO DURATION COMES BACK. Google reports tokens, not seconds, so the
+     * caller measures the audio itself rather than being handed a number that
+     * would go straight into a charge.
+     */
+    public function transcribe(TranscriptionRequest $request): Transcript
+    {
+        $instruction = $request->language
+            ? __('Transcribe this recording in :language. Reply with the transcript and nothing else.', ['language' => $request->language])
+            : __('Transcribe this recording. Reply with the transcript and nothing else.');
+
+        [$response] = $this->send(fn (PendingRequest $client) => $client->post(
+            $this->modelUrl($request->modelIdentifier, 'generateContent'),
+            [
+                'contents' => [[
+                    'role' => 'user',
+                    'parts' => [
+                        ['text' => $instruction],
+                        ['inlineData' => [
+                            'mimeType' => $request->mimeType,
+                            'data' => base64_encode($request->bytes),
+                        ]],
+                    ],
+                ]],
+            ],
+        ));
+
+        $text = trim($this->extractText($response->json()));
+
+        if ($text === '') {
+            throw new ProviderFailed(ErrorClass::PROVIDER_ERROR);
+        }
+
+        return new Transcript(text: $text, language: $request->language);
+    }
+
+    /**
+     * Make a picture, Google's way (§16).
+     *
+     * A FOURTH SHAPE, and every part of it disagrees with the one most of the
+     * market uses. The method is `:predict` rather than an images endpoint;
+     * the prompt goes inside an `instances` array; the count is
+     * `sampleCount`, not `n`; the picture's shape is an ASPECT RATIO string
+     * rather than a pixel size; and the bytes come back under
+     * `predictions[].bytesBase64Encoded` with the MIME type beside them.
+     *
+     * A negative prompt is a first-class parameter here, where OpenAI-shaped
+     * providers have no concept of one — so it is sent when the customer gave
+     * one and omitted otherwise, rather than being folded into the prompt
+     * text, which would change what the model was asked for.
+     *
+     * @return array<int, GeneratedImage>
+     */
+    public function generateImage(ImageRequest $request): array
+    {
+        $parameters = array_filter([
+            'sampleCount' => max(1, $request->count),
+            // Pixels are not a thing this API accepts. The ratio is what
+            // survives translation from the size the customer chose.
+            'aspectRatio' => $request->aspectRatio(),
+            'negativePrompt' => $request->negativePrompt,
+        ], static fn ($value) => $value !== null);
+
+        [$response] = $this->send(fn (PendingRequest $client) => $client->post(
+            $this->modelUrl($request->modelIdentifier, 'predict'),
+            [
+                'instances' => [['prompt' => $request->prompt]],
+                'parameters' => $parameters,
+            ],
+        ));
+
+        $images = [];
+
+        foreach ((array) data_get($response->json(), 'predictions', []) as $row) {
+            $encoded = data_get($row, 'bytesBase64Encoded');
+
+            if (is_string($encoded) && $encoded !== '') {
+                $mime = data_get($row, 'mimeType');
+
+                $images[] = GeneratedImage::fromBase64($encoded, is_string($mime) ? $mime : null);
+            }
+        }
+
+        if ($images === []) {
+            // A 200 that produced nothing usable is a provider error: the
+            // customer's credits are held against an image.
+            throw new ProviderFailed(ErrorClass::PROVIDER_ERROR);
+        }
+
+        return $images;
     }
 
     public function chat(ChatRequest $request): ChatResponse

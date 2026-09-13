@@ -2,17 +2,26 @@
 
 namespace App\Console\Commands;
 
+use App\Domains\AI\Adapters\OpenAiCompatibleAdapter;
+use App\Domains\AI\Models\AiModel;
+use App\Domains\AI\Models\AiModelCapability;
+use App\Domains\AI\Models\AiProvider;
+use App\Domains\AI\Models\AiProviderCredential;
+use App\Domains\AI\Support\Capability;
 use App\Domains\Billing\Models\Plan;
 use App\Domains\Billing\Models\PlanPrice;
 use App\Domains\Billing\Models\Subscription;
 use App\Domains\Files\Models\File;
+use App\Domains\Images\Models\ImageGeneration;
 use App\Domains\Knowledge\Models\Document;
 use App\Domains\Knowledge\Models\KnowledgeBase;
 use App\Domains\Payments\Adapters\FixtureGatewayAdapter;
 use App\Domains\Payments\Models\PaymentGatewayCredential;
 use App\Domains\Payments\Models\PaymentGatewayRecord;
+use App\Domains\Voice\Models\VoiceJob;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * The purchasable plan and no-money gateway the responsive gate needs.
@@ -174,6 +183,142 @@ class TestFixturesCommand extends Command
         $this->line('Library fixture ready: '.$ready->title.' in "'.$base->name.'".');
     }
 
+    /**
+     * A generated picture, a failed one, and some voice history (§16, §18).
+     *
+     * WHY THE GATE NEEDS THIS. An empty gallery has no row actions to measure,
+     * and every admin table in the product was once checked while empty — so
+     * no row action was measured for two whole phases. A completed row and a
+     * failed row are different layouts and both have to survive 320px.
+     *
+     * The picture is a real PNG written to the private disk, so the gallery
+     * renders an actual image through the media route rather than a
+     * placeholder box that would pass a width check by being empty.
+     */
+    private function seedMedia(): void
+    {
+        $user = User::where('email', TestUserCommand::EMAIL)->first();
+
+        if (! $user) {
+            return;
+        }
+
+        $bytes = (string) base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+            true,
+        );
+
+        $path = 'generated/'.$user->getKey().'/responsive-fixture.png';
+        Storage::disk('private')->put($path, $bytes);
+
+        $file = File::firstOrCreate(
+            ['user_id' => $user->getKey(), 'original_name' => 'responsive-fixture.png'],
+            [
+                'disk' => 'private',
+                'path' => $path,
+                'stored_name' => 'responsive-fixture.png',
+                'detected_mime' => 'image/png',
+                'extension' => 'png',
+                'size_bytes' => strlen($bytes),
+                'checksum' => hash('sha256', $bytes),
+                'purpose' => 'image_generation',
+            ],
+        );
+
+        ImageGeneration::updateOrCreate(
+            ['user_id' => $user->getKey(), 'prompt' => 'a quiet street at dawn, watercolour'],
+            [
+                'file_id' => $file->getKey(),
+                'status' => ImageGeneration::COMPLETED,
+                'size' => '1024x1024',
+                'quality' => 'standard',
+                'credit_cost' => 2,
+                'completed_at' => now(),
+            ],
+        );
+
+        ImageGeneration::updateOrCreate(
+            ['user_id' => $user->getKey(), 'prompt' => 'something the provider would not make'],
+            [
+                'status' => ImageGeneration::FAILED,
+                'failure_reason' => 'The provider would not generate that. Try describing it differently.',
+                'size' => '1024x1024',
+                'completed_at' => now(),
+            ],
+        );
+
+        VoiceJob::updateOrCreate(
+            ['user_id' => $user->getKey(), 'kind' => VoiceJob::TRANSCRIPTION, 'text' => 'a recording that was transcribed'],
+            [
+                'status' => VoiceJob::COMPLETED,
+                'seconds' => 12.5,
+                'characters' => 32,
+                'credit_cost' => 1,
+                'completed_at' => now(),
+            ],
+        );
+
+        $this->line('Media fixtures ready: one generated image, one failure, one transcription.');
+    }
+
+    /**
+     * A provider and models the gates can actually reach a decision through.
+     *
+     * WHY THIS EXISTS. `ChatService` refuses a turn when no chat model is
+     * enabled — correctly — and the voice gate needs the composer to ACCEPT a
+     * message so it can prove the transcript reached the server. Without a
+     * model in the catalog the gate cannot tell "Livewire never saw the
+     * transcript" apart from "there was nothing to send it to", which is the
+     * difference between a gate and a coin toss.
+     *
+     * The base URL points nowhere on purpose. The reply fails, which is fine:
+     * `beginTurn()` saves the customer's message BEFORE calling a provider, so
+     * the words are on the screen either way — and no test ever depends on a
+     * network the CI runner may not have.
+     */
+    private function seedCatalog(): void
+    {
+        $provider = AiProvider::firstOrCreate(
+            ['slug' => 'responsive-test-provider'],
+            [
+                'name' => 'Responsive test provider (reaches nothing)',
+                'adapter_type' => OpenAiCompatibleAdapter::KEY,
+                'api_base_url' => 'https://api.responsive-test.invalid/v1',
+                'auth_method' => 'bearer',
+                'status' => AiProvider::STATUS_ACTIVE,
+                'timeout_seconds' => 5,
+            ],
+        );
+
+        AiProviderCredential::firstOrCreate(
+            ['provider_id' => $provider->getKey()],
+            ['label' => 'Local', 'credential' => 'sk-responsive-KEYKEYKEY1234'],
+        );
+
+        foreach ([
+            Capability::CHAT => 'talker-local',
+            Capability::IMAGE_GENERATION => 'painter-local',
+            Capability::TRANSCRIPTION => 'ears-local',
+            Capability::SPEECH => 'mouth-local',
+        ] as $capability => $identifier) {
+            $model = AiModel::firstOrCreate(
+                ['provider_id' => $provider->getKey(), 'model_identifier' => $identifier],
+                ['display_name' => ucfirst(str_replace('-', ' ', $identifier)), 'is_enabled' => true],
+            );
+
+            $model->forceFill(['is_enabled' => true])->save();
+
+            AiModelCapability::syncForModel($model, [$capability]);
+        }
+
+        $this->line('Catalog fixture ready: chat, image, transcription and speech models.');
+        // Said out loud, because the next thing a developer runs is usually
+        // aziv:diagnose and a red AI-provider row would otherwise look like a
+        // defect rather than the fixture doing exactly what it says.
+        $this->line('  These point at an address that does not resolve, on purpose — so no gate can');
+        $this->line('  reach a network. `aziv:diagnose` will report AI provider connectivity RED here.');
+    }
+
     public function handle(): int
     {
         if (app()->environment('production')) {
@@ -230,7 +375,9 @@ class TestFixturesCommand extends Command
         );
 
         $this->seedRenewal();
+        $this->seedCatalog();
         $this->seedLibrary();
+        $this->seedMedia();
 
         $this->info('Test plan ready: '.$plan->uuid);
         $this->line('Checkout: /checkout/'.$plan->uuid);

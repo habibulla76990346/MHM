@@ -44,6 +44,12 @@ These have tests behind them. Breaking one fails the build.
 10. **A backup restores.** Actually performed: dump, drop, restore, decrypt — and the same
     ciphertext under a new `APP_KEY` proves why the key is part of the backup.
     → `BackupRestoreTest`
+11. **Only bytes the platform wrote, of a type it named, render inline.** Everything else is a
+    download. Four conditions, and three of four is a vulnerability.
+    → `MediaSecurityTest`
+12. **Every capability an adapter declares has an implementation behind it.** A claim with nothing
+    behind it fails in a queued job minutes later, after credits were held.
+    → `AdapterContractTest::test_no_adapter_claims_a_capability_it_has_no_implementation_for`
 
 ## Rules enforced by review
 
@@ -80,6 +86,8 @@ npm run build                    # compile assets (no network needed)
 npm run test:responsive          # six-viewport gate (needs the app served)
 npm run test:chat                # chat behaviour gate: mobile keyboard, scroll anchoring
 npm run test:checkout            # checkout gate: the Pay button actually opens a payment step
+npm run test:images              # image gate: Generate does something, and the gallery's pictures load
+npm run test:voice               # voice gate: the recording state, the transcript, releasing the mic
 php artisan aziv:diagnose        # what is wrong with this server, and whose problem it is
 php artisan aziv:diagnose --json # same, machine-readable
 php artisan aziv:mail:test x@y.z # send one real email and say what happened (no credential printed)
@@ -127,7 +135,13 @@ failure. Secure cookies, security headers, a debug-off check that had never once
 backup runbook with an actually-performed restore came with them — see the *Production blockers*
 section of `docs/12-decision-log.md` and `docs/19-backup-and-restore.md`.
 
-**Phase 8b and 8c are next** — image generation (§16) and voice (§18). See
+**Phase 8b and 8c are built** — image generation (§16) and voice (§18). Both are new capabilities
+on the layer that already existed: the router already chose by capability, the recorder already
+metered, the ledger already held and settled. What is genuinely new is what happens when bytes
+arrive from somewhere other than a file picker, and that is where the security work went — see
+*Phase 8b and 8c* in `docs/12-decision-log.md`.
+
+**Phase 9 is next** — hardening, the delivery package and the handover test. See
 `docs/09-development-phases.md`.
 
 **Everything from Phase 3 onward was built and tested entirely against fixtures.** No real OpenAI,
@@ -164,7 +178,38 @@ until it is configured.
   provider offering embeddings: add one, sync its catalog, enable an embedding model.
 - **Renewal timing** — Admin → Settings → Billing: how many days early the invoice goes out, how
   long access continues unpaid, and how long a payment link stays usable.
+- **Images and voice** — Admin → Media → Images and voice switches each feature on, sets the daily
+  ceiling that applies to everybody, and says how long generated pictures and recordings are kept.
+  The top of that screen says whether a model exists to serve each one, because a switch that is on
+  with nothing behind it is the most confusing state this product has. Both need a provider offering
+  the capability: add one, sync its catalog, enable a model, and set its per-image or per-second
+  price on Admin → AI Models.
 
+
+### Images, in one paragraph
+
+One `image_generations` row is ONE picture, never a request — a customer who asks for four deletes
+one and regenerates another — and a `batch_uuid` keeps a set together for the one screen that cares.
+Prompt history is a QUERY over that table rather than a second table holding the same strings.
+`ImageService` refuses everything it is going to refuse — the switch, the daily ceiling, the plan
+allowance, no model, no credits — BEFORE anything is queued, which is what stops a hundred jobs
+being queued against a balance that covers one; then one hold is taken and settled to the number of
+pictures that actually arrived, so three of four charges for three. Regenerating creates a new row
+pointing at the old one and both survive. Bytes from a provider are typed from their CONTENT and
+matched against a per-purpose allowlist the panel cannot widen, because an HTML error page written
+to disk as a `.png` is a file that is not an image being served as one.
+
+### Voice, in one paragraph
+
+One `voice_jobs` table holds both directions, because a transcription and a synthesis are asked the
+same questions and two tables would answer each of them twice. The recording is stored BEFORE the
+provider is called, for the same reason a chat turn saves the customer's message first. Nothing is
+ever sent on the customer's behalf: speech recognition gets names, numbers and negations wrong, so
+the transcript lands in the composer for them to read and pressing Send is still theirs to do. The
+quota is in minutes and covers both directions, while the CHARGE always uses the provider's own unit
+and the model's own price. Retention deletes the AUDIO and keeps the row — the transcript is a chat
+message the customer owns and the cost is the owner's record — which is the opposite of images,
+where the picture IS the thing and the row goes with it.
 
 ### Knowledge bases, in one paragraph
 
@@ -373,6 +418,25 @@ php artisan aziv:test-fixtures  # local plan + no-money gateway, so the gate can
   hard-coded-colour gate silently checked two directory levels for a whole phase, because PHP's
   `glob('**')` does not recurse. Every design token lives in `resources/css/tokens.css`, imported
   by both `app.css` and the Filament theme — one copy, so the two panels cannot drift.
+- **A capability list is a promise the router will hold you to.** Adding a constant to an adapter's
+  `capabilities()` without the interface behind it breaks nothing at that moment: the form offers
+  it, the catalog records it, the router picks the model. The failure lands in a queued job minutes
+  later, after the customer's credits were held. A gate now checks every adapter, and found one
+  claim that had been wrong since Phase 4.
+- **A price unit can be declared and never read.** `per_second` sat in `AiModelPrice::UNITS` from
+  Phase 3 and `UsageRecorder::cost()` never looked at it, so voice would have recorded a visible
+  zero for every call while the real bill grew. A constant nobody has used yet is not tested by
+  anything.
+- **Livewire only sees a field you dispatch `input` on.** Setting `.value` from JavaScript changes
+  the DOM and nothing else: the server keeps the old draft and the message sends empty. Reading the
+  element back in a browser test proves the DOM changed and nothing more — send it and check what
+  came back.
+- **A browser gate against a persistent account must be idempotent.** The voice gate passed once and
+  failed for ever after, because the previous run left a reply stuck in `pending` — which correctly
+  refuses a new message in that conversation. Start from a fresh one, or count before and after
+  rather than asking whether something is present.
+- **`form button[type=submit]` finds the layout's logout form first.** Clicking it signs the gate
+  out, which looks exactly like a form that does nothing. Scope the selector to the form under test.
 - **A test that skips itself in `testing` never runs at all.** `if (app()->environment('local',
   'testing')) markTestSkipped(...)` reads like a sensible guard and is an unconditional skip —
   tests only ever run in `testing`. The debug-off assertion sat there for eight phases, pointed at

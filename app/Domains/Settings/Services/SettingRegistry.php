@@ -408,6 +408,73 @@ class SettingRegistry
                 rules: ['integer', 'min:200', 'max:100000'],
             ),
 
+            // --- Images (§16) ------------------------------------------------
+            new SettingDefinition(
+                key: 'images.enabled', type: 'bool', default: true, group: 'images',
+                label: 'Let customers generate images',
+                description: 'Turning this off hides the studio. Images already made are kept and stay viewable.',
+            ),
+            new SettingDefinition(
+                key: 'images.max_per_day', type: 'int', default: 50, group: 'images',
+                label: 'Images per customer per day',
+                description: 'A ceiling that applies to everybody, on top of whatever their plan allows. It exists so one account cannot spend a month of provider budget in an afternoon. Zero removes it.',
+                rules: ['integer', 'min:0', 'max:10000'],
+            ),
+            new SettingDefinition(
+                key: 'images.default_size', type: 'string', default: '1024x1024', group: 'images',
+                label: 'Size the studio opens on',
+                description: 'Customers can change it. Larger sizes cost more at every provider.',
+                rules: ['string', 'max:16'],
+            ),
+            new SettingDefinition(
+                key: 'images.retention_days', type: 'int', default: 0, group: 'images',
+                label: 'Delete generated images after (days)',
+                description: 'Counted from when the image was made. Zero keeps them until somebody deletes them. The prompt is kept either way, so the customer can ask again.',
+                rules: ['integer', 'min:0', 'max:3650'],
+            ),
+
+            // --- Voice (§18) -------------------------------------------------
+            new SettingDefinition(
+                key: 'voice.input_enabled', type: 'bool', default: true, group: 'voice',
+                label: 'Let customers speak to Aziv AI',
+                description: 'The microphone button in the composer. Needs a provider offering speech to text.',
+            ),
+            new SettingDefinition(
+                key: 'voice.output_enabled', type: 'bool', default: true, group: 'voice',
+                label: 'Let customers hear replies read aloud',
+                description: 'The play button on a reply. Needs a provider offering text to speech.',
+            ),
+            new SettingDefinition(
+                key: 'voice.speech_voice', type: 'string', default: '', group: 'voice',
+                label: 'Which voice reads replies',
+                description: 'Your provider\'s own name for one of its voices, copied from their documentation and passed through unchanged — every provider names them differently and there is no common list. Leave it empty for the provider\'s default.',
+                rules: ['nullable', 'string', 'max:64'],
+            ),
+            new SettingDefinition(
+                key: 'voice.max_recording_seconds', type: 'int', default: 120, group: 'voice',
+                label: 'Longest recording (seconds)',
+                description: 'Transcription is charged by the second at every provider, so this is the ceiling on what one message can cost.',
+                rules: ['integer', 'min:5', 'max:1800'],
+            ),
+            new SettingDefinition(
+                key: 'voice.max_speech_characters', type: 'int', default: 4000, group: 'voice',
+                label: 'Most characters read aloud at once',
+                description: 'A long reply is split or truncated rather than turning one click into a large bill.',
+                rules: ['integer', 'min:200', 'max:50000'],
+            ),
+            new SettingDefinition(
+                key: 'voice.max_minutes_per_day', type: 'int', default: 60, group: 'voice',
+                label: 'Minutes of audio per customer per day',
+                description: 'Recording and playback together, on top of whatever a plan allows. Zero removes the ceiling.',
+                rules: ['integer', 'min:0', 'max:10000'],
+            ),
+            new SettingDefinition(
+                key: 'voice.retention_days', type: 'int', default: 7, group: 'voice',
+                label: 'Delete audio after (days)',
+                description: 'Recordings and synthesised speech both. The TRANSCRIPT stays in the conversation — it is the message. Zero keeps the audio until somebody deletes it.',
+                rules: ['integer', 'min:0', 'max:365'],
+            ),
+
             // --- Uploads (Owner Addendum H) ----------------------------------
             new SettingDefinition(
                 key: 'uploads.max_size_kb', type: 'int', default: 10240, group: 'uploads',

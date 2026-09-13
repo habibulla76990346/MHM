@@ -20,7 +20,8 @@ class ApiUsageLog extends Model
 {
     protected $fillable = [
         'uuid', 'user_id', 'provider_id', 'model_id', 'credential_id', 'routing_log_id',
-        'capability', 'input_tokens', 'output_tokens', 'total_tokens', 'latency_ms',
+        'capability', 'input_tokens', 'output_tokens', 'total_tokens',
+        'images', 'audio_seconds', 'latency_ms',
         'http_status', 'error_class', 'provider_cost', 'provider_currency',
         'credit_cost', 'occurred_at',
     ];
@@ -28,6 +29,7 @@ class ApiUsageLog extends Model
     protected function casts(): array
     {
         return [
+            'audio_seconds' => 'decimal:2',
             'provider_cost' => 'decimal:10',
             'credit_cost' => 'decimal:6',
             'occurred_at' => 'datetime',

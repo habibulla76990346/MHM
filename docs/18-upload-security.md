@@ -142,6 +142,53 @@ above are what actually carry the security, and they hold with or without a scan
 
 ---
 
+## 2b. Bytes that arrive without an upload envelope (Phase 8b/8c)
+
+Images a provider generated, speech it synthesised and recordings the composer captured all reach
+the disk without passing through a file picker. There is no client filename, no declared MIME and
+no multi-extension to check, so running `UploadValidator` on them would be checking claims nobody
+made. `FileStorage::storeGenerated()` is the second way in, and it is **stricter** than the first:
+
+| | `store()` — an upload | `storeGenerated()` — everything else |
+|---|---|---|
+| What decides the type | `finfo` on the temp file, cross-checked against the claimed extension | `finfo` on the bytes. No claim exists and none is consulted |
+| Allowlist | `uploads.allowed_extensions`, which an administrator edits | A **per-purpose** list in code that the panel cannot widen |
+| Size limit | `uploads.max_size_kb`, capped by the server's own | A per-purpose ceiling in code |
+| Filename | Generated; the client's is display text only | Generated; the caller's label is display text only |
+| Disk | Private | Private |
+| Scanned | Yes, through the same scanner layer | Yes, through the same scanner layer |
+
+The purposes are `image_generation` (PNG, JPEG, WebP), `speech` (MP3, WAV, Ogg, Opus) and
+`voice_recording` (what a browser's `MediaRecorder` actually produces: WebM/Opus in Chromium,
+MP4/AAC in Safari). **A purpose that declares nothing may write nothing** — falling back to
+"anything" would make this method the hole the nine controls exist to close.
+
+Each purpose has its OWN list, so widening images never widens recordings.
+
+### The one inline-rendering route
+
+US-9 says every file leaves through a controller that authorises it, and `FileDownloadController`
+forces `Content-Disposition: attachment` on all of them — stored HTML or SVG rendered inline would
+execute in this application's origin, with the customer's session. That rule is not relaxed.
+
+A gallery needs `<img>` and a spoken reply needs `<audio>`, so `MediaController` renders inline
+behind **four** conditions, all of which must hold:
+
+1. the file's PURPOSE is one the platform itself wrote — never `attachment`, whose bytes came from
+   a browser through the file picker;
+2. the type read from the bytes at storage time is on a short raster-and-audio allowlist —
+   **no SVG**, which is a document that can carry script, not a picture;
+3. `FilePolicy` authorises it, on every request; and
+4. it is not quarantined.
+
+The headers then assume all four were wrong anyway: `nosniff`, `Content-Security-Policy:
+default-src 'none'; sandbox`, and `Cache-Control: private` — one customer's content in a shared
+cache is a way for the next person to be served it.
+
+Three of those four is a vulnerability, so each is a separate assertion in `MediaSecurityTest`.
+
+---
+
 ## 3. Where this lands in the build
 
 | Phase | Work |

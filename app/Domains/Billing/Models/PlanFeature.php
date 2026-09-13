@@ -27,6 +27,7 @@ class PlanFeature extends Model
         'max_file_size_kb' => 'Largest upload (KB)',
         'storage_mb' => 'Total storage (MB)',
         'image_credits_per_period' => 'Image generations per period',
+        'voice_minutes_per_period' => 'Minutes of audio per period',
         'conversation_history_days' => 'Conversation history kept (days)',
         'max_context_messages' => 'Messages of context sent',
         'priority_routing' => 'Priority routing',

@@ -8,8 +8,13 @@ use App\Domains\AI\Adapters\GeminiAdapter;
 use App\Domains\AI\Adapters\OpenAiAdapter;
 use App\Domains\AI\Adapters\OpenAiCompatibleAdapter;
 use App\Domains\AI\Contracts\SupportsChat;
+use App\Domains\AI\Contracts\SupportsEmbeddings;
+use App\Domains\AI\Contracts\SupportsImageGeneration;
 use App\Domains\AI\Contracts\SupportsModelDiscovery;
+use App\Domains\AI\Contracts\SupportsSpeech;
 use App\Domains\AI\Contracts\SupportsStreaming;
+use App\Domains\AI\Contracts\SupportsTranscription;
+use App\Domains\AI\Contracts\SupportsVision;
 use App\Domains\AI\DTO\ChatMessage;
 use App\Domains\AI\DTO\ChatRequest;
 use App\Domains\AI\Models\AiProvider;
@@ -104,7 +109,62 @@ class AdapterContractTest extends TestCase
         $this->assertInstanceOf(SupportsStreaming::class, $adapter);
         $this->assertInstanceOf(SupportsModelDiscovery::class, $adapter);
         $this->assertTrue($adapter->supports(Capability::CHAT));
-        $this->assertFalse($adapter->supports(Capability::TRANSCRIPTION));
+
+        // A capability it genuinely cannot serve. The declared list is the
+        // one the provider form and the model sync read, so a claim here that
+        // nothing implements becomes a model the router will choose and the
+        // job will then fail against.
+        $this->assertFalse($adapter->supports(Capability::LONG_CONTEXT));
+    }
+
+    /**
+     * Every declared capability has an implementation behind it.
+     *
+     * WHAT THIS CATCHES is the failure mode that adding image and voice made
+     * possible: a capability added to `capabilities()` without the interface
+     * that serves it. Nothing breaks at that moment — the provider form offers
+     * it, the catalog records it, the router happily selects the model — and
+     * the failure lands in a queued job, minutes later, as "the chosen
+     * provider cannot do that", after the customer's credits were held.
+     *
+     * Asserted for EVERY adapter rather than the compatible one alone,
+     * because the next adapter is the one that will get it wrong.
+     */
+    public function test_no_adapter_claims_a_capability_it_has_no_implementation_for(): void
+    {
+        $contracts = [
+            Capability::CHAT => SupportsChat::class,
+            Capability::STREAMING => SupportsStreaming::class,
+            Capability::VISION => SupportsVision::class,
+            Capability::EMBEDDINGS => SupportsEmbeddings::class,
+            Capability::IMAGE_GENERATION => SupportsImageGeneration::class,
+            Capability::TRANSCRIPTION => SupportsTranscription::class,
+            Capability::SPEECH => SupportsSpeech::class,
+        ];
+
+        $offences = [];
+        // One provider row, reused: the adapter under test only needs
+        // something to be bound to, and a row per adapter would collide on the
+        // unique slug.
+        $provider = $this->provider();
+
+        foreach (glob(app_path('Domains/AI/Adapters/*.php')) as $path) {
+            $class = 'App\\Domains\\AI\\Adapters\\'.basename($path, '.php');
+
+            if (! class_exists($class) || (new \ReflectionClass($class))->isAbstract()) {
+                continue;
+            }
+
+            $adapter = (new $class)->forProvider($provider);
+
+            foreach ($contracts as $capability => $contract) {
+                if ($adapter->supports($capability) && ! $adapter instanceof $contract) {
+                    $offences[] = class_basename($class).' claims '.$capability.' but does not implement '.class_basename($contract);
+                }
+            }
+        }
+
+        $this->assertSame([], $offences, implode("\n", $offences));
     }
 
     public function test_a_chat_request_is_translated_and_the_reply_normalised(): void

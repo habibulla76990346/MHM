@@ -1,5 +1,6 @@
 import registerChat from './chat';
 import { initCheckout } from './checkout/index.js';
+import { initVoice } from './voice.js';
 
 /**
  * Aziv AI — customer application behaviour.
@@ -100,6 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // A no-op on every page without a checkout mount, and the gateway's own
   // script is fetched only when the customer presses Pay.
   initCheckout();
+  // A no-op on every page without a microphone button or a play button, and
+  // the microphone is only ever requested when somebody presses record.
+  initVoice();
 });
 
 // Chat behaviour registers itself as an Alpine component (Phase 4).

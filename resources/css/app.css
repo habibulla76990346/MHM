@@ -609,6 +609,61 @@
 
 .aziv-send:disabled { opacity: 0.6; }
 
+/* --- voice (§18) ---------------------------------------------------------
+ * The recording state has to be UNMISTAKABLE. A microphone that might be
+ * listening is the most uncomfortable control a web application has, so it is
+ * said three ways at once: the button's own label and aria-pressed, the live
+ * region above the composer, and a ring on the composer itself.
+ *
+ * Every colour here is a token, like everything else — the danger tone is the
+ * owner's danger tone, so a rebranded platform's recording state is theirs.
+ * ---------------------------------------------------------------------- */
+.aziv-record {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  padding-inline: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-button-secondary-bg);
+  color: var(--color-button-secondary-text);
+  font-weight: 500;
+}
+
+.aziv-record[data-recording='true'] {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+/* A pulse, for the people who read movement before they read text. Removed
+   entirely where the customer has asked for less motion — a throbbing control
+   is exactly what that preference exists for. */
+@media (prefers-reduced-motion: no-preference) {
+  .aziv-record[data-recording='true'] { animation: aziv-recording 1.4s ease-in-out infinite; }
+}
+
+@keyframes aziv-recording {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+.aziv-composer.is-recording {
+  outline: 2px solid var(--color-danger);
+  outline-offset: 2px;
+}
+
+.aziv-voice-status {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.aziv-voice-status[data-tone='recording'] { color: var(--color-danger); font-weight: 500; }
+.aziv-voice-status[data-tone='danger']    { color: var(--color-danger); }
+
 .aziv-field {
   width: 100%;
   min-height: var(--tap-min);

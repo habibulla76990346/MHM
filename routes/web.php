@@ -12,7 +12,9 @@ use App\Http\Controllers\Chat\StreamController;
 use App\Http\Controllers\Checkout\CheckoutController;
 use App\Http\Controllers\Content\PageController;
 use App\Http\Controllers\FileDownloadController;
+use App\Http\Controllers\MediaController;
 use App\Http\Controllers\Notifications\NotificationCentreController;
+use App\Http\Controllers\Voice\VoiceController;
 use App\Http\Controllers\Webhooks\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -121,7 +123,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Documents a customer can ask questions about (§17). Replaced the Phase 8
     // placeholder that stood here so the navigation was never a dead link.
     Route::view('library', 'library')->name('library');
-    Route::view('images', 'placeholder', ['heading' => 'Images', 'phase' => 8])->name('images');
+    // Pictures a customer described and Aziv AI made (§16).
+    Route::view('images', 'images')->name('images');
     Route::view('account', 'account')->name('account');
 
     // The customer's own billing: plan, credits, invoices and the details that
@@ -140,6 +143,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('checkout/{payment:uuid}/status', [CheckoutController::class, 'status'])
         ->middleware('throttle:60,1')->name('checkout.status');
 
+    /**
+     * Voice (§18).
+     *
+     * Three small JSON endpoints rather than Livewire actions: a recording is
+     * binary and can be megabytes, and Livewire's temporary-upload path would
+     * base64 it into a component payload and back out again.
+     *
+     * Throttled tightly. Every one of these costs the owner money at a
+     * provider, and the recorder only ever needs a handful a minute.
+     */
+    Route::post('voice/transcribe', [VoiceController::class, 'transcribe'])
+        ->middleware('throttle:20,1')->name('voice.transcribe');
+    Route::post('chat/{message:uuid}/speak', [VoiceController::class, 'speak'])
+        ->middleware('throttle:30,1')->name('voice.speak');
+    Route::get('voice/{voiceJob:uuid}', [VoiceController::class, 'show'])
+        ->middleware('throttle:120,1')->name('voice.show');
+
     // What the platform has told this customer (§22). In-app notifications
     // are written by the same notifier that sends the email, so the two can
     // never disagree about what was said.
@@ -150,4 +170,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Every uploaded file is served through here — never by direct URL.
     // Owner Addendum H control US-9.
     Route::get('files/{file:uuid}', [FileDownloadController::class, 'show'])->name('files.show');
+
+    // The ONE route that renders a stored file inline rather than forcing a
+    // download, so a generated picture can appear in a gallery and speech can
+    // play in an <audio> element. Four conditions gate it and the headers
+    // assume they were all wrong anyway — see MediaController.
+    Route::get('media/{file:uuid}', [MediaController::class, 'show'])->name('media.show');
 });

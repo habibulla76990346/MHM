@@ -102,6 +102,14 @@ class PermissionRegistry
             'knowledge' => [
                 'knowledge.view', 'knowledge.manage', 'knowledge.grant',
             ],
+            // §16 and §18. Seeing WHAT customers generated is a different
+            // authority from configuring the feature, and neither is implied
+            // by ordinary file access: a customer's pictures and recordings
+            // are their content, and reaching them is a decision somebody
+            // makes on purpose.
+            'media' => [
+                'media.view', 'media.manage', 'media.delete_any',
+            ],
         ];
     }
 
@@ -143,6 +151,7 @@ class PermissionRegistry
                 'notifications.view', 'notifications.templates.manage',
                 'announcements.manage', 'announcements.broadcast',
                 'knowledge.view', 'knowledge.manage', 'knowledge.grant',
+                'media.view', 'media.manage', 'media.delete_any',
                 'content.view', 'content.manage', 'content.publish',
                 'themes.view', 'themes.manage',
                 'branding.view', 'branding.manage',
@@ -169,6 +178,9 @@ class PermissionRegistry
                 // Reading a customer's documents is a different thing and is
                 // not granted by this.
                 'knowledge.view',
+                // Enough to answer "did my image ever finish?" without being
+                // able to configure the feature or delete anybody's work.
+                'media.view',
                 'analytics.view',
             ],
 

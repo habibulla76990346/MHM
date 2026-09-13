@@ -35,6 +35,11 @@ export const SCREENS = [
   // status is. Seeded with a real indexed document so the list is not empty —
   // a gate run against an empty screen measures nothing.
   { name: 'library',          path: '/library',   auth: true },
+  // §16's customer side: the studio form and the gallery. Seeded with a real
+  // generation, because a gate run against an empty gallery never measures a
+  // row action — the mistake that left every admin table unchecked for two
+  // phases.
+  { name: 'images',           path: '/images',    auth: true },
   // §22's in-app half. Everything the platform has told this customer.
   { name: 'notifications',    path: '/notifications', auth: true },
   // The renewal payment page (Addendum D §3). Its URL is SIGNED, so it cannot
@@ -82,6 +87,9 @@ export const SCREENS = [
   { name: 'admin-templates',  path: '/admin/notification-templates',    admin: true },
   { name: 'admin-template-new', path: '/admin/notification-templates/create', admin: true },
   { name: 'admin-notice-log', path: '/admin/notification-deliveries',   admin: true },
+  { name: 'admin-media',      path: '/admin/images-and-voice',          admin: true },
+  { name: 'admin-image-log',  path: '/admin/image-generations',         admin: true },
+  { name: 'admin-voice-log',  path: '/admin/voice-jobs',                admin: true },
 ];
 
 /** Credentials for the seeded responsive-test account. */

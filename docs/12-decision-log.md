@@ -1548,3 +1548,192 @@ ciphertext beside a freshly generated key and proves the loss is total — which
 A scratch **table** rather than a scratch **database**, deliberately: shared hosting gives the
 application's user rights over one database and no right to create another, and a test needing more
 privilege than production has is a test that gets deleted the first time it fails on a real server.
+
+---
+
+## Phase 8b and 8c — images and voice
+
+*§16 and §18. Both are new capabilities on the layer that already existed, which
+is why neither needed a new architecture: the router already chose models by
+capability, the recorder already metered calls, the ledger already held and
+settled credits, and `files` already stored bytes privately. What is genuinely
+new is what happens when bytes arrive from somewhere other than a browser's
+file picker — and that is where the security work is.*
+
+### One row is one image, and prompt history is a query
+
+An `image_generations` row is a single picture, not a request: a customer who
+asks for four thinks about four things, deletes one and regenerates another, so
+the gallery, deletion, retention and lineage are all per image. A `batch_uuid`
+keeps a set together for the one screen that cares.
+
+"Prompt history" (§16) is a query over that table, not a second table. The
+prompts a customer has used ARE their generations, and a table holding the same
+strings again would be a second thing to keep in step, to delete on request,
+and to get wrong.
+
+**Regeneration is a new row pointing at the old one**, exactly as regenerating a
+chat reply is. Both survive, so the customer can compare them and the owner can
+see that two pictures were paid for.
+
+### Bytes that arrive without an upload envelope
+
+This is the phase's real security decision. `FileStorage::store()` enforces the
+nine Phase 1 upload controls against an `UploadedFile` — a client filename, a
+declared MIME, a multi-extension check, an allowlist an administrator edits.
+None of those inputs exist for a picture a provider returned, speech it
+synthesised, or a recording the composer captured: there is no file picker, no
+client filename, and no declared type. Running that validator on them would be
+checking claims nobody made.
+
+So `storeGenerated()` is stricter, not looser. The type is read from the BYTES
+with `finfo`, matched against a **per-purpose allowlist the panel cannot
+widen**, under a per-purpose size ceiling. A provider returning an HTML error
+page with a 200 — which happens — is refused rather than written to disk as a
+`.png`. Each purpose has its own list, so widening images never widens
+recordings.
+
+### The one route that renders a file inline
+
+Every other file in the platform is served as an attachment, deliberately:
+stored HTML or SVG rendered inline would execute in this application's origin
+with the customer's session. But a gallery needs `<img>` and speech needs
+`<audio>`, so `MediaController` exists behind **four** conditions, all of which
+must hold: the purpose is one the platform itself wrote; the type read from the
+bytes at storage time is on a short raster-and-audio allowlist (no SVG, which is
+a document that can carry script); the ordinary file policy authorises it on
+every request; and it is not quarantined. The headers then assume all four were
+wrong anyway — `nosniff`, `default-src 'none'; sandbox`, and `private` caching,
+because one customer's content in a shared cache is a way for the next person to
+be served it.
+
+Three of those four is a vulnerability, so each is a separate test.
+
+### An administrator runs the feature and does not browse it
+
+`media.view` shows how many pictures were generated, what they cost, which
+failed and why — the operational facts — and it does **not** open anybody's
+picture, exactly as `knowledge.view` does not open a personal collection. The
+voice table shows seconds and never the transcript, for the same reason the
+notification delivery log records that a message went and never what it said.
+`media.delete_any` exists for the one case that genuinely needs the picture — a
+report about a specific image — and it audits.
+
+Deny by default held: a Finance Manager received none of these.
+
+### Credits: one hold, settled to what arrived
+
+A request for four images takes one hold and settles it to the number that came
+back; three of four charges for three and releases the rest. Everything that can
+refuse — the feature switch, the platform ceiling, the plan allowance, the
+absence of a model, the balance — happens BEFORE anything is queued, which is
+what stops somebody queueing a hundred jobs against a balance that covers one.
+A retried job cannot charge twice, because `CreditService::settle()` refuses a
+second settlement of the same hold.
+
+**A customer pays for pictures and answers, never for attempts.** Every failure
+path releases rather than settles, including the provider that returned
+something which was not an image at all.
+
+### Voice: two directions, one table, one set of rules
+
+A transcription and a synthesis are the same shape of thing and are asked the
+same questions — how much audio did this account use, what did it cost, why did
+that one fail — so `voice_jobs` holds both. Two tables would mean answering each
+question twice and getting different answers.
+
+**The transcript is not the audio, and they are kept differently.** What a
+customer said becomes a chat message they own; the RECORDING is a large file of
+somebody's voice with its own retention, defaulting to a week. Losing the audio
+loses nothing the customer can see, which is why the retention sweeper deletes
+the audio and keeps the row — the cost happened and the owner's reporting needs
+it.
+
+**Nothing is sent on the customer's behalf.** Speech recognition gets names,
+numbers and negations wrong. The transcript lands in the composer for them to
+read and correct; pressing Send is still theirs to do. The browser gate asserts
+both halves of that: the transcript appears, and no message appears until Send.
+
+**The quota is in minutes and covers both directions**, because that is how a
+customer thinks about it. Speech is charged by characters at most providers, so
+it is converted at a deliberately slow reading speed for the quota only — the
+CHARGE always uses the provider's own unit and the model's own price.
+
+### `per_second` was declared and never read
+
+`AiModelPrice::UNITS` has carried `per_second` since Phase 3 and
+`UsageRecorder::cost()` never looked at it. Voice would have recorded a visible
+zero for every call while the owner's real bill grew — the exact failure the
+costing rules exist to prevent, hiding in a constant nobody had used yet. Fixed
+with the feature that first needed it, and `api_usage_logs` gained `images` and
+`audio_seconds` at the same time: a row reading "0 tokens, ₹4.20" looks like a
+bug, and "1 image" looks like an image.
+
+### The recording state, and why it is said three ways
+
+A microphone that might be listening is the most uncomfortable control a web
+application has. So the state is announced by the button's own label and
+`aria-pressed`, by a polite live region carrying a running timer against the
+limit, and by a ring on the composer itself. The track is stopped explicitly on
+every path out — success, failure, the length cap, and the tab being hidden —
+because a track left open keeps the browser's own recording indicator lit, which
+tells somebody they are still being listened to when they are not.
+
+### Two gates that press the buttons
+
+`npm run test:voice` and `npm run test:images` exist because of what BLK-1
+taught this project: a button that is beautifully laid out and inert passes
+every gate there is. The microphone is simulated by replacing `getUserMedia` and
+`MediaRecorder` before any page script runs — the same technique the chat gate
+uses for the mobile keyboard — so the gate needs no microphone and no network.
+
+**The voice gate nearly shipped decorative.** Its check that the transcript
+reaches the composer read the textarea's value, which proves the DOM changed and
+nothing more: Livewire binds on `input`, so setting `.value` without dispatching
+the event leaves the server holding an empty draft. Sabotaging exactly that
+passed every check in the file. The gate now SENDS the transcript and requires
+it back in the thread.
+
+The image gate loads the picture and checks `naturalWidth`, because a gallery of
+broken images passes every layout check there is.
+
+### What seeding a fixture found
+
+Adding models and a generation to the local fixtures put content under the
+responsive gate for the first time on two screens, and both immediately failed:
+
+- **A clickable table cell was 32px.** When a resource sets a record URL,
+  Filament wraps each cell in an anchor, and that anchor is as tall as its text.
+  Every admin table had been checked while empty, so no row had ever been
+  measured.
+- **Pagination buttons were 36px.** They only render once there is more than one
+  page, and no fixture table had ever been long enough.
+
+Both are the trap already in CLAUDE.md — "a gate is only as good as the page it
+runs against" — collecting two more instances. Fixed in the panel theme, so
+every table inherits it.
+
+### A capability claimed with nothing behind it
+
+Adding image and voice made a new failure mode possible: a capability listed in
+`capabilities()` with no interface implementing it. Nothing breaks at that
+moment — the provider form offers it, the catalog records it, the router selects
+the model — and the failure lands in a queued job minutes later, after the
+customer's credits were held. `AdapterContractTest` now asserts, for EVERY
+adapter, that each declared capability has its contract behind it. It found one
+on the first run: `OpenAiCompatibleAdapter` had declared vision since Phase 4
+and implemented it in the chat payload without ever declaring the marker.
+
+### What was deliberately NOT built
+
+- **Image editing, background removal and upscaling.** §16 asks for the
+  architecture to be READY for them, not for them to exist. `ImageRequest` and
+  the adapter contract take a prompt and options; an edit is a second method on
+  the same interface, and the storage, credits, retention and gallery it would
+  need are all already here.
+- **Realtime voice.** §18 names it as a separate module, and it is a different
+  transport (a persistent socket) with a different billing shape.
+- **Gemini text-to-speech.** Its transcription is implemented because inline
+  audio in `generateContent` is a stable, documented shape. Its speech output is
+  not, so the capability is not claimed — and the contract test above would fail
+  the build if it were.

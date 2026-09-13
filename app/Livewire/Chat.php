@@ -10,6 +10,7 @@ use App\Domains\Chat\Services\ChatService;
 use App\Domains\Chat\Services\ConversationService;
 use App\Domains\Chat\Services\ModelSelector;
 use App\Domains\Chat\Support\ChatRefused;
+use App\Domains\Voice\Services\VoiceService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -105,6 +106,26 @@ class Chat extends Component
     public function streamingEnabled(): bool
     {
         return (bool) settings('chat.streaming_enabled');
+    }
+
+    /**
+     * Whether the microphone and the play buttons should exist at all (§18).
+     *
+     * BOTH the switch and a model, because a control that is always going to
+     * fail is worse than one that is not there: a customer who presses it
+     * learns the product is broken, not that an administrator has not
+     * finished setting it up.
+     */
+    #[Computed]
+    public function canRecord(): bool
+    {
+        return app(VoiceService::class)->canTranscribe();
+    }
+
+    #[Computed]
+    public function canListen(): bool
+    {
+        return app(VoiceService::class)->canSpeak();
     }
 
     // -- conversation management --------------------------------------------

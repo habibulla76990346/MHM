@@ -292,6 +292,33 @@
   min-height: var(--tap-min);
 }
 
+/* A CLICKABLE TABLE CELL. When a resource sets a record URL, Filament wraps
+   each cell's content in an anchor — so the thing a customer taps to open a
+   record is that anchor, and it is as tall as its text: 32px for a short
+   value. Scoped to `a.fi-ta-col` rather than `.fi-ta-col`, because the class
+   is also on cells that are not links and turning those into flex containers
+   would rearrange every table in the panel.
+
+   FOUND ONLY WHEN THE TABLE HAD ROWS. Every admin table in this product was
+   once checked while empty, so no row was ever measured; seeding the model
+   catalog for the Phase 8 gates is what finally put content under the
+   measurement. */
+a.fi-ta-col {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-min);
+}
+
+/* PAGINATION. Only rendered once there is more than one page, which is why
+   36px page buttons survived every gate up to here — no table in the fixtures
+   had ever been long enough to need a second page. "2" is one character and
+   still has to be as tappable as "Save changes". */
+.fi-pagination-item-btn,
+.fi-pagination-item-label {
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+}
+
 /* A breadcrumb's text can be shorter than the minimum in BOTH directions —
    "FAQs" is about 32px wide — so it needs horizontal room as well as height. */
 .fi-breadcrumbs-item-label {
