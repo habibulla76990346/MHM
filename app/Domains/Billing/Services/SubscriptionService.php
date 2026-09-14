@@ -8,10 +8,12 @@ use App\Domains\Billing\Models\SubscriptionPeriod;
 use App\Domains\Billing\Support\ProrationResult;
 use App\Domains\Credits\Models\CreditLedgerEntry;
 use App\Domains\Credits\Services\CreditService;
+use App\Domains\Security\Services\ActivityLogger;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Subscriptions: start, renew, change, cancel (§19, §20).
@@ -76,6 +78,15 @@ class SubscriptionService
             ]);
 
             $this->activatePeriod($subscription, $at, $end, 'subscription:start');
+
+            // §23 names subscription changes as audited. Recorded in the
+            // SERVICE rather than on a screen, so a future admin action, a
+            // console command and the automatic assignment on first chat all
+            // leave the same trail.
+            $this->audit('subscription.started', $subscription, null, [
+                'plan' => $plan->slug,
+                'status' => $subscription->status,
+            ]);
 
             return $subscription->fresh('plan');
         });
@@ -206,6 +217,8 @@ class SubscriptionService
     {
         $proration = $this->preview($subscription, $target, $currency);
 
+        $before = ['plan' => $subscription->plan?->slug, 'status' => $subscription->status];
+
         if (! $proration->isUpgrade) {
             // Scheduled, not applied. The customer keeps what they paid for
             // until the period they paid for ends.
@@ -213,6 +226,11 @@ class SubscriptionService
                 'pending_plan_id' => $target->getKey(),
                 'pending_plan_starts_at' => $proration->effectiveAt,
             ])->save();
+
+            $this->audit('subscription.change_scheduled', $subscription, $before, [
+                'plan' => $target->slug,
+                'effective_at' => (string) $proration->effectiveAt,
+            ]);
 
             return $proration;
         }
@@ -236,6 +254,11 @@ class SubscriptionService
             }
         });
 
+        $this->audit('subscription.plan_changed', $subscription, $before, [
+            'plan' => $target->slug,
+            'credits_granted' => $proration->creditsGranted,
+        ]);
+
         return $proration;
     }
 
@@ -257,6 +280,11 @@ class SubscriptionService
         if ($immediately) {
             $subscription->forceFill(['status' => Subscription::STATUS_EXPIRED])->save();
         }
+
+        $this->audit('subscription.cancelled', $subscription, null, [
+            'immediately' => $immediately,
+            'ends' => (string) $subscription->cancel_at,
+        ]);
 
         return $subscription->fresh();
     }
@@ -311,12 +339,41 @@ class SubscriptionService
      */
     public function expire(Subscription $subscription): Subscription
     {
+        $before = ['status' => $subscription->status];
+
         $subscription->forceFill([
             'status' => Subscription::STATUS_EXPIRED,
             'ended_at' => now(),
         ])->save();
 
+        $this->audit('subscription.expired', $subscription, $before, ['status' => Subscription::STATUS_EXPIRED]);
+
         return $subscription;
+    }
+
+    /**
+     * Record a change to a subscription (§23).
+     *
+     * BEST EFFORT, deliberately. An audit table that is full, locked or
+     * missing must not be the reason a customer's plan change fails: the
+     * change is the customer's money and the record is the owner's paperwork,
+     * and losing the second is survivable in a way that losing the first is
+     * not. The failure is logged where an operator will find it.
+     *
+     * @param  array<string, mixed>|null  $before
+     * @param  array<string, mixed>|null  $after
+     */
+    private function audit(string $action, Subscription $subscription, ?array $before, ?array $after): void
+    {
+        try {
+            app(ActivityLogger::class)->log($action, $subscription, $before, $after);
+        } catch (\Throwable $e) {
+            Log::warning('A subscription change could not be audited', [
+                'action' => $action,
+                'subscription' => $subscription->getKey(),
+                'reason' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

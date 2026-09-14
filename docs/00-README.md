@@ -28,6 +28,7 @@ Complete analysis and implementation plan derived from
 | 17 | [System Health & Diagnostics](17-system-health-diagnostics.md) | **Owner Addendum G** — the app detects and explains its own hosting problems, in language you can forward to support |
 | 18 | [Upload Security](18-upload-security.md) | **Owner Addendum H** — nine controls in Phase 1, scanning as an extensible layer |
 | 19 | [Backup and Restore](19-backup-and-restore.md) | What to back up, how to restore it, and why `APP_KEY` is the part that ruins restores |
+| 20 | [The owner's guides](guides/00-index.md) | **The twenty handover guides**, written for the person who owns the platform rather than for a developer. They ship inside the release package |
 | — | [Brand assets](../brand/README.md) | The official Aziv AI artwork and what Phase 2 derives from it |
 
 ## The short version

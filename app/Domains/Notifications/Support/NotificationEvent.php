@@ -51,6 +51,9 @@ final class NotificationEvent
     // --- broadcast -----------------------------------------------------------
     public const ANNOUNCEMENT = 'announcement.published';
 
+    // --- operations (Owner Addendum G) ---------------------------------------
+    public const DIAGNOSTIC_CHANGED = 'diagnostics.changed';
+
     /**
      * The catalogue.
      *
@@ -213,6 +216,40 @@ final class NotificationEvent
                     {{message}}
 
                     {{url}}
+                    TXT,
+            ],
+
+            /**
+             * Sent when a health check CHANGES, never while it stays broken.
+             *
+             * Alerting on every red would send the same message every night
+             * until it was fixed, which is how somebody learns to file these
+             * where they never look. A transition is worth reading.
+             *
+             * The variables carry no credential: everything in `summary`
+             * came through `CheckResult`, which scrubs at construction.
+             */
+            self::DIAGNOSTIC_CHANGED => [
+                'label' => 'System health changed',
+                'description' => 'Sent to administrators when a health check starts failing, or starts working again. Nothing is sent while a known problem stays known.',
+                'group' => 'Operations',
+                'channels' => [self::CHANNEL_MAIL, self::CHANNEL_DATABASE],
+                'variables' => [
+                    'name' => 'The administrator\'s name',
+                    'app_name' => 'Your platform name',
+                    'changed_count' => 'How many checks changed',
+                    'summary' => 'One line per change',
+                    'actions' => 'What to do about the ones that broke',
+                ],
+                'subject' => '{{app_name}}: {{changed_count}} system health check(s) changed',
+                'body' => <<<'TXT'
+                    Hello {{name}},
+
+                    The following changed on {{app_name}}:
+
+                    {{summary}}
+
+                    {{actions}}
                     TXT,
             ],
         ];

@@ -3,6 +3,7 @@
 use App\Domains\Diagnostics\Console\DiagnoseCommand;
 use App\Http\Middleware\EnforceSessionPolicy;
 use App\Http\Middleware\EnsureNotInMaintenance;
+use App\Http\Middleware\RequireMfaChallenge;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -34,6 +35,11 @@ $proxies = static function (): array|string|null {
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        // A separate file so it is obvious what it contains, and so an owner
+        // who will never need it can see exactly what to delete.
+        then: function () {
+            require __DIR__.'/../routes/install.php';
+        },
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -79,6 +85,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             EnsureNotInMaintenance::class,
             EnforceSessionPolicy::class,
+            // After the session policy, so a revoked session is refused
+            // before it is asked for a code — and before anything else, so no
+            // screen renders for somebody who has not answered the challenge.
+            RequireMfaChallenge::class,
         ]);
 
         // A payment gateway has no session and no CSRF token. What

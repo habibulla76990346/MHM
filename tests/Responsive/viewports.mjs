@@ -46,6 +46,14 @@ export const SCREENS = [
   // be written here — it is found the way a customer finds it, from the link
   // on the billing page.
   { name: 'renewal',          path: '__RENEWAL__', auth: true },
+  // Phase 9. The second-factor enrolment screen: a QR code, a code field and
+  // a list of recovery codes — three things that are easy to make overflow at
+  // 320px, on a page somebody uses exactly once and cannot skip.
+  { name: 'mfa-setup',        path: '/two-factor/setup', auth: true },
+  // The offline page. It is the one screen guaranteed to be seen on a phone
+  // with a bad connection, and the one screen that cannot load a stylesheet
+  // to fix itself if it is wrong.
+  { name: 'offline',          path: '/offline' },
 
   // --- Admin Panel ---------------------------------------------------------
   { name: 'admin-login',      path: '/admin/login' },
@@ -90,6 +98,10 @@ export const SCREENS = [
   { name: 'admin-media',      path: '/admin/images-and-voice',          admin: true },
   { name: 'admin-image-log',  path: '/admin/image-generations',         admin: true },
   { name: 'admin-voice-log',  path: '/admin/voice-jobs',                admin: true },
+  // Phase 9. The screen an owner without SSH runs updates from — four task
+  // cards and a log panel, all of which have to be reachable on a phone,
+  // because "my site is broken" rarely happens while somebody is at a desk.
+  { name: 'admin-maintenance', path: '/admin/maintenance',              admin: true },
 ];
 
 /** Credentials for the seeded responsive-test account. */

@@ -136,7 +136,16 @@ return [
      *
      * To enable, set to true, and then create listeners to watch these events.
      */
-    'events_enabled' => false,
+    /*
+     * AZIV: ON. §23 requires an audit record for role changes, and these
+     * events are how a change made ANYWHERE — an admin screen, a console
+     * command, a seeder, whatever gets written next — reaches the log. An
+     * audit rule attached to one screen ends the day a second screen appears.
+     *
+     * Off is Spatie's default because most applications do not listen. This
+     * one does: see SecurityServiceProvider::recordAccountChanges().
+     */
+    'events_enabled' => true,
 
     /*
      * Teams Feature.

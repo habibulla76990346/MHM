@@ -156,6 +156,7 @@ screen failing at any viewport fails the phase. Full spec in `11-responsive-desi
 | **You provide** | Production cloud/VPS hosting (per D-04), domain, SSL, and production provider/gateway accounts |
 | **You will see** | Aziv AI live on your own domain |
 | **Size** | 7–10 sessions — hardening plus the full delivery package |
+| **9 — built** | Diagnostics completed (history, transition-based alerting, a secret-free exported report, five new checks, safe scheduled runs) · the web installer with its two-condition self-lock · Admin → Maintenance, four named tasks and never a command string · optional TOTP for administrators with hashed recovery codes, plus `aziv:admin:reset` for the lockout the panel cannot help with · the security-review gates, which found five pre-existing defects (see the decision log) · the service worker and offline screen · `aziv:release`, the manifest, the two SQL exports and the twenty guides · **the handover test, performed rather than described**. Recorded in `docs/12-decision-log.md` under "Phase 9". |
 
 ---
 

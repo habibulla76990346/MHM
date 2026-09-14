@@ -38,7 +38,7 @@ class FeatureFlagsTable
                         );
                     })
                     ->afterStateUpdated(fn () => app(FeatureFlagService::class)->flush())
-                    ->disabled(fn () => ! auth()->user()?->can('settings.manage')),
+                    ->disabled(fn () => ! auth()->user()?->can('settings.update')),
             ])
             ->recordActions([EditAction::make()])
             ->toolbarActions([

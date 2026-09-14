@@ -42,17 +42,17 @@ class FeatureFlagResource extends Resource
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->can('settings.manage') ?? false;
+        return auth()->user()?->can('settings.update') ?? false;
     }
 
     public static function canEdit($record): bool
     {
-        return auth()->user()?->can('settings.manage') ?? false;
+        return auth()->user()?->can('settings.update') ?? false;
     }
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('settings.manage') ?? false;
+        return auth()->user()?->can('settings.update') ?? false;
     }
 
     public static function form(Schema $schema): Schema

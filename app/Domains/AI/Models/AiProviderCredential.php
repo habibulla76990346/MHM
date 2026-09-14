@@ -104,6 +104,29 @@ class AiProviderCredential extends Model
         return (string) $this->getAttribute('credential');
     }
 
+    /**
+     * Does this credential still decrypt — yes or no, and nothing else.
+     *
+     * The diagnostics layer has to answer "did APP_KEY change?", which is the
+     * difference between a provider that is misconfigured and one whose key is
+     * gone for ever. Asking that through `secret()` would put a plaintext
+     * credential in the hands of a check whose whole design is that it never
+     * holds one, so the question is answered HERE and only a boolean crosses
+     * the boundary. Rule 4 stays true by construction rather than by the
+     * caller being careful.
+     */
+    public function isReadable(): bool
+    {
+        try {
+            return $this->getAttribute('credential') !== null
+                && (string) $this->getAttribute('credential') !== '';
+        } catch (\Throwable) {
+            // A DecryptException is exactly the answer this method exists to
+            // give: the stored bytes cannot be read under the current APP_KEY.
+            return false;
+        }
+    }
+
     /** @return array<string, mixed> */
     public function extra(): array
     {

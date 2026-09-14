@@ -1737,3 +1737,202 @@ and implemented it in the chat payload without ever declaring the marker.
   audio in `generateContent` is a stable, documented shape. Its speech output is
   not, so the capability is not claimed — and the contract test above would fail
   the build if it were.
+
+---
+
+# Phase 9 — hardening, the delivery package and the handover test
+
+Phase 9 adds no customer-facing capability. It is the phase that turns *"it works here"*
+into *"a stranger can install it there"*, and every decision below is a consequence of one
+sentence in Owner Addendum E: **done is a package a stranger can install.**
+
+## D-31 · The handover test runs the package, not the repository
+
+The temptation with a handover rehearsal is to describe it. `HandoverTest` performs it: it builds
+the release archive, extracts it into a directory that is not this repository, points it at a
+database that has never held Aziv AI, and then runs `key:generate`, `migrate`, `db:seed`,
+`aziv:admin:create`, `optimize` and `aziv:diagnose` **from the extracted copy alone**. If something
+an owner needs is not in the archive, it is not there.
+
+**It was decorative on its first two runs, in a way worth recording.** PHPUnit exports
+`DB_DATABASE=aziv_test`, `APP_ENV=testing`, `MAIL_MAILER=array` and a dozen more as real process
+environment variables, and Laravel reads the environment ahead of the `.env` file it was given. So
+the "clean server" quietly re-migrated the already-migrated test database and re-seeded the
+already-seeded one. Every assertion passed, and the test would have passed with a `.env.example`
+that named no database at all.
+
+The fix is `env -i` — the child gets `PATH` and `HOME` and nothing else. Then it broke again, for a
+second reason with the same shape: the one step that pipes a password on stdin was written as
+`env -i … printf x | php artisan`, and a pipe is a shell operator, so the scrub applied to `printf`
+while `php` sat on the other side of it still holding PHPUnit's environment. The whole command now
+goes inside `sh -c`. **The test now asserts that the clean database actually has tables after
+migrating**, so neither mistake can return silently.
+
+## D-32 · An installer that cannot be reached once it has been used
+
+A web installer is the largest attack surface this product will ever have — it can rewrite `.env`
+and create a Super Admin. It exists anyway, because the owner's constraint is real: without SSH
+there is no `php artisan migrate`, and a product that cannot be installed on the hosting the owner
+has is not a product they own.
+
+So `Installer::isOpen()` is `isEnabled() && ! isInstalled()`, and `isInstalled()` is **two
+independent conditions**: a lock file, *or* the database already having users. Either one shuts it.
+A deleted lock file does not reopen an installed site, and a missing database does not open one
+whose lock is present. The route is behind a middleware that 404s — not 403, which would confirm
+the address exists.
+
+The success page sits outside that middleware, gated on a session flag, because the installer locks
+itself at the end of step 5 and would otherwise 404 on its own last page.
+
+## D-33 · Maintenance is four named tasks, not a command runner
+
+Admin → Maintenance runs `migrate`, `optimize`, `storage:link` and one pass of the queue. It takes
+**a task key from a closed list**, never a command string. A panel that runs an arbitrary artisan
+command is a remote shell with a nice font, and the first RCE in a compromised admin session.
+
+Output is scrubbed through the same `Redactor` the diagnostics layer uses, because `migrate`
+quotes the connection it failed on and that string carries the database password.
+
+## D-34 · TOTP, hashed recovery codes, and no back door
+
+Multi-factor for administrators is TOTP and nothing that needs a third party: no SMS account, no
+per-message cost, and no channel that can be taken over by asking a phone company nicely. An
+emailed code would protect an account whose password reset goes to the same inbox.
+
+Recovery codes are **hashed, not encrypted**. Nothing reads them back — a code is checked and
+consumed — so storing them reversibly would only create something worth stealing.
+
+It is **optional by default** and enforceable by setting. Forcing it on a single-owner platform on
+day one is how somebody locks themselves out of their own product before a recovery code exists
+anywhere.
+
+There is deliberately no emailed reset for an administrator and no master password. The recovery
+route is `aziv:admin:reset` at a shell, where the person already owns the server and could read
+`.env` anyway. The password is prompted, never an option — an option lands in shell history and in
+`ps` — and the audit log records that a reset happened, never what it was set to.
+
+## D-35 · Health is a history, and alerts are transitions
+
+`DiagnosticRunner` stores each run and compares it with the last. A notification is sent when a
+check **changes** — starts failing, or starts working — and never while a known problem stays
+known. Alerting on every red would send the same message every night until it was fixed, which is
+how somebody learns to file these where they never look.
+
+`GREY` counts as healthy. "Not applicable on this server" is an answer, not a fault, and treating
+it as a failure would make the screen cry wolf about Redis on a host that has none.
+
+Two checks are **excluded from automatic runs**: the exposure check makes real HTTP requests to
+its own site, and `--automatic` is what the scheduler passes. A nightly job that hammers its own
+web server is a nightly job somebody eventually disables.
+
+## D-36 · The release archive is read adversarially before it is trusted
+
+`aziv:release` builds the package; `ReleasePackageTest` opens the built archive and reads it
+looking for reasons not to send it. What that found, in order of how bad it was:
+
+- **Three gigabytes and 39,041 files.** Composer had installed from source, leaving a complete
+  `.git` clone inside every vendor package — not merely enormous, but other projects' entire
+  version history travelling inside a product download. Excluding `.git`, `tests` and CI
+  directories **wherever they appear at any depth** took it to 273 MB.
+- **`database/database.sqlite`**, a tracked development artefact, shipping as though it were
+  reference data.
+- **`.env.example` excluded by the belt-and-braces `.env*` rule** — so the one file the
+  documentation tells an owner to copy was the one file missing.
+
+`.env` itself, the install lock, logs, `storage/app` (customers' files) and the local database are
+excluded by name, and the test asserts their absence rather than trusting the list.
+
+## D-37 · The service worker caches the shell and nothing private
+
+An offline screen needs a service worker, and a service worker is a cache that outlives a sign-out.
+So the worker has a **never-cache list** — `/admin`, `/chat/`, `/voice/`, `/media/`, `/files/`,
+`/billing`, `/checkout`, `/livewire/` — and holds the application shell only. A conversation
+served from a stale cache to the next person on a shared device is a data breach that looks like a
+performance feature.
+
+`offline.blade.php` is the one template exempt from the hard-coded-colour gate, and the exemption is
+recorded in the gate itself: a page that renders when the network is gone cannot fetch a stylesheet
+to find out what colour it should be.
+
+## What the Phase 9 gates found on their first run
+
+None of these were introduced by Phase 9. All five were already in the product, and each was found
+by a gate written to check something nobody had checked before.
+
+1. **The Admin Panel was not running the session policy at all.** Filament builds its own
+   middleware stack and does not use the `web` group, so idle timeout, session revocation and the
+   suspended-account check applied to every customer screen and to no admin screen.
+   `EnforceSessionPolicy` and `RequireMfaChallenge` are now in `authMiddleware()`.
+2. **A permission that does not exist.** The feature-flag screens asked for `settings.manage`,
+   which is not in the registry. Because Spatie grants Super Admin everything through
+   `Gate::before`, the screen looked protected while being Super-Admin-only — and would have
+   refused an Admin who was supposed to have it. The gate now asserts every permission an admin
+   surface names is one the registry declares.
+3. **The login and register POST routes were unnamed**, so the throttle audit had been checking the
+   GET routes — the forms, not the submissions.
+4. **Three §23 audit trails were missing**: subscription changes, role changes and account status
+   changes. Role changes now come from Spatie's own events rather than from a screen, because an
+   audit rule attached to one screen ends the day a second screen appears; `events_enabled` is on
+   in `config/permission.php` for exactly that reason.
+5. **`aziv:admin:reset` did not exist**, though Addendum E §4 names it and guide 11 is written
+   around it. Locking yourself out was, until Phase 9, unrecoverable without editing the database
+   by hand.
+
+## D-38 · The compiled stylesheet may only depend on tracked files
+
+`resources/css/app.css` listed `storage/framework/views/*.php` as a Tailwind source. That
+directory is gitignored, machine-local, and emptied by `optimize:clear` — which the deployment
+guide tells an owner to run. So the same commit compiled a different stylesheet depending on which
+pages somebody happened to have opened on the build machine: two builds during this phase differed
+by 16 KB, the larger one quietly carrying Filament's admin-panel classes inside the customer
+stylesheet because the cache was warm with compiled panel views.
+
+The release package ships the compiled assets, and a handover builds from a fresh clone. A build
+whose output depends on a cache nobody thinks about is a build that can hand a stranger a
+stylesheet the developer has never seen. The line is gone; Tailwind reads the Blade sources, which
+are tracked. The build now produces a byte-identical file cold and warm, and
+`SmokeTest::test_the_stylesheet_build_cannot_depend_on_a_machine_local_cache` fails the build if
+any stylesheet reaches into `storage/` or `bootstrap/cache` again.
+
+## What the Phase 9 sabotage battery found
+
+Ten deliberate breakages, each run against the gate that is supposed to notice. Eight were caught
+immediately. **Two were not, and both were the same mistake in different clothes: a gate that
+tested the outer guard and never the inner one.**
+
+- **The maintenance allowlist.** Deleting `MaintenanceService::run()`'s own check — so the service
+  would hand any string it was given straight to `artisan` — passed the whole suite, because the
+  Livewire page checks the allowlist before calling the service and the test only ever drove the
+  page. Two guards, one tested. The service is the last thing before `artisan()` and is reachable
+  from anywhere a future admin action, console command or job might call it, so it is now
+  exercised directly with five task names it must refuse.
+- **The subscription audit trail.** `AuditTrailTest` proves each §23 action string EXISTS in code,
+  by reading the files that write to the audit log. It cannot see a write that has stopped
+  happening: emptying the body of the service's `audit()` helper, leaving every string in place,
+  passed. A real plan change is now performed and the row read back, including the *before* value —
+  which is the only thing that makes it a record rather than a fact.
+
+A third, `aziv:admin:reset` logging the new password, was neutralised by a defence rather than
+missed: `ActivityLogger` redacts by key name, so a value under `password` never lands. Leaking it
+under an innocuous key (`note`) got past that and was caught by the test that reads the whole row.
+That is defence in depth working, and worth recording so the next person does not mistake it for a
+gate that failed.
+
+## D-39 · A test run leaves real bytes, and they were shipping
+
+Building the delivery package immediately after a full test run put
+`storage/framework/testing/disks/...` inside the archive: a synthesised `.webm` recording produced
+by the voice suite, and a staged Livewire upload. PHPUnit's fake disks are not empty scratch —
+the suite exercises the same code that writes customer content, so what it leaves behind *looks*
+like customer content, under generated filenames, in a file somebody emails to a hosting provider.
+
+`storage/app` (real uploads) and `storage/logs` were already excluded. `storage/framework/testing`
+was not, because it does not exist until somebody runs the suite — and the machine that builds a
+release is exactly the machine that has just run it. It is excluded now, and
+`ReleasePackageTest::test_nothing_a_test_run_left_behind_travels_with_it` reads the built archive
+for it; removing the exclusion fails that test and nothing else, which is what makes it a gate
+rather than a comment.
+
+Worth stating plainly, because it is the third instance of one pattern in this phase: **the
+package, the stylesheet and the handover test each depended on machine-local state that nobody had
+thought of as an input.** A build is only reproducible once every input is named.

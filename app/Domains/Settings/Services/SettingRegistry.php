@@ -97,6 +97,11 @@ class SettingRegistry
                 label: 'Require a symbol',
             ),
             new SettingDefinition(
+                key: 'auth.mfa_required_for_admins', type: 'bool', default: false, group: 'auth',
+                label: 'Require a second factor for anybody with admin access',
+                description: 'A six-digit code from an authenticator app, on top of the password. OFF by default on purpose — turning it on before you have set it up on your own account and saved the recovery codes is how somebody locks themselves out of their own platform. Customers are never asked for it.',
+            ),
+            new SettingDefinition(
                 key: 'auth.max_concurrent_sessions', type: 'int', default: 5, group: 'auth',
                 label: 'Maximum simultaneous sessions per user',
                 description: 'Oldest sessions are signed out when the limit is exceeded. 0 means no limit.',

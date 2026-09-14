@@ -122,17 +122,17 @@ Full spec in [`15-delivery-and-handover.md`](15-delivery-and-handover.md).
 
 | ID | Requirement | Where delivered |
 |---|---|---|
-| DL-1 | **Not locked to any hosting provider**; deployable to any server meeting documented requirements | §1, §7 + Addendum B |
-| DL-2 | Complete source-code ZIP + complete Laravel source | §2.1 |
-| DL-3 | Database migrations | §2.1 |
-| DL-4 | Seeders | §2.1 |
-| DL-5 | Clean SQL schema/database export for import | §2.1–2.2 — **generated from migrations, version-stamped** |
-| DL-6 | Public/web-root deployment instructions | Guide 4 |
-| DL-7 | `.env.example` with **every** variable documented | §2.1 |
-| DL-8 … DL-27 | The 20 guides: installation, database, storage, queue/cron, mail, AI providers, payment gateways, tax, admin account creation/reset, production, cPanel, Cloud/VPS, migration, backup/restore, troubleshooting, server requirements, permissions, cron, workers, build commands, security checklist, upgrade | §3 |
-| DL-28 | **Do not assume SSH, Supervisor, Redis, Node.js or root** | §4 — web installer, `vendor/` and assets pre-built, cron queue, DB drivers |
+| DL-1 | **Not locked to any hosting provider**; deployable to any server meeting documented requirements | **BUILT (9)** — §1, §7 + Addendum B. Proved by `HandoverTest`, which installs from the archive alone |
+| DL-2 | Complete source-code ZIP + complete Laravel source | **BUILT (9)** — `php artisan aziv:release` |
+| DL-3 | Database migrations | **BUILT (9)** — in the archive; run by the installer, by artisan, or by Admin → Maintenance |
+| DL-4 | Seeders | **BUILT (9)** — reference data only; no account is ever seeded |
+| DL-5 | Clean SQL schema/database export for import | **BUILT (9)** — `clean-install.sql` from a scratch database that was migrated and seeded and used for nothing else, plus `schema-only.sql`. Both version-stamped; asserted to carry no account, credential or customer row |
+| DL-6 | Public/web-root deployment instructions | **BUILT (9)** — [guide 04](guides/04-web-root.md) |
+| DL-7 | `.env.example` with **every** variable documented | **BUILT (9)** — and it fails loudly where a wrong default would fail silently |
+| DL-8 … DL-27 | The 20 guides: installation, database, storage, queue/cron, mail, AI providers, payment gateways, tax, admin account creation/reset, production, cPanel, Cloud/VPS, migration, backup/restore, troubleshooting, server requirements, permissions, cron, workers, build commands, security checklist, upgrade | **BUILT (9)** — [`docs/guides/`](guides/00-index.md), all twenty, shipping inside the archive |
+| DL-28 | **Do not assume SSH, Supervisor, Redis, Node.js or root** | **BUILT (9)** — the web installer, `vendor/` and compiled assets in the archive, four maintenance tasks in the panel, cron queue, database drivers |
 | DL-29 | Portable feature implementation with documented shared-hosting mode (A) and Cloud/VPS mode (B) | Addendum B §2 capability matrix |
-| DL-30 | Complete, installable, transferable product the owner owns; installable by another developer without the original environment | §1 **handover test**, §7 |
+| DL-30 | Complete, installable, transferable product the owner owns; installable by another developer without the original environment | **BUILT (9)** — the handover test is performed on every build, not described |
 
 ### Owner Addendum F — tax & international billing
 
@@ -196,7 +196,17 @@ blocker E-2** — see §9 of that document.
 | HD-22 | Secure, **extensible** framework for future modules/providers; initial check, manual run, event-driven checks, **safe** scheduled checks | §5 registry, §7 — scheduled runs never cost money or cause side effects |
 | HD-23 | **Understandable messages, never "Something went wrong"** | §4 — worked examples |
 | HD-24 | Where a capability is unavailable on shared hosting: **do not remove the feature** — detect, report, use the compatible mode, document the production recommendation | §2 + Addendum B §2 |
-| HD-25 | Delivery docs cover cPanel and Cloud/VPS requirements, PHP, database, cron, queue, storage, mail, SSL, outbound API, production recommendations, full troubleshooting | Addendum E §3 — troubleshooting guide written **around this screen** |
+| HD-25 | Delivery docs cover cPanel and Cloud/VPS requirements, PHP, database, cron, queue, storage, mail, SSL, outbound API, production recommendations, full troubleshooting | **BUILT (9)** — [guides 12, 13, 17, 17a–e](guides/00-index.md); the troubleshooting guide is written **around this screen** |
+
+**Addendum G is complete as of Phase 9.** HD-11 (scheduler heartbeat, queue backlog and oldest
+waiting job), HD-17 (application state: pending migrations, stale caches, credentials that no
+longer decrypt), HD-9 (disk headroom) and the exposure check (`.env` and friends reachable over
+HTTP) were the last checks outstanding. HD-22's *safe* scheduled runs are now literal: two checks
+declare `isSafeToRunAutomatically() === false` and the scheduler passes `--automatic`, so a nightly
+job never makes HTTP requests to its own site. Findings are stored, so the screen can say what
+CHANGED — and administrators are notified on a transition, never while a known problem stays
+known. HD-21 is unchanged and still structural: `CheckResult` scrubs at construction, and the
+exported report is scrubbed again on the way out.
 
 ### Owner Addendum H — upload security & admin theming (decisions D-07, D-08, D-09 changed)
 

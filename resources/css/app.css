@@ -1,9 +1,25 @@
 @import 'tailwindcss';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
 @source '../../app/Filament/**/*.php';
 @import './tokens.css';
+
+/*
+   NOT `storage/framework/views` — and that omission is deliberate.
+
+   The compiled-Blade cache used to be listed here, which made the stylesheet a
+   function of WHICH PAGES HAPPENED TO HAVE BEEN OPENED on the build machine.
+   Two builds of the same commit differed by 16 KB: one had a warm cache full
+   of Filament's own compiled views and quietly shipped admin-panel classes in
+   the customer stylesheet, the other had been cleared and did not. A release
+   is built after `optimize:clear` on some machines and not on others, so the
+   package could ship either — and a fresh clone, which is what a handover IS,
+   would build something the developer had never seen.
+
+   Tailwind already reads the Blade SOURCES. A directory that is gitignored,
+   machine-local and wiped by routine maintenance cannot be an input to a
+   deterministic build.
+*/
 
 /* ============================================================================
    BASE

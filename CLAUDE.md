@@ -92,6 +92,8 @@ php artisan aziv:diagnose        # what is wrong with this server, and whose pro
 php artisan aziv:diagnose --json # same, machine-readable
 php artisan aziv:mail:test x@y.z # send one real email and say what happened (no credential printed)
 php artisan aziv:backup:manifest # what a complete backup of THIS server must contain
+php artisan aziv:admin:reset     # recover an administrator: password, two-factor, or a lock
+php artisan aziv:release         # build the delivery package + SQL exports + manifest
 ```
 
 ## Local development
@@ -141,8 +143,35 @@ metered, the ledger already held and settled. What is genuinely new is what happ
 arrive from somewhere other than a file picker, and that is where the security work went — see
 *Phase 8b and 8c* in `docs/12-decision-log.md`.
 
-**Phase 9 is next** — hardening, the delivery package and the handover test. See
-`docs/09-development-phases.md`.
+**Phase 9 is built** — hardening, the delivery package and the handover test. The diagnostics
+layer gained a history, so the screen can say what CHANGED and administrators are told on a
+transition rather than every night while a known problem stays known. The web installer covers the
+server with no SSH, and shuts on two independent conditions. Admin → Maintenance runs four NAMED
+tasks and never a command string. Administrators can turn on TOTP, and `aziv:admin:reset` recovers
+the one situation the panel cannot help with, because the panel is what you cannot reach.
+`aziv:release` builds the package — source, `vendor/`, compiled assets, both SQL exports, a
+manifest with a checksum, and the twenty guides in `docs/guides/`.
+
+**The handover test is performed, not described.** `HandoverTest` extracts the release archive into
+a directory that is not this repository, points it at a database that has never held Aziv AI, and
+installs from the package alone. It was decorative on its first two runs — PHPUnit exports
+`DB_DATABASE` and `APP_ENV` as real environment variables, and a child process reads those ahead of
+the `.env` it was given — so the child now gets `PATH` and `HOME` and nothing else, and the test
+asserts the clean database actually has tables afterwards.
+
+**The Phase 9 sabotage battery found two gates that could not fail** — the maintenance allowlist
+and the subscription audit trail, both testing an outer guard while the inner one was the real
+defence. Both are fixed and both now catch the breakage. Details in `docs/12-decision-log.md`.
+
+**The Phase 9 gates found five defects that were already in the product**: the Admin Panel was not
+running the session policy at all (Filament builds its own middleware stack), a permission that
+does not exist, unnamed auth POST routes that made the throttle audit check the wrong thing, three
+missing §23 audit trails, and a release archive of 3 GB full of other projects' git history. All
+five are in `docs/12-decision-log.md` under *Phase 9*.
+
+**What Phase 9 did not do: it did not launch anything.** Nothing has been deployed, no production
+server exists yet, and no real credential has ever been entered — see the last paragraph of this
+section and `docs/12-decision-log.md`.
 
 **Everything from Phase 3 onward was built and tested entirely against fixtures.** No real OpenAI,
 Gemini or Razorpay credential has been used — the plan has the owner supply those. Every adapter
@@ -452,6 +481,17 @@ php artisan aziv:test-fixtures  # local plan + no-money gateway, so the gate can
 - **The responsive gate measures a screen; it never uses one.** The checkout page passed six
   viewports for two phases while the Pay button did nothing at all in any browser, because no test
   had ever clicked it. A screen that performs an action needs a behaviour gate, not a layout one.
+- **A build input that is gitignored is not a build input, it is a coin toss.** `app.css` listed
+  the compiled-Blade cache as a Tailwind source, so the same commit produced a stylesheet 16 KB
+  larger on a machine whose cache happened to be warm with Filament's panel views — admin classes
+  shipped inside the customer stylesheet, and a fresh clone would have built something nobody had
+  seen. `optimize:clear` changes the output. A gate now refuses any `@source` reaching into
+  `storage/` or `bootstrap/cache`.
+- **Two guards, one tested, is one guard.** Deleting `MaintenanceService`'s own allowlist check
+  passed every test, because the screen checks the same list first and only the screen was ever
+  driven. Same shape as the subscription audit: a source scan proved the action string existed
+  while the write that used it had been deleted. When a defence appears at two levels, the test has
+  to reach the inner one — that is the one an attacker or a refactor arrives at.
 - **`.env.example` is a deployment decision, not boilerplate.** It shipped stock Laravel —
   `APP_NAME=Laravel`, `DB_CONNECTION=sqlite`, `MAIL_MAILER=log` — so the default for a new install
   was a mailer that delivers nothing while recording everything as sent. Where a wrong default

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\Auth\MfaController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Billing\BillingController;
@@ -19,6 +20,17 @@ use App\Http\Controllers\Webhooks\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
+
+/**
+ * The offline page (Owner Addendum A, Phase 9).
+ *
+ * A real route, so the service worker can precache a real response rather than
+ * a fabricated one — and so somebody who reaches it with a working connection
+ * gets a page rather than a 404. It is deliberately self-contained: no theme
+ * query, no branding lookup, nothing that needs a server it is being shown
+ * because of.
+ */
+Route::view('offline', 'offline')->name('offline');
 
 // The PWA manifest is generated, not a static file: every value in it is
 // administrator-controlled branding (owner decisions D-09 and D-10).
@@ -73,10 +85,12 @@ Route::middleware('signed')->group(function () {
 /* ---------------------------------------------------------------- guest -- */
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])->name('register');
-    Route::post('register', [RegisteredUserController::class, 'store'])->middleware('throttle:6,1');
+    Route::post('register', [RegisteredUserController::class, 'store'])
+        ->middleware('throttle:6,1')->name('register.store');
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
-    Route::post('login', [AuthenticatedSessionController::class, 'store'])->middleware('throttle:10,1');
+    Route::post('login', [AuthenticatedSessionController::class, 'store'])
+        ->middleware('throttle:10,1')->name('login.store');
 
     Route::get('forgot-password', [PasswordResetController::class, 'requestForm'])->name('password.request');
     Route::post('forgot-password', [PasswordResetController::class, 'sendLink'])
@@ -96,6 +110,26 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:6,1')->name('verification.send');
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+
+    /**
+     * The second factor (§23).
+     *
+     * INSIDE the auth group and OUTSIDE `verified`, because somebody who has
+     * not verified their email still has to be able to answer a challenge —
+     * and outside the MFA middleware itself, or answering it would require
+     * having answered it.
+     */
+    Route::get('two-factor', [MfaController::class, 'challenge'])->name('mfa.challenge');
+    Route::post('two-factor', [MfaController::class, 'verify'])
+        ->middleware('throttle:20,1')->name('mfa.verify');
+
+    Route::get('two-factor/setup', [MfaController::class, 'setup'])->name('mfa.setup');
+    Route::post('two-factor/setup', [MfaController::class, 'confirm'])
+        ->middleware('throttle:20,1')->name('mfa.confirm');
+    Route::post('two-factor/recovery-codes', [MfaController::class, 'regenerate'])
+        ->middleware('throttle:10,1')->name('mfa.recovery.regenerate');
+    Route::post('two-factor/disable', [MfaController::class, 'disable'])
+        ->middleware('throttle:10,1')->name('mfa.disable');
 });
 
 /* ------------------------------------------------------- authenticated -- */

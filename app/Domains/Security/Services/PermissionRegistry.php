@@ -52,6 +52,14 @@ class PermissionRegistry
                 'diagnostics.view', 'diagnostics.run', 'diagnostics.security.view',
                 'diagnostics.export',
             ],
+            // Addendum E §4: the operations that would otherwise need SSH.
+            // Its OWN group, and granted to nobody but a full administrator:
+            // running migrations and clearing caches from a web page is
+            // exactly the authority an attacker who gets a support login
+            // would want next.
+            'maintenance' => [
+                'maintenance.view', 'maintenance.run',
+            ],
             'files' => [
                 'files.view', 'files.upload', 'files.delete', 'files.download_any',
             ],
@@ -142,6 +150,7 @@ class PermissionRegistry
                 'logs.view',
                 'settings.view', 'settings.update', 'settings.uploads.update',
                 'diagnostics.view', 'diagnostics.run', 'diagnostics.export',
+                'maintenance.view', 'maintenance.run',
                 'files.view', 'files.upload', 'files.delete',
                 'providers.view', 'providers.manage', 'providers.test',
                 'credentials.view', 'credentials.manage',
@@ -166,6 +175,9 @@ class PermissionRegistry
                 'logs.view',
                 'settings.view',
                 'diagnostics.view',
+                // Enough to read the recent log when a customer reports
+                // something, and not enough to run anything.
+                'maintenance.view',
                 'files.view',
                 'providers.view',
                 'models.view',

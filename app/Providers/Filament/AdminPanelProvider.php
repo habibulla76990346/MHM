@@ -3,6 +3,8 @@
 namespace App\Providers\Filament;
 
 use App\Domains\Theming\Services\ThemeService;
+use App\Http\Middleware\EnforceSessionPolicy;
+use App\Http\Middleware\RequireMfaChallenge;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -63,6 +65,13 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                // AFTER authentication, because the challenge is for somebody
+                // who has already proved their password. Filament builds its
+                // own middleware stack rather than using the `web` group, so
+                // appending it there is not enough — and the Admin Panel is
+                // the one place a second factor matters most.
+                EnforceSessionPolicy::class,
+                RequireMfaChallenge::class,
             ]);
     }
 

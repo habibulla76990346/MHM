@@ -4,6 +4,16 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Release version
+    |--------------------------------------------------------------------------
+    | Stamped into the release package, the install lock and the diagnostics
+    | report, so "which build is this?" has an answer that does not depend on
+    | anybody having kept a note.
+    */
+    'version' => env('AZIV_VERSION', '1.0.0'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Deployment mode
     |--------------------------------------------------------------------------
     | shared | cloud | auto
@@ -42,10 +52,10 @@ return [
     ],
 
     'optional_extensions' => [
-        'redis'   => 'Production cache and queue driver',
-        'exif'    => 'Image upload validation',
+        'redis' => 'Production cache and queue driver',
+        'exif' => 'Image upload validation',
         'opcache' => 'Significant PHP performance gain',
-        'sodium'  => 'Modern encryption primitives',
+        'sodium' => 'Modern encryption primitives',
     ],
 
     /*

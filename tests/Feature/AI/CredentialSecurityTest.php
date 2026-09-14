@@ -55,6 +55,31 @@ class CredentialSecurityTest extends TestCase
         ]);
     }
 
+    /**
+     * "Does this still decrypt?" is a question with a one-bit answer.
+     *
+     * The diagnostics layer has to ask it — a database restored beside a new
+     * APP_KEY is the one fault no retry fixes — and it must not have to hold a
+     * plaintext credential to find out. `isReadable()` is that boundary, and
+     * the caller list pinned below is what stops the check reaching for
+     * `secret()` instead the next time somebody edits it.
+     */
+    public function test_a_credential_can_be_asked_whether_it_decrypts_without_being_read(): void
+    {
+        $credential = $this->credential();
+
+        $this->assertTrue($credential->isReadable());
+
+        // What a restore beside a freshly generated APP_KEY looks like: the
+        // row survives, the bytes do not decrypt.
+        DB::table('ai_provider_credentials')
+            ->where('id', $credential->id)
+            ->update(['credential' => base64_encode('this was encrypted under a different key')]);
+
+        $this->assertFalse(AiProviderCredential::find($credential->id)->isReadable(),
+            'A credential that cannot be decrypted reported itself as fine, so nothing would warn the owner.');
+    }
+
     public function test_the_stored_value_is_ciphertext(): void
     {
         $credential = $this->credential();

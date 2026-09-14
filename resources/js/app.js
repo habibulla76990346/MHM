@@ -104,7 +104,32 @@ document.addEventListener('DOMContentLoaded', () => {
   // A no-op on every page without a microphone button or a play button, and
   // the microphone is only ever requested when somebody presses record.
   initVoice();
+  registerServiceWorker();
 });
+
+/**
+ * The app shell (Owner Addendum A, Phase 9).
+ *
+ * REGISTERED ONLY OVER HTTPS OR ON LOCALHOST, because browsers refuse it
+ * anywhere else and the console error reads like a bug in the application.
+ *
+ * The worker itself caches the compiled assets and one offline page and
+ * nothing else — no conversation, no invoice, no generated image. A service
+ * worker cache is origin-scoped and survives sign-out, so anything private in
+ * it would be readable by the next person to use the device.
+ */
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
+
+  // After load, so it never competes with the first paint for bandwidth.
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js', { scope: '/' }).catch(() => {
+      // A shell that fails to register is a slower repeat visit, never a
+      // broken site. Nothing here is worth an error in a customer's console.
+    });
+  });
+}
 
 // Chat behaviour registers itself as an Alpine component (Phase 4).
 registerChat();

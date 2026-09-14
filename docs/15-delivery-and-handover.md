@@ -36,8 +36,8 @@ If that fails, delivery is not complete. It is run as a real rehearsal, not a th
 | **Compiled front-end assets** | `public/build/` with hashed filenames | **The server never needs Node.js** |
 | **Database migrations** | Canonical schema definition | DL-3 |
 | **Seeders** | Roles, permissions, default settings, built-in themes, countries, currencies, tax templates | DL-4 |
-| **`clean-install.sql`** | Full schema + reference data, ready to import via phpMyAdmin | DL-5 — for hosts where migrations cannot be run from a terminal |
-| **`schema-only.sql`** | Structure without data | For developers who prefer to seed themselves |
+| **`clean-install.sql`** | Full schema + reference data, ready to import via phpMyAdmin | DL-5 — for hosts where migrations cannot be run from a terminal. Beside the ZIP, not inside it |
+| **`schema-only.sql`** | Structure without data | For developers who prefer to seed themselves. Beside the ZIP, not inside it |
 | **`.env.example`** | **Every** variable, documented inline with purpose, valid values and default | DL-7 |
 | **Documentation set** | The 20 guides in §3 | DL-8 … DL-27 |
 | **`LICENSE` / ownership statement** | The owner's ownership of the codebase | DL-30 |
@@ -56,19 +56,30 @@ Installation verifies that stamp against the code's expected version and **refus
 mismatch** rather than half-installing.
 
 ```
-php artisan aziv:build-release
-  → fresh migrate + seed on a scratch database
-  → export clean-install.sql and schema-only.sql
-  → compile assets
-  → stamp version + migration checksum
-  → assemble the ZIP
+php artisan aziv:release
+  → assemble the ZIP (source + vendor + compiled assets + the 20 guides)
+  → export schema-only.sql from the current schema
+  → migrate + seed a SCRATCH database, export clean-install.sql, drop it
+  → write a manifest: version, build time, sha256 of the archive
 ```
+
+**Built in Phase 9.** `clean-install.sql` comes from a scratch database that was migrated and
+seeded and used for nothing else, so it cannot contain an account, a credential or a customer's
+data — the guarantee is structural rather than a list of tables somebody has to keep correct.
+Where the build user may not create a database, that export is skipped and says so; the web
+installer and `php artisan migrate` both still work without it.
+
+`ReleasePackageTest` opens the built archive and reads it adversarially — what it found on its
+first run is in the decision log under D-36.
 
 ---
 
 ## 3. The documentation set
 
-Every guide the owner listed, written for someone who has never seen the project.
+Every guide the owner listed, written for someone who has never seen the project. **All twenty
+are written and ship inside the archive** — `docs/guides/`, indexed by
+[`docs/guides/00-index.md`](guides/00-index.md). The handover test asserts that the ones an owner
+cannot install without are actually in the package.
 
 | # | Guide | Covers |
 |---|---|---|
@@ -159,7 +170,7 @@ the Admin Panel, each permission-gated and audit-logged:
 | Clear and rebuild caches | `php artisan optimize:clear` / `optimize` |
 | Rebuild the storage link | `php artisan storage:link` |
 | Process queued jobs once | `php artisan queue:work --stop-when-empty` |
-| Reset an admin password | `php artisan aziv:admin:reset` |
+| Reset an admin password | `php artisan aziv:admin:reset` — console only, deliberately: a screen that resets an administrator's password without being signed in IS the back door |
 | View recent logs | Tailing the log file |
 | Run the system health check | §5 below |
 

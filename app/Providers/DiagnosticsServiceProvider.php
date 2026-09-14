@@ -23,6 +23,16 @@ class DiagnosticsServiceProvider extends ServiceProvider
         Checks\DatabaseCheck::class,
         Checks\OutboundHttpsCheck::class,
         Checks\ProductionSecurityCheck::class,
+        // Phase 9. The scheduler and the queue are checked before anything
+        // that depends on them, because "nothing is running your background
+        // work" explains most of what follows it.
+        Checks\SchedulerCheck::class,
+        Checks\QueueCheck::class,
+        Checks\ApplicationStateCheck::class,
+        Checks\StorageSpaceCheck::class,
+        // Manual-only: it makes real HTTP requests to this server's own front
+        // door, and a nightly job doing that adds noise for no new answer.
+        Checks\ExposureCheck::class,
         // Manual-only: provider tests are authenticated calls, so running them
         // unattended would spend the owner's money on diagnostics.
         Checks\AiProviderCheck::class,

@@ -5,11 +5,15 @@ use App\Domains\AI\Jobs\RefreshExchangeRatesJob;
 use App\Domains\Billing\Services\RenewalService;
 use App\Domains\Billing\Services\SubscriptionService;
 use App\Domains\Credits\Services\CreditService;
+use App\Domains\Diagnostics\Checks\SchedulerCheck;
+use App\Domains\Diagnostics\Models\DiagnosticRun;
+use App\Domains\Diagnostics\Services\DiagnosticRunner;
 use App\Domains\Images\Services\MediaRetentionService;
 use App\Domains\Notifications\Services\AnnouncementService;
 use App\Domains\Payments\Services\ReconciliationService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -146,5 +150,41 @@ Schedule::call(fn () => app(ReconciliationService::class)->sweep())
 Schedule::call(fn () => app(MediaRetentionService::class)->sweep())
     ->dailyAt('01:10')
     ->name('media:retention')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/**
+ * The scheduler heartbeat (Owner Addendum G).
+ *
+ * FIRST, AND DELIBERATELY TRIVIAL. Everything time-based in this platform
+ * depends on cron: renewal invoices, past-due notices, credit expiry, the
+ * reconciliation sweep that catches a customer who closed the browser
+ * mid-payment, and — on shared hosting — the queue itself. An owner who never
+ * adds the cron line sees a working site while money is taken and nothing is
+ * delivered.
+ *
+ * There is no way to read a crontab from PHP on most hosts, and reading one
+ * would prove nothing anyway: the line can be present and the daemon stopped.
+ * So the scheduler leaves a timestamp every time it runs, and `SchedulerCheck`
+ * does arithmetic on it.
+ */
+Schedule::call(fn () => Cache::put(SchedulerCheck::HEARTBEAT_KEY, now()->toIso8601String(), now()->addDays(7)))
+    ->everyMinute()
+    ->name('diagnostics:heartbeat');
+
+/**
+ * The nightly health run (Owner Addendum G §7).
+ *
+ * SAFE BY CONSTRUCTION: `DiagnosticRun::SCHEDULED` excludes every check that
+ * costs money or has a side effect, so an unattended run can never spend the
+ * owner's provider budget on diagnostics or send a test email at 3am.
+ *
+ * It emails only when something CHANGES. Alerting on every red would send the
+ * same message every night until it was fixed, which is how somebody learns to
+ * file these where they never look.
+ */
+Schedule::call(fn () => app(DiagnosticRunner::class)->run(DiagnosticRun::SCHEDULED))
+    ->dailyAt('05:30')
+    ->name('diagnostics:nightly')
     ->withoutOverlapping()
     ->onOneServer();

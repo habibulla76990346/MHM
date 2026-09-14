@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Domains\Identity\Models\UserProfile;
 use App\Domains\Identity\Models\UserSession;
 use App\Domains\Security\Services\PermissionRegistry;
+use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -19,7 +20,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, SoftDeletes;
 
     // Aliased so the override below can delegate: hasPermissionTo comes from a
@@ -29,8 +30,11 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     }
 
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_SUSPENDED = 'suspended';
+
     public const STATUS_RESTRICTED = 'restricted';
 
     protected $fillable = [
@@ -39,6 +43,9 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 
     protected $hidden = [
         'password', 'remember_token',
+        // Anybody holding the TOTP secret can generate valid codes for ever,
+        // which makes it worth exactly as much as the password.
+        'mfa_secret', 'mfa_recovery_codes',
     ];
 
     protected function casts(): array
@@ -48,6 +55,13 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
             'last_login_at' => 'datetime',
             'suspended_at' => 'datetime',
             'password' => 'hashed',
+            // Encrypted at rest like every other credential in the platform.
+            // The recovery codes are already hashed by MfaService before they
+            // arrive, so they are stored as-is: a hash cannot be turned back
+            // into a code by whoever gets the database.
+            'mfa_secret' => 'encrypted',
+            'mfa_confirmed_at' => 'datetime',
+            'mfa_last_used_at' => 'datetime',
         ];
     }
 
